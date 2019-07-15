@@ -77,7 +77,7 @@
 由于Bitcoin的采纳,基于椭圆曲线secp256k1的ECDSA签名机制在区块链领域得到广泛应用.
 Bitcoin最开始采用的是OpenSSL中实现的基于secp256k1的ECDSA签名机制,
 然而OpenSSL中没有针对曲线secp256k1进行针对性优化,也就导致OpenSSL中基于secp256k1曲线的ECDSA效率很差.
-值得注意的是,OpenSSL项目中对基于secp256r1曲线的ECDSA进行了深度优化.
+值得注意的是, OpenSSL项目中对基于secp256r1曲线的ECDSA进行了深度优化.
 OpenSSL中的两种ECDSA的实现速度测试在Listing~\ref{openssl-bench}~中给出.
 
 \lstinputlisting[firstline=9, lastline=72, caption=\texttt{openssl_ecdsa_benchmark},label=openssl-bench]{./openssl-bench.cpp}
@@ -145,7 +145,7 @@ ecdsa_verify_openssl: min 470us / avg 476us / max 490us
 而Hal Finney的原理示例则基于~\cite{guidetoecc}~中Section 3.5节中的内容.
 
 假设$E$是定义在域(Field) $K$上的椭圆曲线,用$E$表示坐标值位于域$K$上的点的集合.
-则$E$上的同态(Endomorphism)映射是满足
+则$E$上的自同态(Endomorphism)映射是满足
 $$\phi(\mathcal{O}) = \mathcal{O}, \phi(P) = (g(P), h(P)), \forall P \in E$$
 的映射$\phi: E \rightarrow E$, 其中$g$和$h$是系数位于$K$的有理函数(Rational Function).
 如果$\phi_1$和$\phi_2$上自同态映射,则定义两者的和$\phi_1+\phi_2$为$(\phi_1+\phi_2)(P) = \phi_1(P) + \phi_2(P)$.
@@ -159,7 +159,7 @@ $$\phi(P_1 + P_2) = \phi(P_1) + \phi(P_2), \forall P_1, P_2 \in E.$$
 $$\phi(x,y) \rightarrow (\beta x, y), \phi(\mathcal{O}) = \mathcal{O}.$$
 将$(\beta x, y)$带入$E$的方程有$y^2 = (\beta x)^3 + b = \beta^3x^3 + b$,
 由于$order(\beta)=3$ ($\beta^3 \equiv 1 \mod p$),则$y^2 = (\beta x)^3 + b = \beta^3x^3 + b  = x^3 + b$,
-则映射$\phi: E \rightarrow E$是$E$上的自同态映射,特征多项式(Characteristic Polynomial)为$X^2 + X + 1$,
+则映射$\phi: E \rightarrow E$是$E$上的自同态映射,特征多项式(Characteristic Polynomial)为$X^2 + X + 1$.
 一个自同态映射$\phi$的特征多项式是$\Z[X]$中满足
 $f(\phi)=0$(也即$f(\phi)(P)=\mathcal{O}, \forall P\in E$)的次数最小的首一多项式$f(X)$.
 接下来验证自同态映射$\phi$确实满足$f(\phi)(P)=\mathcal{O}, \forall P\in E$, 也即
@@ -387,7 +387,7 @@ sage: k
 39431360339721158570738739562322678290810515502148100028669271620139548095733L
 \end{lstlisting}
 
-$a_1, b_1, a_2, b_2, c_1, c_2$的取值Finney在~\cite{halfinney}中给出了基于OpenSSL的PoC代码.
+基于$a_1, b_1, a_2, b_2, c_1, c_2$的值Finney在~\cite{halfinney}中给出了基于OpenSSL的PoC代码.
 由于OpenSSL版本变动导致的接口变化问题,Finney的代码需要稍微修改才能在OpenSSL 1.1版本下编译通过.
 调整之后的代码参见Listing~\ref{lst-endpoc},编译之后的执行的结果显示利用自同态特性有大约16\%左右的速度提升.
 
@@ -395,10 +395,10 @@ $a_1, b_1, a_2, b_2, c_1, c_2$的取值Finney在~\cite{halfinney}中给出了基
 
 相比libsecp256k1中40\%的速度提升, Listing~\ref{lst-endpoc}~中PoC代码16\%速度提升相对差一些.
 浏览Listing~\ref{lst-endpoc}~中代码,可以发现在第131行和第134行分别对两个标量进行了分解.
-然而根据Figure~\ref{fig-ecdsa}中展示,ECDSA验签时候的计算为$es^{-1}G + rs^{-1}Q$,
+然而根据Figure~\ref{fig-ecdsa}~中展示, ECDSA验签时候的计算为$es^{-1}G + rs^{-1}Q$,
 其中$es^{-1}G$是固定点的倍乘,应该无需利用自同态特性即可高效执行,自同态特定的利用应当仅针对$rs^{-1}Q$.
 尝试在Finney的代码上进行修改,看是否会有改进,修改之后测试发现,验签速度与不利用自同态特性基本一样.
-所以对两个标量都进行分解并利用自同态加速确实能够速度提升.
+所以对两个标量都进行分解并利用自同态加速确实能够提升验签执行速度.
 libsec256k1采用了额外的实现技巧来进行加速,比如通过预计算避免在分解$k$的时候执行除法运算等,留作后续分析工作的切入点.
 
 \begin{thebibliography}{99}
