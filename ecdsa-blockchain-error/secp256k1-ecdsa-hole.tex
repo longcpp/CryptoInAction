@@ -69,10 +69,75 @@
 
 \begin{document}
 
-\title{区块链领域ECDSA签名机制应用的七宗罪}
+\title{ECDSA签名机制在区块链领域中的应用}
 \author{longcpp \\ longcpp9@gmail.com}
 
 \maketitle
+
+由于Bitcoin中的采纳,曾经未曾得到广泛部署的椭圆曲线secp256k1成为了大多数区块链项目中默认的椭圆曲线选择.
+曲线secp256k1的名字来自于密码学标准文档SEC2~\cite{}~,其中``sec"是``Standards For Efficient Cryptography"缩写,
+``p"表示椭圆曲线参数定义在有限域$\F_p$上, ``256"表示该有限域中元素的比特长度为256, 
+``k"表示这是一条Koblitz曲线, 而``1"表示这是满足前述条件的第一条(实际上也是唯一的)推荐的曲线.
+Koblitz曲线在密码学文献中通常指代定义在特征为2的有限域上$\F_{2^m}, m\in\Z$的椭圆曲线,
+文献~\cite{}中泛化了Koblitz曲线的含义,也包括定义在大素数上$\F_p$上具备高效可计算自同态特性的椭圆曲线.
+
+Satoshi在最开始选择secp256k1曲线的原因仍不可知,尤其是在当时得到广泛部署的是一条名为secp256r1椭圆曲线的背景之下.
+原因可能是secp256k1曲线具备的高效可计算的自同态映射可以加速ECDSA签名验证过程的特性在区块链场景中尤为合适,
+但是以OpenSSL为代表的各个密码学库的实现中并没有利用这一属性.
+虽然libsecp256k1中的实现成功利用这一属性使得基于secp256k1的ECDSA签名验证速度达到了21000次每秒
+(测试平台的芯片型号为 Intel(R) Core(TM) i7-6700HQ CPU), 速度上超过了OpenSSL 1.1版本中深度优化的基于secp256r1曲线的
+ECDSA的12000次每秒的验签速度,最终证实了secp256k1曲线在ECDSA验签操作中的效率优势,但是在选定这条曲线时,
+并没有相应的实现可以证实关于验签效率的推断.
+
+然而后来的斯诺登泄露的文档中显示的NSA可能在NIST标准中的埋藏算法级后门的信息,尤其经过Dual_EC_DRBG~\cite{}~
+事件验证之后, Satoshi当初的曲线选择在后来看来有了先见之明的意味. 
+得到广泛部署的secp256r1曲线中的``r"表示曲线参数是从随机种子派生而来. 
+secp256r1 (NIST P-256)曲线的参数是从随机种子
+$$c49d3608 86e70493 6a6678e1 139d26b7 819f7e90$$
+中派生而来, 而该随机种子的来源NIST并没有解释,鉴于Dual_EC_DRBG事件的教训,难免会有其中存在后门的疑虑
+\footnote{\url{http://safecurves.cr.yp.to/rigid.html}}.
+相比之下, secp256k1曲线的参数选择有合理的解释,也就有助于消除对存在算法级后门的担忧
+\footnote{\url{https://bitcointalk.org/index.php?topic=289795.msg3183975\#msg3183975}}.
+后续介绍基于secp256k1的ECDSA签名机制在区块链领域中的应用以及在区块链场景下的面临的特殊问题.
+
+定义在有限域$\F_p$上的曲线secp256k1的方程为$y^2 = x^3 + 7$,其中
+\footnotesize
+$$p = 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f.$$
+\normalsize
+椭圆曲线上的点的个数为$\#E(\F_p) = h \cdot n$,其中$h = 1$为余因子(Cofactor), $n$为$E(\F_p)$的最大素子群的阶:
+\footnotesize
+$$ n = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141.$$
+\normalsize
+子群 $\G = \langle G \rangle$的基点$G$的坐标为:
+\footnotesize
+$$G_x = 0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798$$
+$$G_y = 0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8$$
+\normalsize
+值得提及的是, $\G$的阶$n$是素数,也即$\F_n$是有限域,非零元构成的乘法群表示为$\F_n^*$.
+
+假设待签名消息为$m$, 私钥为$x$, 公钥为$P=xG$, 哈希算法为$H: \{0,1\}^*\rightarrow\F_n^*$.
+ECDSA签名值$\sigma = (r,s), r, s \in \F_n^*$的计算过程为: 
+\begin{enumerate}
+\item 选择随机数$k\in_R\F_n^*$, 计算$R = (x,y) = kG, x, y \in \F_p$, 计算$r = x\mod n \in \F_n^*$,
+\item 计算消息$m$的哈希值$h=H(m)\in\F_n^*$, 计算 $s = k^{-1} (h + xr) \mod n$. 
+\end{enumerate}
+注意$k, r, s \in \F_n^*$,也即$k, r, s$均不得为0, 如果为0, 则重新选择$k$进行计算.
+
+给定消息$m$, 公钥$P$, 签名值$\sigma = (r, s)$, 签名验证的过程为:
+\begin{enumerate}
+\item  验证$r, s$确实是$\F_n^*$中的元素,也即$r, s \in [1, n-1]$, 否则签名值无效,
+\item 计算哈希值$h=H(m)\in\F_n^*$,并计算$s\in\F_n^*$的逆$s^{-1}$,
+\item  计算$R' = (x', y') = hs^{-1}G + rs^{-1}P$, 
+\item 判断$R' \neq \mathcal{O}$,否则验签失败, 判断 $x' \mod n = r$, 相等则验签成功,否则验签失败.
+\end{enumerate}
+合法的签名能够验证通过是因为
+$$R' = hs^{-1}G + rs^{-1}P = hs^{-1}G + rs^{-1}(xG) = s^{-1}(h+xr)G = kG = R.$$
+上述基于曲线secp256k1的ECDSA签名机制,总共涉及3种数学结构上的计算:
+有限域$\F_n$上加法和乘法运算(求逆运算可以由加法和乘法运算构造), $E(\F_p)$中的加法点群$\G$中点的加法运算(点的倍乘),
+由于$\G$中的点的坐标为有限域$\F_p$中的元素,则点的加法运算中也涉及到有限域$\F_p$上的加法和乘法运算(求逆运算).
+编码实现ECDSA签名机制时,需注意区分不同的运算,尤其要注意不要混淆有限域$\F_n$和$\F_p$上的运算.
+
+ECDSA签名机制的数学原理不算复杂,但是编码实现以及应用时,特别是在区块链场景中应用时很容易引入安全隐患.
 
 \begin{enumerate}
 \item 同一个用户,不同消息,重用随机数$k$ (RFC 6979 从消息和私钥派生随机数)
