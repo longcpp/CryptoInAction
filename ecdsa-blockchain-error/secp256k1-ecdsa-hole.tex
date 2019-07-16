@@ -74,6 +74,8 @@
 
 \maketitle
 
+\section{椭圆曲线secp256k1与secp256r1}
+
 由于Bitcoin中的采纳,曾经未曾得到广泛部署的椭圆曲线secp256k1成为了大多数区块链项目中默认的椭圆曲线选择.
 曲线secp256k1的名字来自于密码学标准文档SEC2~\cite{}~,其中``sec"是``Standards For Efficient Cryptography"缩写,
 ``p"表示椭圆曲线参数定义在有限域$\F_p$上, ``256"表示该有限域中元素的比特长度为256, 
@@ -99,6 +101,8 @@ $$c49d3608 86e70493 6a6678e1 139d26b7 819f7e90$$
 相比之下, secp256k1曲线的参数选择有合理的解释,也就有助于消除对存在算法级后门的担忧
 \footnote{\url{https://bitcointalk.org/index.php?topic=289795.msg3183975\#msg3183975}}.
 后续介绍基于secp256k1的ECDSA签名机制在区块链领域中的应用以及在区块链场景下的面临的特殊问题.
+
+\section{基于椭圆曲线secp256k1的ECDSA签名}
 
 定义在有限域$\F_p$上的曲线secp256k1的方程为$y^2 = x^3 + 7$,其中
 \footnotesize
@@ -137,17 +141,38 @@ $$R' = hs^{-1}G + rs^{-1}P = hs^{-1}G + rs^{-1}(xG) = s^{-1}(h+xr)G = kG = R.$$
 由于$\G$中的点的坐标为有限域$\F_p$中的元素,则点的加法运算中也涉及到有限域$\F_p$上的加法和乘法运算(求逆运算).
 编码实现ECDSA签名机制时,需注意区分不同的运算,尤其要注意不要混淆有限域$\F_n$和$\F_p$上的运算.
 
-ECDSA签名机制的数学原理不算复杂,但是编码实现以及应用时,特别是在区块链场景中应用时很容易引入安全隐患.
+\section{ECDSA签名机制应用中的安全隐患}
 
+ECDSA签名机制在编码实现和应用时,特别是在区块链场景中应用时很容易引入安全问题,列举如下,随后依次介绍每个安全隐患的原理.
 \begin{enumerate}
-\item 同一个用户,不同消息,重用随机数$k$ (RFC 6979 从消息和私钥派生随机数)
-\item 同时支持Schnorr签名时, Schnorr和ECDSA共用随机数$k$
-\item 两个用户重用随机数$k$
-\item 可锻造性问题
-\item DER编码问题
-\item 安全实现问题
-\item 签名伪造问题
+\item 如果$k$值泄露,则任何知道该随机数值的人可以使用该随机数产生签名值恢复私钥
+\item 用相同私钥和$k$对两个消息进行签名,则任何人都可以通过两个签名值恢复出私钥
+\item 两个用户使用相同的$k$分别对不同的消息进行签名,则任一方可推算出对方的私钥
+\item 相同私钥和$k$同时用于ECDSA签名和Schnorr签名时,任何人都能够恢复出私钥
+\item ECDSA签名值的可锻造性,会造成区块链网络的分裂
+\item 签名值通常采用的DER编码由于编码值并不唯一也会造成区块链网络的分裂
+\item 不需要提供签名消息的情况下,任何人可以根据任意签名值伪造对应私钥的签名值
+\item 实现方面,侧信道攻击可以利用不安全的ECDSA签名实现窃取用于签名的私钥
 \end{enumerate}
+
+\subsection{随机数$k$值泄露导致私钥泄露}
+
+\subsection{同一用户重用随机数$k$导致密钥泄露}
+
+\subsection{不同用户重用随机数$k$导致密钥泄露}
+
+\subsection{ECDSA与Schnorr共用$k$导致私钥泄露}
+
+\subsection{ECDSA签名值的可锻造性造成网络分裂}
+
+\subsection{ECDSA签名值DER编码的不唯一造成网络分裂}
+
+\subsection{不需要提供消息$m$时可伪造签名值}
+
+\subsection{不安全的ECDSA签名实现私钥泄露}
+
+\section{}
+
 
 \begin{thebibliography}{99}
 
