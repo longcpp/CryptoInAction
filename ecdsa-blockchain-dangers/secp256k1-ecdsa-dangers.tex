@@ -119,15 +119,15 @@ $$G_y = 0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8$$
 \normalsize
 值得提及的是, $\G$的阶$n$是素数,也即$\F_n$是有限域,非零元构成的乘法群表示为$\F_n^*$.
 
-假设待签名消息为$m$, 私钥为$x$, 公钥为$P=xG$, 哈希算法为$H: \{0,1\}^*\rightarrow\F_n^*$.
-ECDSA签名值$\sigma = (r,s), r, s \in \F_n^*$的计算过程为: 
+假设待签名消息为$m$, 私钥为$d$, 公钥为$P=dG$, 哈希算法为$H: \{0,1\}^*\rightarrow\F_n^*$.
+\textbf{ECDSA签名值$\sigma = (r,s), r, s \in \F_n^*$的计算过程}为: 
 \begin{enumerate}
 \item 选择随机数$k\in_R\F_n^*$, 计算$R = (x,y) = kG, x, y \in \F_p$, 计算$r = x\mod n \in \F_n^*$,
-\item 计算消息$m$的哈希值$h=H(m)\in\F_n^*$, 计算 $s = k^{-1} (h + xr) \mod n$. 
+\item 计算消息$m$的哈希值$h=H(m)\in\F_n^*$, 计算 $s = k^{-1} (h + rd) \mod n$. 
 \end{enumerate}
 注意$k, r, s \in \F_n^*$,也即$k, r, s$均不得为0, 如果为0, 则重新选择$k$进行计算.
 
-给定消息$m$, 公钥$P$, 签名值$\sigma = (r, s)$, 签名验证的过程为:
+给定消息$m$, 公钥$P$, 签名值$\sigma = (r, s)$, \textbf{签名验证的过程}为:
 \begin{enumerate}
 \item  验证$r, s$确实是$\F_n^*$中的元素,也即$r, s \in [1, n-1]$, 否则签名值无效,
 \item 计算哈希值$h=H(m)\in\F_n^*$,并计算$s\in\F_n^*$的逆$s^{-1}$,
@@ -135,7 +135,7 @@ ECDSA签名值$\sigma = (r,s), r, s \in \F_n^*$的计算过程为:
 \item 判断$R' \neq \mathcal{O}$,否则验签失败, 判断 $x' \mod n = r$, 相等则验签成功,否则验签失败.
 \end{enumerate}
 合法的签名能够验证通过是因为
-$$R' = hs^{-1}G + rs^{-1}P = hs^{-1}G + rs^{-1}(xG) = s^{-1}(h+xr)G = kG = R.$$
+$$R' = hs^{-1}G + rs^{-1}P = hs^{-1}G + rs^{-1}(dG) = s^{-1}(h+rd)G = kG = R.$$
 上述基于曲线secp256k1的ECDSA签名机制,总共涉及3种数学结构上的计算:
 有限域$\F_n$上加法和乘法运算(求逆运算可以由加法和乘法运算构造), $E(\F_p)$中的加法点群$\G$中点的加法运算(点的倍乘),
 由于$\G$中的点的坐标为有限域$\F_p$中的元素,则点的加法运算中也涉及到有限域$\F_p$上的加法和乘法运算(求逆运算).
@@ -157,21 +157,134 @@ ECDSA签名机制在编码实现和应用时,特别是在区块链场景中应�
 
 \subsection{随机数$k$值泄露导致私钥泄露}
 
-\subsection{同一用户重用随机数$k$导致密钥泄露}
+签名过程中使用的随机数$k\in\F_n^*$一定要及时删除以免泄露.
+这是因为知道随机数$k$的任何人,都可以根据签名值$\sigma=(r,s)$计算出相应的生成该签名值的私钥$d$.
+随机数$k$的值与签名值$\sigma=(r,s)$之间的对应关系可以根据等式$x = (kG)_x \mod n = r$来进行判断.
+由于$k$, $r$以及$h=H(m)$已知,则可以根据下面的公式计算私钥$d$:
+$$s=k^{-1}(h+rd) \mod n \rightarrow ks = (h + rd)\mod n \rightarrow d = r^{-1}(ks - h)\mod n.$$
 
-\subsection{不同用户重用随机数$k$导致密钥泄露}
+基于上述理由,在通过随机数发生器(Random Number Generator, RNG)生成随机数$k$的时候,
+首先要确保选用的RNG生成的随机数的质量, 然后要确保生成的随机数没有被记录下来, 
+还要确认RNG实现的安全性(生成$k$的能量消耗等侧信道信息不会泄露$k$的值),最后在使用完随机数$k$之后要将其及时删除.
+
+\subsection{同一用户重用随机数$k$导致私钥泄露}
+
+如果同一个用户使用自己的私钥对不同的消息进行签名时,使用了相同的$k$值,则任何人可以根据消息和签名值推算出用户的私钥.
+假设用户用私钥$d$和$k$对消息$m_1$和$m_2$进行签名,生成了签名值$\sigma_1=(r, s_1)$和$\sigma_2=(r, s_2)$,
+可以看到两个签名值的$r$部分相同,这是因为使用了相同的$k$,而$r = (kG)_x \mod n$, 根据签名计算过程则有:
+\begin{equation}\nonumber
+\left\{
+\begin{array}{lll}
+s_1 = & k^{-1}(h_1 + rd) \mod n, & h_1 = H(m_1)\\
+s_2 = & k^{-1}(h_2 + rd) \mod n, & h_2 = H(m_2)
+\end{array}
+\right.
+\end{equation}
+上面的方程组中,可以看到未知的变量仅有$k$和$d$,两个方程两个未知量,通过解方程组可以推算出私钥$d$.
+根据上面的方程组就有
+\begin{equation}\nonumber
+\left\{
+\begin{array}{ll}
+k = & s_1^{-1} (h_1 + rd) \mod n \\
+k = & s_2^{-1} (h_2 + rd) \mod n
+\end{array}
+\right.
+\ 
+\rightarrow
+\ 
+\dfrac{h_1+rd}{s_1^{-1}} = \dfrac{h_2+rd}{s_2^{-1}} \mod n
+\end{equation}
+根据$s_2(h_1+rd) = s_1(h_2+rd)\mod n$,可以推断出私钥
+$$d = \dfrac{s_2h_1 - s_1h_2}{(s_1-s_2)r} \mod n.$$
+
+\subsection{不同用户重用随机数$k$导致私钥泄露}
+
+前一小节论述了同一个用户签名时重用随机数$k$的安全隐患, 然而如果两个用户之间重用了随机数$k$, 同样也会私钥泄露的隐患.
+如果两个用户Alice和Bob在用自己的私钥签名时,选用了同样的随机数$k$,
+则Alice可以根据签名值推算出Bob的私钥, Bob也可以根据签名值推算出Alice的私钥.
+假设Alice的私钥为$d_1$, 要签名的消息为$m_1$, 选用随机数$k$时计算的签名值为$\sigma_1 = (r, s_1)$,
+Bob的私钥为$d_2$, 要签名的消息为$m_2$, 选用同样随机数$k$时计算的签名值为$\sigma_2 = (r, s_2)$.
+则根据签名值的计算过程有
+\begin{equation}\nonumber
+\left\{
+\begin{array}{lll}
+s_1 = & k^{-1}(h_1 + rd_1) \mod n, & h_1 = H(m_1)\\
+s_2 = & k^{-1}(h_2 + rd_2) \mod n, & h_2 = H(m_2)
+\end{array}
+\right.
+\end{equation}
+根据上面的方程组就有
+\begin{equation}\nonumber
+\left\{
+\begin{array}{ll}
+k = & s_1^{-1} (h_1 + rd_1) \mod n \\
+k = & s_2^{-1} (h_2 + rd_2) \mod n
+\end{array}
+\right.
+\ 
+\rightarrow
+\ 
+\dfrac{h_1+rd_1}{s_1^{-1}} = \dfrac{h_2+rd_2}{s_2^{-1}} \mod n
+\end{equation}
+则有$s_2(h_1+rd_1) = s_1(h_2+rd_2) \mod n$.
+在Alice看来,等式中未知的变量只有Bob的私钥$d_2$, Alice可以计算Bob私钥:
+$$d_2 = \dfrac{s_2h_1 - s_1h_2 + s_2rd_1}{s_1r} \mod n,$$
+而在Bob看来,等式中未知的变量只有Alice的私钥$d_1$, Bob可以计算Alice的私钥:
+$$d_1 = \dfrac{s_1h_2 - s_2h_1 + s_1rd_2}{s_2r} \mod n.$$
 
 \subsection{ECDSA与Schnorr共用$k$导致私钥泄露}
 
-\subsection{ECDSA签名值的可锻造性造成网络分裂}
+前面两个小节可以看到,同一用户重用$k$,不同用户重用$k$都会导致用于签名的私钥泄露的问题.
+然而除了用户自己/用户之间重用$k$之外,如果不同的签名机制在签名时重用了$k$也同样会导致私钥泄露.
+Bitcoin和Bitcoin Cash网络中正在围绕在链上采纳Schnorr签名而做大量的准备活动,
+其中Bitcoin Cash已经在19年5月份的网络协议升级中为交易签名过程添加Schnorr签名机制.
 
-\subsection{ECDSA签名值DER编码的不唯一造成网络分裂}
+首先介绍定义在椭圆曲线secp256k1上的Schnorr签名机制可以与ECDSA签名机制共用相同的公私钥对,
+也即用于ECDSA签名的公私钥对$d\in\F_n^*, Q=dG\in\G$,同时也可以是Schnorr签名机制的公私钥对.
+假设待签名消息为$m$,有哈希函数$H: \{0,1\}^*\rightarrow \F_n^*$, 
+则\textbf{Schnorr签名$\sigma=(R,s), R\in \G, s\in\F_n^*$的计算过程}为:
+\begin{enumerate}
+\item 选取随机数$k\in_R\F_n^*$, 计算 $R=(x,y)=kG$,
+\item 计算哈希值$h = H(R||P||m)\in\F_n^*$, 计算$s=r+hd \mod n \in \F_n^*$.
+\end{enumerate}
+给定消息$m$,公钥$P$, Schnorr签名值$\sigma=(R,s)$, \textbf{Schnorr签名验证过程}为:
+\begin{enumerate}
+\item 验证$R$确实是$\G$中的元素,验证$s$确实是$\F_n^*$中的元素,否则验签失败,
+\item 计算哈希值$h = H(R||P||m)\in\F_n^*$,
+\item 计算$R+hP$并验证是否与$sG$相等,如果相等验签通过,否则验签失败.
+\end{enumerate}
+合法的签名值能够验证通过是因为:
+$$
+sG = (k+hx)G = kG + hxG = R + h(dG) = R + hP.
+$$
+值得提及的是Schnorr签名还有另外一种变体,此处仅介绍Bitcoin和Bitcoin Cash网络中采用的Schnorr签名机制,
+对于展示ECDSA和Schnorr签名共用$k$导致私钥泄露的问题来说已经足够.
 
-\subsection{不需要提供消息$m$时可伪造签名值}
+用$d, P$表示ECDSA和Schnorr签名所共用的公私钥对, ECDSA签名用随机数$k$对消息$m_1$的签名值为$\sigma_1 = (r, s_1)$,
+Schnorr签名用相同的随机数对消息$m_2$的签名值为$\sigma_2 = (R, s_2)$,下面展示如何通过签名值恢复私钥$d$.
+根据签名计算规则有
+\begin{equation}\nonumber
+\left\{
+\begin{array}{lll}
+s_1 = & k^{-1}(h_1 + rd) \mod n, & h_1 = H(m_1)\\
+s_2 = & k + h_2d \mod n, & h_2 = H(R||P||m_2)
+\end{array}
+\right.
+\end{equation}
+则有$k = s_2 - h_2d\mod n$,带入上述方程组的第一个等式得到
+$$
+s_1 =  (s_2 - h_2d)^{-1}(h_1 + rd) \mod n \rightarrow d = \dfrac{s_1s_2 - h_1}{s_1h_2 + r} \mod n.
+$$
+
+\subsection{ECDSA签名值的可锻造性问题}
+
+
+
+\subsection{ECDSA签名值DER编码的不唯一问题}
+
+\subsection{不需要提供签名值对应的消息$m$时可伪造签名值}
 
 \subsection{不安全的ECDSA签名实现私钥泄露}
-
-\section{}
 
 
 \begin{thebibliography}{99}
