@@ -118,8 +118,8 @@ ecdsa_verify: min 47.0us / avg 47.6us / max 49.6us
 ecdsa_verify_openssl: min 470us / avg 476us / max 490us
 \end{lstlisting}
 
-可以看到,是否指定选项~\code{./configure}~对于libsecp256k1的ECDSA签名速度没有影响,
-每次签名耗时大约为46 us, 也即大约为22000 sign/s. 指定选项~\code{./configure}~验签的速度有了明显提升,
+可以看到,是否指定选项~\code{--enable-endomorphism}~对于libsecp256k1的ECDSA签名速度没有影响,
+每次签名耗时大约为46 us, 也即大约为22000 sign/s. 指定选项~\\code{--enable-endomorphism}~验签的速度有了明显提升,
 从平均66.5 us提高至平均47.6 us,也即从15000 verify/s提高至21000 verify/s, 大约有40\%的速度提升.
 值得注意的是, libsecp256k1的速度测试工具中同时测试了OpenSSL中基于secp256k1的ECDSA的运行速度,
 每次验签操作耗大约耗时475 us,等价于2100 verify/s与我们之前的测试基本一致.
@@ -142,9 +142,10 @@ ecdsa_verify_openssl: min 470us / avg 476us / max 490us
 早在2011年, Bitcoin开发者Hal Finney就在bitcointalk论坛上指出
 可以利用secp256k1的自同态特性加速ECDSA的验签操作~\cite{halfinney}, 并给出了原理示例代码.
 浏览libsecp256k1的代码实现可知, libsecp256k1中的实现是以Hal Finney的示例为基础的,
-而Hal Finney的原理示例则基于~\cite{guidetoecc}~中Section 3.5节中的内容.
+而Hal Finney的原理示例则基于~\cite{guidetoecc}~中Section 3.5节中的内容,
+而Section 3.5节中的内容来自论文~\cite{glv01}.
 
-假设$E$是定义在域(Field) $K$上的椭圆曲线,用$E$表示坐标值位于域$K$上的点的集合.
+假设$E$是定义在域(Field) $K$上的椭圆曲线,用$E$表示该椭圆曲线上的所有的点的集合,
 则$E$上的自同态(Endomorphism)映射是满足
 $$\phi(\mathcal{O}) = \mathcal{O}, \phi(P) = (g(P), h(P)), \forall P \in E$$
 的映射$\phi: E \rightarrow E$, 其中$g$和$h$是系数位于$K$的有理函数(Rational Function).
@@ -155,11 +156,11 @@ $E$上的所有的自同态映射构成一个环(Ring),称为域$K$上$E$的自�
 $$\phi(P_1 + P_2) = \phi(P_1) + \phi(P_2), \forall P_1, P_2 \in E.$$
 
 假设$p$是一个满足$p\equiv 1 \mod 3$的大素数, $E$则是定义在$\F_p$上的椭圆曲线$E: y^2 = x^3 + b$,
-用$\beta$表示$\F_p$上一个阶(Order)为3的元素, 则有映射:
+用$\beta$表示$\F_p$上一个阶(Order)为3的元素, 则有$E$上的自同态映射
 $$\phi(x,y) \rightarrow (\beta x, y), \phi(\mathcal{O}) = \mathcal{O}.$$
-将$(\beta x, y)$带入$E$的方程有$y^2 = (\beta x)^3 + b = \beta^3x^3 + b$,
-由于$order(\beta)=3$ ($\beta^3 \equiv 1 \mod p$),则$y^2 = (\beta x)^3 + b = \beta^3x^3 + b  = x^3 + b$,
-则映射$\phi: E \rightarrow E$是$E$上的自同态映射,特征多项式(Characteristic Polynomial)为$X^2 + X + 1$.
+将$(\beta x, y)$带入$E$的方程有$y^2 = (\beta x)^3 + b = \beta^3x^3 + b$可以看到$\phi$确实是$E$到自身的映射.
+由于$order(\beta)=3$ ($\beta^3 \equiv 1 \mod p$),则$y^2 = (\beta x)^3 + b = \beta^3x^3 + b  = x^3 + b$.
+自同态映射$\phi: E \rightarrow E$的特征多项式(Characteristic Polynomial)为$X^2 + X + 1$.
 一个自同态映射$\phi$的特征多项式是$\Z[X]$中满足
 $f(\phi)=0$(也即$f(\phi)(P)=\mathcal{O}, \forall P\in E$)的次数最小的首一多项式$f(X)$.
 接下来验证自同态映射$\phi$确实满足$f(\phi)(P)=\mathcal{O}, \forall P\in E$, 也即
@@ -177,11 +178,14 @@ $$ (-\beta^2 x -\beta x, -y) + (x,y) = (-(\beta^2+\beta) x, -y) = (x,-y) + (x,y)
 \caption{$y^2=x^3+b$的点加运算$(x_3,y_3)=P_3=P_1+P_2=(x_1,y_1) + (x_2,y_2)$}\label{fig-ecpoint-add}
 \end{figure}
 
-用$\#E(\F_p)$表示集合$E(\F_p)$中点的个数,用$n$表示$\#E(\F_p)$的最大素因子并且$n^2 \nmid \#E(\F_p)$,
+用$\#E(\F_p)$表示集合$E(\F_p)$中点的个数,其中$p \equiv 1 \mod 3$是素数,
+用$n$表示$\#E(\F_p)$的最大素因子并且$n^2 \nmid \#E(\F_p)$,
 则点群$E(\F_p)$仅包含一个阶为$n$的子群(Subgroup),记这个子群的基点(Base Point)为$G\in E(\F_p)$, 
-记这个子群为$\langle G \rangle$. 
-假设$\phi(G)\neq \mathcal{O}$,则存在$\lambda\in [1, n-1]$满足$\phi(G) = \lambda G$
-并且$\lambda$是$\lambda^2+\lambda+1\equiv 0 \mod n$的根(Root).
+记这个子群为$\G = \langle G \rangle$. 
+假设$\phi(G)\neq \mathcal{O}$,则前述的映射$\phi$相当于$\G$上的一个点倍乘映射:
+$$
+\phi(G) = \lambda G, \lambda^2+\lambda+1\equiv 0 \mod n.
+$$
 
 考虑定义在有限域$\F_p$上的曲线secp256k1: $y^2 = x^3 + 7$,其中
 \small
@@ -194,11 +198,12 @@ $$ n = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141.$$
 子群 $\langle G \rangle$的基点$G$的坐标为:
 $$G_x = 0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798$$
 $$G_y = 0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8$$
-注意到曲线secp256k1的参数$p\equiv 1 \mod 3, n | \#E(\F_p), n^2 \nmid \#E(\F_p)$,
-则存在自同态映射$\phi$使得$\phi(x,y) \rightarrow (\beta x, y)$,并且存在$\lambda \in [1, n-1]$
-使得$\phi(P) = \lambda P, \forall P \in E(\F_p)$. 假设$P=(x,y)$,则有
-$$\phi(P) = \lambda P = (\beta x, y).$$
-注意$\lambda P = (\beta x, y) \rightarrow \lambda^2 P = (\beta^2 x, y) \rightarrow \lambda^3 P = (\beta^3 x, y) = (x, y)$,
+注意到secp256k1的参数$p\equiv 1 \mod 3, n | \#E(\F_p), n^2 \nmid \#E(\F_p)$,则存在自同态映射$\phi$:
+$$
+\phi(P) = \phi(x, y) = (\beta x, y) = \lambda P, \beta^3 \equiv 1 \mod p, \lambda^2 + \lambda + 1 \equiv 0 \mod n, \forall P \in \G.
+$$
+由于
+$$\lambda P = (\beta x, y) \rightarrow \lambda^2 P = (\beta^2 x, y) \rightarrow \lambda^3 P = (\beta^3 x, y) = (x, y),$$
 也即$\lambda^3 \equiv 1 \mod n$ ($\lambda^2+\lambda + 1 \equiv 0 \mod n$).
 根据费马小定理(Fermat's Little Theorem),可以按照Listing~\ref{lst-betalamb}~计算$\beta, \lambda$的值.
 
@@ -247,7 +252,8 @@ sage: beta * beta * P.xy()[0]
 \end{lstlisting}
 
 secp256k1上的自同态映射可以用来加速点的倍乘,能够加速ECDSA的验签过程,参见~\cite{stallings}中给出的Figure~\ref{fig-ecdsa}.
-注意签名过程中涉及到只有固定点$G$的倍乘运算$kG$,点的倍乘运算利用预计算可以有效计算,无需利用自同态映射.
+注意签名过程中涉及到只有固定点$G$的倍乘运算$kG$,点的倍乘运算利用预计算方法可以高效计算,无需利用自同态映射
+\footnote{这句需要进一步验证, 固定点计算应用自同态映射是否会更快?直觉上不会}.
 验证过程中,需要计算$es^{-1}G+rs^{-1}Q$,其中的$rs^{-1}Q$部分可以利用自同态映射进行加速,其中$(r,s)$为签名值,
 $e$为待签名消息的哈希值.接下来讨论如何利用自同态$\phi$加速非固定点的倍乘运算,从而加速ECDSA的验签效率.
 
@@ -276,15 +282,12 @@ $k \equiv k_1 + k_2 \lambda \mod n$,并且$(k_1, k_2)$的欧几里得范数(Eucl
 则$\mathbf{k} = (k,0) - \mathbf{v}$是满足$f(\mathbf{k}) = f((k,0)) - f(\mathbf{v}) = k$的短向量.
 
 可以利用扩展的欧几里得算法(Extended Eculidean Algorithm)寻找向量$\mathbf{v_1}$和$\mathbf{v_2}$.
-应用扩展的欧几里得算法计算$n$以及$\lambda$的最大公约数,由于$n$为素数,该最大公约数为1,
-扩展的欧几里得算法在计算过程中会产生一系列的等式:
+将扩展的欧几里得算法应用到$n$和$\lambda$, 则计算过程中会产生一系列的等式:
 \begin{equation}
 \label{eq-eea}
 s_i n. + t_i \lambda = r_i, i = 0, 1, 2, ....
 \end{equation}
 其中$s_0 = 1, t_0 = 0, r_0 = n, s_1 =0, t_1 = 1, r_1 = \lambda$并且有$r_i \ge 0$.
-
-假设$s_i, t_i, r_i$是扩展的欧几里得算法根据输入$n, \lambda$生成的满足Equation (\ref{eq-eea})的序列,
 则有如下性质:
 \begin{enumerate}
 \item $r_i > r_{i+1} \ge 0 \text{ for all } i \ge 0$
@@ -393,13 +396,7 @@ sage: k
 
 \lstinputlisting[firstline=67, lastline=155, firstnumber=67, caption=\texttt{PoC of speeding up ECDSA verification with endomorphism},label=lst-endpoc]{./secp256k1-endomorphism.c}
 
-相比libsecp256k1中40\%的速度提升, Listing~\ref{lst-endpoc}~中PoC代码16\%速度提升相对差一些.
-浏览Listing~\ref{lst-endpoc}~中代码,可以发现在第131行和第134行分别对两个标量进行了分解.
-然而根据Figure~\ref{fig-ecdsa}~中展示, ECDSA验签时候的计算为$es^{-1}G + rs^{-1}Q$,
-其中$es^{-1}G$是固定点的倍乘,应该无需利用自同态特性即可高效执行,自同态特定的利用应当仅针对$rs^{-1}Q$.
-尝试在Finney的代码上进行修改,看是否会有改进,修改之后测试发现,验签速度与不利用自同态特性基本一样.
-所以对两个标量都进行分解并利用自同态加速确实能够提升验签执行速度.
-libsec256k1采用了额外的实现技巧来进行加速,比如通过预计算避免在分解$k$的时候执行除法运算等,留作后续分析工作的切入点.
+libsecp256k1中40\%的速度提升整合了更多的优化技巧,例如通过预计算避免在分解$k$的时候执行除法运算等,留作以后分析.
 
 \begin{thebibliography}{99}
 
