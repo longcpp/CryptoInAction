@@ -634,5 +634,8 @@ static int secp256k1_ecdsa_sig_sign(const secp256k1_ecmult_gen_context *ctx, sec
 参见Listing~\ref{lst-libsecp256k1-signimpl}.
 函数参数~\code{recid}~对应可恢复签名结构体~\code{secp256k1_ecdsa_recoverable_signature}~中字节数组的最后一个字节.
 根据第22行可知, 如果~\code{recid}~第2最低比特为1,表示$r > n$, 如果最低比特比特为1,则$R$的纵坐标是奇数.
+值得注意的是, 前述的理论论述部分, 我们其实依赖了曲线secp256k1的余因子(Cofactor)为1这个事情,
+当余因子不为1的时候,对于从$r$计算$x$时,需要考虑更多可能的$x$值, 
+在介绍Ed25519签名算法时,再详细介绍余因子的概念以及在椭圆曲线计算中的影响.
 
 \end{document}
