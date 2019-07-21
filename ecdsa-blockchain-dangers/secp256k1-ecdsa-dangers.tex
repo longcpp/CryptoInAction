@@ -87,7 +87,7 @@ Gallant, Robert P., Robert J. Lambert, and Scott A. Vanstone. "Faster point mult
 中泛化了Koblitz曲线的含义,也包括定义在大素数上$\F_p$上具备高效可计算自同态特性的椭圆曲线.
 
 Satoshi在最开始选择secp256k1曲线的原因仍不可知,尤其是在当时得到广泛部署的是一条名为secp256r1椭圆曲线的背景之下.
-原因可能是secp256k1曲线具备的高效可计算的自同态映射可以加速ECDSA签名验证过程的特性在区块链场景中尤为合适,
+选用secp256k1的原因可能是该曲线具备的自同态映射可以加速ECDSA签名验证过程的特性在区块链场景中尤为合适,
 但是以OpenSSL为代表的各个密码学库的实现中并没有利用这一属性.
 虽然libsecp256k1中的实现成功利用这一属性使得基于secp256k1的ECDSA签名验证速度达到了21000次每秒
 (测试平台的芯片型号为 Intel(R) Core(TM) i7-6700HQ CPU), 速度上超过了OpenSSL 1.1版本中深度优化的基于secp256r1曲线的
@@ -129,19 +129,19 @@ $$G_y = 0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8$$
 \textbf{ECDSA签名值$\sigma = (r,s), r, s \in \F_n^*$的计算过程}为: 
 \begin{enumerate}
 \item 选择随机数$k\in_R\F_n^*$, 计算$R = (x,y) = kG, x, y \in \F_p$, 计算$r = x\mod n \in \F_n^*$,
-\item 计算消息$m$的哈希值$h=H(m)\in\F_n^*$, 计算 $s = k^{-1} (h + rd) \mod n$. 
+\item 计算消息$m$的哈希值$e=H(m)\in\F_n^*$, 计算 $s = k^{-1} (e + rd) \mod n$. 
 \end{enumerate}
 注意$k, r, s \in \F_n^*$,也即$k, r, s$均不得为0, 如果为0, 则重新选择$k$进行计算.
 
 给定消息$m$, 公钥$P$, 签名值$\sigma = (r, s)$, \textbf{签名验证的过程}为:
 \begin{enumerate}
 \item  验证$r, s$确实是$\F_n^*$中的元素,也即$r, s \in [1, n-1]$, 否则签名值无效,
-\item 计算哈希值$h=H(m)\in\F_n^*$,并计算$s\in\F_n^*$的逆$s^{-1}$,
+\item 计算哈希值$e=H(m)\in\F_n^*$,并计算$s\in\F_n^*$的逆$s^{-1}$,
 \item  计算$R' = (x', y') = s^{-1}(hG + rP)$, 
 \item 判断$R' \neq \mathcal{O}$,否则验签失败, 判断 $x' \mod n = r$, 相等则验签成功,否则验签失败.
 \end{enumerate}
 合法的签名能够验证通过是因为
-$$R' = s^{-1}(hG + rP) = s^{-1}(hG + r(dG)) = s^{-1}(h+rd)G = kG = R.$$
+$$R' = s^{-1}(eG + rP) = s^{-1}(eG + r(dG)) = s^{-1}(e+rd)G = kG = R.$$
 上述基于曲线secp256k1的ECDSA签名机制,总共涉及3种数学结构上的计算:
 有限域$\F_n$上加法和乘法运算(求逆运算可以由加法和乘法运算构造), $E(\F_p)$中的加法点群$\G$中点的加法运算(点的倍乘),
 由于$\G$中的点的坐标为有限域$\F_p$中的元素,则点的加法运算中也涉及到有限域$\F_p$上的加法和乘法运算(求逆运算).
@@ -166,8 +166,8 @@ ECDSA签名机制在编码实现和应用时,特别是在区块链场景中应�
 签名过程中使用的随机数$k\in\F_n^*$一定要及时删除以免泄露.
 这是因为知道随机数$k$的任何人,都可以根据签名值$\sigma=(r,s)$计算出相应的生成该签名值的私钥$d$.
 随机数$k$的值与签名值$\sigma=(r,s)$之间的对应关系可以根据等式$x = (kG)_x \mod n = r$来进行判断.
-由于$k$, $r$以及$h=H(m)$已知,则可以根据下面的公式计算私钥$d$:
-$$s=k^{-1}(h+rd) \mod n \rightarrow ks = (h + rd)\mod n \rightarrow d = r^{-1}(ks - h)\mod n.$$
+由于$k$, $r$以及$e=H(m)$已知,则可以根据下面的公式计算私钥$d$:
+$$s=k^{-1}(e+rd) \mod n \rightarrow ks = (e + rd)\mod n \rightarrow d = r^{-1}(ks - e)\mod n.$$
 
 基于上述理由,在通过随机数发生器(Random Number Generator, RNG)生成随机数$k$的时候,
 首先要确保选用的RNG生成的随机数的质量, 然后要确保生成的随机数没有被记录下来, 
@@ -181,8 +181,8 @@ $$s=k^{-1}(h+rd) \mod n \rightarrow ks = (h + rd)\mod n \rightarrow d = r^{-1}(k
 \begin{equation}\nonumber
 \left\{
 \begin{array}{lll}
-s_1 = & k^{-1}(h_1 + rd) \mod n, & h_1 = H(m_1)\\
-s_2 = & k^{-1}(h_2 + rd) \mod n, & h_2 = H(m_2)
+s_1 = & k^{-1}(e_1 + rd) \mod n, & e_1 = H(m_1)\\
+s_2 = & k^{-1}(e_2 + rd) \mod n, & e_2 = H(m_2)
 \end{array}
 \right.
 \end{equation}
@@ -191,17 +191,17 @@ s_2 = & k^{-1}(h_2 + rd) \mod n, & h_2 = H(m_2)
 \begin{equation}\nonumber
 \left\{
 \begin{array}{ll}
-k = & s_1^{-1} (h_1 + rd) \mod n \\
-k = & s_2^{-1} (h_2 + rd) \mod n
+k = & s_1^{-1} (e_1 + rd) \mod n \\
+k = & s_2^{-1} (e_2 + rd) \mod n
 \end{array}
 \right.
 \ 
 \rightarrow
 \ 
-\dfrac{h_1+rd}{s_1^{-1}} = \dfrac{h_2+rd}{s_2^{-1}} \mod n
+\dfrac{e_1+rd}{s_1^{-1}} = \dfrac{e_2+rd}{s_2^{-1}} \mod n
 \end{equation}
-根据$s_2(h_1+rd) = s_1(h_2+rd)\mod n$,可以推断出私钥
-$$d = \dfrac{s_2h_1 - s_1h_2}{(s_1-s_2)r} \mod n.$$
+根据$s_2(e_1+rd) = s_1(e_2+rd)\mod n$,可以推断出私钥
+$$d = \dfrac{s_2e_1 - s_1e_2}{(s_1-s_2)r} \mod n.$$
 
 \subsection{不同用户重用随机数$k$导致私钥泄露\label{subsec-2usereusek}}
 
@@ -214,8 +214,8 @@ Bob的私钥为$d_2$, 要签名的消息为$m_2$, 选用同样随机数$k$时计
 \begin{equation}\nonumber
 \left\{
 \begin{array}{lll}
-s_1 = & k^{-1}(h_1 + rd_1) \mod n, & h_1 = H(m_1)\\
-s_2 = & k^{-1}(h_2 + rd_2) \mod n, & h_2 = H(m_2)
+s_1 = & k^{-1}(e_1 + rd_1) \mod n, & e_1 = H(m_1)\\
+s_2 = & k^{-1}(e_2 + rd_2) \mod n, & e_2 = H(m_2)
 \end{array}
 \right.
 \end{equation}
@@ -223,20 +223,20 @@ s_2 = & k^{-1}(h_2 + rd_2) \mod n, & h_2 = H(m_2)
 \begin{equation}\nonumber
 \left\{
 \begin{array}{ll}
-k = & s_1^{-1} (h_1 + rd_1) \mod n \\
-k = & s_2^{-1} (h_2 + rd_2) \mod n
+k = & s_1^{-1} (e_1 + rd_1) \mod n \\
+k = & s_2^{-1} (e_2 + rd_2) \mod n
 \end{array}
 \right.
 \ 
 \rightarrow
 \ 
-\dfrac{h_1+rd_1}{s_1^{-1}} = \dfrac{h_2+rd_2}{s_2^{-1}} \mod n
+\dfrac{e_1+rd_1}{s_1^{-1}} = \dfrac{e_2+rd_2}{s_2^{-1}} \mod n
 \end{equation}
-则有$s_2(h_1+rd_1) = s_1(h_2+rd_2) \mod n$.
+则有$s_2(e_1+rd_1) = s_1(e_2+rd_2) \mod n$.
 在Alice看来,等式中未知的变量只有Bob的私钥$d_2$, Alice可以计算Bob私钥:
-$$d_2 = \dfrac{s_2h_1 - s_1h_2 + s_2rd_1}{s_1r} \mod n,$$
+$$d_2 = \dfrac{s_2e_1 - s_1e_2 + s_2rd_1}{s_1r} \mod n,$$
 而在Bob看来,等式中未知的变量只有Alice的私钥$d_1$, Bob可以计算Alice的私钥:
-$$d_1 = \dfrac{s_1h_2 - s_2h_1 + s_1rd_2}{s_2r} \mod n.$$
+$$d_1 = \dfrac{s_1e_2 - s_2e_1 + s_1rd_2}{s_2r} \mod n.$$
 
 Bitcoin历史上由于~\ref{subsec-1usereusek}~小节和~\ref{subsec-2usereusek}~小节中介绍的
 关于随机数$k$的问题引发的多起私钥泄露的事件. 
@@ -260,17 +260,17 @@ Bitcoin和Bitcoin Cash网络中正在围绕在链上采纳Schnorr签名而做大
 则\textbf{Schnorr签名$\sigma=(R,s), R\in \G, s\in\F_n^*$的计算过程}为:
 \begin{enumerate}
 \item 选取随机数$k\in_R\F_n^*$, 计算 $R=(x,y)=kG$,
-\item 计算哈希值$h = H(R||P||m)\in\F_n^*$, 计算$s=r+hd \mod n \in \F_n^*$.
+\item 计算哈希值$e = H(R||P||m)\in\F_n^*$, 计算$s=r+ed \mod n \in \F_n^*$.
 \end{enumerate}
 给定消息$m$,公钥$P$, Schnorr签名值$\sigma=(R,s)$, \textbf{Schnorr签名验证过程}为:
 \begin{enumerate}
 \item 验证$R$确实是$\G$中的元素,验证$s$确实是$\F_n^*$中的元素,否则验签失败,
-\item 计算哈希值$h = H(R||P||m)\in\F_n^*$,
-\item 计算$R+hP$并验证是否与$sG$相等,如果相等验签通过,否则验签失败.
+\item 计算哈希值$e = H(R||P||m)\in\F_n^*$,
+\item 计算$R+eP$并验证是否与$sG$相等,如果相等验签通过,否则验签失败.
 \end{enumerate}
 合法的签名值能够验证通过是因为:
 $$
-sG = (k+hx)G = kG + hxG = R + h(dG) = R + hP.
+sG = (k+ex)G = kG + exG = R + e(dG) = R + eP.
 $$
 值得提及的是Schnorr签名还有另外一种变体,此处仅介绍Bitcoin和Bitcoin Cash网络中采用的Schnorr签名机制,
 对于展示ECDSA和Schnorr签名共用$k$导致私钥泄露的问题来说已经足够.
@@ -281,14 +281,14 @@ Schnorr签名用相同的随机数对消息$m_2$的签名值为$\sigma_2 = (R, s
 \begin{equation}\nonumber
 \left\{
 \begin{array}{lll}
-s_1 = & k^{-1}(h_1 + rd) \mod n, & h_1 = H(m_1)\\
-s_2 = & k + h_2d \mod n, & h_2 = H(R||P||m_2)
+s_1 \equiv & k^{-1}(e_1 + rd) \mod n, & e_1 = H(m_1)\\
+s_2 \equiv & k + e_2d \mod n, & e_2 = H(R||P||m_2)
 \end{array}
 \right.
 \end{equation}
-则有$k = s_2 - h_2d\mod n$,带入上述方程组的第一个等式得到
+则有$k = s_2 - e_2d\mod n$,带入上述方程组的第一个等式得到
 $$
-s_1 =  (s_2 - h_2d)^{-1}(h_1 + rd) \mod n \rightarrow d = \dfrac{s_1s_2 - h_1}{s_1h_2 + r} \mod n.
+s_1 =  (s_2 - e_2d)^{-1}(e_1 + rd) \mod n \rightarrow d = \dfrac{s_1s_2 - e_1}{s_1e_2 + r} \mod n.
 $$
 
 前面我们提到利用RFC 6979中的方法避开\ref{subsec-1usereusek}~小节和~\ref{subsec-2usereusek}~小节重用$k$的问题,
@@ -304,7 +304,7 @@ We suggest using the RFC6979 sec 3.6 'additional data' mechanism, by appending t
 
 给定消息$m$的ECDSA签名值$\sigma=(r, s)$, 任何人都可以构造关于消息$m$的额外的合法签名值,
 例如$\sigma'=(r, -s)$也是消息$m$的合法签名值, 也即$\sigma$和$\sigma'$均可利用公钥$P$验证通过.
-这是因为验签是通过计算$R'=(x',y')=s^{-1}(hG + rP)$并判断$x' \mod n$是否等于签名值中的$r = x \mod n, (x, y) = R = kG$. 
+这是因为验签是通过计算$R'=(x',y')=s^{-1}(eG + rP)$并判断$x' \mod n$是否等于签名值中的$r = x \mod n, (x, y) = R = kG$. 
 然而根据椭圆曲线的性质有$-R' = (x', -y')$,也即$R'$和$-R'$具有相同的横坐标.
 根据费马小定理有$s^{-1}\mod n \equiv s^{n-2} \mod n$以及有限域$\F_n$上$-s \equiv (n-s) \mod n$, 
 根据多项式的二项展开(Binomial Expansion)有:
@@ -319,7 +319,7 @@ $$
 $$
 则验证签名值$\sigma'  = (r, -s)$时
 $$
-(-s)^{-1}(hG+rP) = -s^{-1}(hG + rP) = -R' = (x', -y'),
+(-s)^{-1}(eG+rP) = -s^{-1}(eG + rP) = -R' = (x', -y'),
 $$
 由于$x' \mod n \equiv r \mod n$, 因此$\sigma'  = (r, -s)$验签成功.
 
@@ -332,7 +332,7 @@ $$
 倘若还设置了超时重试机制,会导致交易所资产的损失.
 
 由于ECDSA签名值的可锻造性可能带来的安全隐患, BIP-146中针对ECDSA签名值做了额外的固定,
-规定验签时签名值$(r,s)$中的$s$的值必须满足$0x1 \leq s \leq n/2$, 根据曲线secp256k1的参数有
+规定验签时签名值$(r,s)$中的$s$的值必须满足$1 \leq s \leq n/2$, 根据曲线secp256k1的参数有
 \footnotesize
 $$
 n/2 = 0x7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0.
@@ -444,19 +444,19 @@ Pieter的关于Schnorr签名的BIP草稿``Schnorr Signatures for secp256k1"中�
 ECDSA签名过程中, 首先利用哈希函数对待签名消息$m$计算散列值, 然后针对散列值进行后续的计算.
 验签操作也同样先对消息$m$进行哈希,并利用哈希值执行后续的验证操作.
 然而一个较少提及的应用注意事项是, 验证签名时一定要提供消息$m$本身,而不能仅提供消息$m$的哈希值.
-假设$\sigma=(r, s)$是使用私钥$d$对消息$m$计算的签名值,如果验签时不要求提供消息$m$本身(仅提供消息的哈希值$h$),
+假设$\sigma=(r, s)$是使用私钥$d$对消息$m$计算的签名值,如果验签时不要求提供消息$m$本身(仅提供消息的哈希值$e$),
 则任何人都可以伪造关于私钥$d$的签名值$\sigma'=(r', s')$.
 
 根据ECDSA签名验证过程,验证一个利用私钥$d$对消息$m$签署的签名值$(r,s)$时,需要验证的条件为:
-$$s^{-1}(hG+rP) = (x', y') = R', \  x' \mod n \equiv r, \text{ 其中 }\  r \equiv x \mod n, (x,y) = R = kG.$$
+$$s^{-1}(eG+rP) = (x', y') = R', \  x' \mod n \equiv r, \text{ 其中 }\  r \equiv x \mod n, (x,y) = R = kG.$$
 
 任何人都可以根据一个已知的合法签名值$\sigma=(r,s)$利用上式直接构建满足上式的$r', s'$,而无需知道私钥$d$.
 构建时首先选择随机数$u, v\in_R\F_n^*$并计算$R' = (x', y') = uG + vP$, 令$r' \equiv x' \mod n$.
-为了使最终的签名$\sigma' = (r', s')$在验签时,能够验证通过,需要$s'^{-1}(h'G  + r'P) = uG + vP$,则有
+为了使最终的签名$\sigma' = (r', s')$在验签时,能够验证通过,需要$s'^{-1}(e'G  + r'P) = uG + vP$,则有
 \begin{equation}\nonumber
 \left\{
 \begin{array}{ll}
-s'^{-1}h' & \equiv u \mod n\\
+s'^{-1}e' & \equiv u \mod n\\
 s'^{-1}r' & \equiv v \mod n,
 \end{array}
 \right.
@@ -464,35 +464,35 @@ s'^{-1}r' & \equiv v \mod n,
 \left\{
 \begin{array}{ll}
 s' & \equiv r'v^{-1} \mod n\\
-h' & \equiv r'uv^{-1} \mod n
+e' & \equiv r'uv^{-1} \mod n
 \end{array}
 \right.
 \end{equation}
 则$\sigma = (r', s')$和哈希值$h'$利用公钥$Q=dG$也能够验证通过:
 $$
-s'^{-1}(h'G + r'P) = s'^{-1}h' G + s'^{-1}r'P = (r'^{-1}v r'uv^{-1})G + r'^{-1}vr' P  = uG + vP.
+s'^{-1}(e'G + r'P) = s'^{-1}e' G + s'^{-1}r'P = (r'^{-1}v r'uv^{-1})G + r'^{-1}vr' P  = uG + vP.
 $$
 
 如果在验证ECDSA签名时,要求提供哈希值所对应的消息$m$,则无法执行上述伪造签名的过程.
-这是由于哈希函数的抗碰撞特性保证了从$h'$推导$m'$并且满足$h'=H(m')$是不可能的.
-尝试先选定消息$m'\ \text{s.t.}\ h' = H(m')$来伪造签名也是不可能行, 因为为了成功构造签名$(r', s')$, 则需要
+这是由于哈希函数的抗碰撞特性保证了从$e'$推导$m'$并且满足$e'=H(m')$是不可能的.
+尝试先选定消息$m'\ \text{s.t.}\ e' = H(m')$来伪造签名也是不可能行, 因为为了成功构造签名$(r', s')$, 则需要
 \begin{equation}\nonumber
 \left\{
 \begin{array}{ll}
-s'^{-1}h' & \equiv u \mod n\\
+s'^{-1}e' & \equiv u \mod n\\
 s'^{-1}r' & \equiv v \mod n,
 \end{array}
 \right.
 \rightarrow
-h'u^{-1} \equiv s' \equiv r'v^{-1} \mod n
+e'u^{-1} \equiv s' \equiv r'v^{-1} \mod n
 \rightarrow
-r' \equiv h'u^{-1}v \mod n
+r' \equiv e'u^{-1}v \mod n
 \end{equation}
 选择$u,v$的值,使得下面的方程组成立是不现实的.
 \begin{equation}\nonumber
 \left\{
 \begin{array}{ll}
-r' = & h'u^{-1}v \mod n\\
+r' = & e'u^{-1}v \mod n\\
 r ' = & x' \mod n,  (x', y') = uG + vP
 \end{array}
 \right.
@@ -500,12 +500,12 @@ r ' = & x' \mod n,  (x', y') = uG + vP
 这是因为上述方程组等价于要求相同的$u,v$值按照不同的计算路径有相同的输出结果.
 如果将两个不同的计算路径看做伪随机函数,则上述方程组等价于要求$2^{256}$空间上的两次相互独立的随机取值相同(碰撞).
 根据生日悖论的结论,构建这样的碰撞大概需要$2^{128}$次操作,这是不现实的,
-也即尝试通过先选定消息$m'\ \text{s.t.}\ h' = H(m')$来伪造签名是不可能行的.
+也即尝试通过先选定消息$m'\ \text{s.t.}\ e' = H(m')$来伪造签名是不可能行的.
 
-Craig Wright (澳本聪)曾经利用本节介绍的原理通过伪造Satoshi Nakamoto的签名值,进而宣传自己为中本聪.
+Craig Wright (澳本聪)曾经利用本节介绍的原理通过伪造Satoshi Nakamoto的签名值,进而宣称自己为中本聪.
 其实任何人都可以做类似的宣称,甚至有网站\footnote{
 Prove to the world you are Satoshi Nakamoto. \url{https://albacore.io/faketoshi}}
-提供了自动化的工具来帮助你宣称自己是中本聪.
+提供了自动化的工具来伪造中本聪的签名来帮助你宣称自己是中本聪.
 
 \section{从ECDSA签名值逆推公钥}
 
@@ -514,7 +514,7 @@ Bitcoin网络中一个典型的P2PKH交易的主要内容在Figure~\ref{fig-bitc
 其中解锁脚本(Unlocking Script)中签名值\textsf{sig}按照DER编码长度大约为70个字节, 
 压缩的公钥\textsf{PubK}需要33个字节(推荐使用压缩形式),
 锁定脚本(Locking Script)中字节码\textsf{DUP}, \textsf{HASH160}, \textsf{EQUALVERIFY}, \textsf{CHECKSIG}各占用一个字节, 
-而\textsf{PubKhash}为20个字节, 则Figure~\ref{fig-bitcoin-p2phk}~展示的脚本占用的链上存储空间大约为130个字节.
+而\textsf{PubKHash}为20个字节, 则Figure~\ref{fig-bitcoin-p2phk}~展示的脚本占用的链上存储空间大约为130个字节.
 
 \begin{figure}[h]
 \centering
@@ -576,12 +576,12 @@ typedef struct {
 接下来介绍可恢复签名的原理,以及可恢复签名结构体中额外的一个字节中存储的信息和必要性.
 首先关注ECDSA签名值中的$r \equiv x \mod n, (x, y) = kG, x, y \in \F_p$, 根据曲线secp256k1的参数可知,
 $n < p < 2n$, 则当$x < n$时, $r = x$, 而当$x >= n$, 有$r = x + n$. 
-也即根据$r$以及$x$是否大于$n$这1比特的信息可以唯一$R = kG$的横坐标$x$.
+也即根据$r$以及$x$是否大于$n$这1比特的信息可以唯一确定$R = kG$的横坐标$x$.
 进一步根据椭圆曲线的方程可以从$x$的值计算出纵坐标$y$的值,前述已经论述过$y$和$-y$都是对应$x$的合法值,
 也即根据$x$的值以及$y$为奇数还是偶数这1比特信息可以唯一确定点$R = kG$.
 有了$R$信息之后,对于合法的签名可以通过如下推算公钥$P$:
 $$
-R = s^{-1}(hG+rP) \rightarrow rP = sR - hG \rightarrow P = r^{-1}(sR-hG).
+R = s^{-1}(eG+rP) \rightarrow rP = sR - eG \rightarrow P = r^{-1}(sR-eG).
 $$
 
 
@@ -635,7 +635,7 @@ static int secp256k1_ecdsa_sig_sign(const secp256k1_ecmult_gen_context *ctx, sec
 函数参数~\code{recid}~对应可恢复签名结构体~\code{secp256k1_ecdsa_recoverable_signature}~中字节数组的最后一个字节.
 根据第22行可知, 如果~\code{recid}~第2最低比特为1,表示$r > n$, 如果最低比特比特为1,则$R$的纵坐标是奇数.
 值得注意的是, 前述的理论论述部分, 我们其实依赖了曲线secp256k1的余因子(Cofactor)为1这个事情,
-当余因子不为1的时候,对于从$r$计算$x$时,需要考虑更多可能的$x$值, 
+当余因子不为1的时候,从$r$计算$x$时,需要考虑更多可能的$x$值, 
 在介绍Ed25519签名算法时,再详细介绍余因子的概念以及在椭圆曲线计算中的影响.
 
 \end{document}
