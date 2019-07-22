@@ -77,7 +77,9 @@
 \section{椭圆曲线secp256k1与secp256r1}
 
 由于Bitcoin中的采纳,曾经未曾得到广泛部署的椭圆曲线secp256k1成为了大多数区块链项目中默认的椭圆曲线选择.
-曲线secp256k1的名字来自于密码学标准文档SEC2~\cite{}~,其中``sec"是``Standards For Efficient Cryptography"缩写,
+曲线secp256k1的名字来自于密码学标准文档SEC2\footnote{Cerrticom Research. Standards for Efficient Cryptography, 
+SEC 2: Recommended Elliptic Curve Domain Parameters. 2010. \url{https://www.secg.org/sec2-v2.pdf}},
+其中``sec"是``Standards For Efficient Cryptography"缩写,
 ``p"表示椭圆曲线参数定义在有限域$\F_p$上, ``256"表示该有限域中元素的比特长度为256, 
 ``k"表示这是一条Koblitz曲线, 而``1"表示这是满足前述条件的第一条(实际上也是唯一的)推荐的曲线.
 Koblitz曲线在密码学文献中通常指代定义在特征为2的有限域上$\F_{2^m}, m\in\Z$的椭圆曲线,
@@ -103,9 +105,10 @@ Bernstein, D.J., Lange, T. and Niederhagen, R., 2016. Dual EC: A standardized ba
 secp256r1 (NIST P-256)曲线的参数是从随机种子
 $$c49d3608 86e70493 6a6678e1 139d26b7 819f7e90$$
 中派生而来, 而该随机种子的来源NIST并没有解释,鉴于Dual_EC_DRBG事件的教训,难免会有其中存在后门的疑虑
-\footnote{\url{http://safecurves.cr.yp.to/rigid.html}}.
+\footnote{
+SafeCurves:choosing safe curves for elliptic-curve cryptography. \url{http://safecurves.cr.yp.to/rigid.html}}.
 相比之下, secp256k1曲线的参数选择有合理的解释,也就有助于消除对存在算法级后门的担忧
-\footnote{\url{https://bitcointalk.org/index.php?topic=289795.msg3183975\#msg3183975}}.
+\footnote{NSA and ECC. \url{https://bitcointalk.org/index.php?topic=289795.msg3183975\#msg3183975}}.
 后续介绍基于secp256k1的ECDSA签名机制在区块链领域中的应用以及在区块链场景下的面临的特殊问题.
 
 \section{基于椭圆曲线secp256k1的ECDSA签名}
@@ -298,7 +301,9 @@ RFC6979中输入参数可以包含``addition data", 在派生$k$时, 可以将�
 
 \textit{
 We suggest using the RFC6979 sec 3.6 'additional data' mechanism, by appending the 16-byte ASCII string "Schnorr+SHA256␣␣" (here ␣ represents 0x20 -- ASCII space). The popular library libsecp256k1 supports passing a parameter \code{algo16} to \code{nonce_function_rfc6979} for this purpose.
-}\footnote{\url{https://github.com/bitcoincashorg/bitcoincash.org/blob/master/spec/2019-05-15-schnorr.md}}
+}\footnote{
+2019-MAY-15 Schnorr Signature specification. 
+\url{https://github.com/bitcoincashorg/bitcoincash.org/blob/master/spec/2019-05-15-schnorr.md}}
 
 \subsection{ECDSA签名值的可锻造性问题\label{subsec-lowers}}
 
