@@ -259,10 +259,20 @@ from being linked to a common owner.** 为了防止每次交易后都需要对�
 \textbf{Private Parent Key -> Private Child Key}
  
 * Normal child 的派生过程（图片来自《Master Bitcoin》）：
-![CKDpriv](./CKDpriv.png)
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{./CKDpriv.png}
+\caption{caption}\label{fig-parsesig}
+\end{figure}
 
 * Hardened child 的派生过程（图片来自《Master Bitcoin》）：
-![CKDpriv](./CKDpriv2.png)
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{./CKDpriv2.png}
+\caption{caption}\label{fig-parsesig}
+\end{figure}
 
 > The function $CKDpriv((k_{par}, c_{par}), i)$ -> $(k
 _i, c_i)$ computes a child extended private key from the parent extended private key:
@@ -288,7 +298,12 @@ _i, c_i)$ computes a child extended private key from the parent extended private
 
 \textbf{Public Parent Key -> Public Child Key}
 * 派生过程如下：
-![CKDpub](./CKDpub.png)（图片来自《Master Bitcoin》）
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{./CKDpub.png}
+\caption{caption}\label{fig-parsesig}
+\end{figure}
 
 > The function $CKDpub((K_{par}, c_{par}), i) -> (K_i, c_i)$ computes a child extended public key from the parent extended public key. It is only defined for non-hardened child keys.
 
@@ -335,7 +350,12 @@ _i, c_i)$ computes a child extended private key from the parent extended private
  
 * 有了主密钥m之后，可以遍历所有的index，按照迭代的方式往下派生密钥树。
 * 总派生图如下（其中绿色部分的Recover算法会在Security一节详细介绍）：
-![CKDpriv](./outline.png)
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=.7\textwidth]{./outline.png}
+\caption{caption}\label{fig-parsesig}
+\end{figure}
 
 \textbf{Logic Hierarchy for Determined Wallets in BIP44}
 
@@ -544,10 +564,14 @@ Addrhash为对比特币地址进行两次SHA256操作后，取前四个字节的
 >* The encrypted private key is the Base58Check-encoded concatenation of the following, which totals 39 bytes without Base58 checksum:
 0x01 0x42 + flagbyte + salt + encryptedhalf1 + encryptedhalf2
 
-![encryption without ec](./no-ec.png)
+\begin{figure}[h]
+\centering
+\includegraphics[width=.7\textwidth]{./no-ec.png}
+\caption{caption}\label{fig-parsesig}
+\end{figure}
+
 
 * 在使用Scrypt派生密钥时，Scrypt参数中salt设置为比特币地址经过double-SHA256后的前4个字节。该字段无需保密，目的是为了增加攻击者进行暴力破解时的搜索空间，增加攻击的时间/空间复杂度。
-
 
 
 
@@ -586,7 +610,11 @@ Addrhash为对比特币地址进行两次SHA256操作后，取前四个字节的
 >* Convey ownersalt and passpoint to the party generating the keys, along with a checksum to ensure integrity.    
 >>* The following Base58Check-encoded format is recommended for this purpose: magic bytes "2C E9 B3 E1 FF 39 E2 51" followed by ownerentropy, and then passpoint. The resulting string will start with the word "passphrase" due to the constant bytes, will be 72 characters in length, and encodes 49 bytes (8 bytes constant + 8 bytes ownerentropy + 33 bytes passpoint). The checksum is handled in the Base58Check encoding. The resulting string is called `intermediate_passphrase_string`.
 
-![intermediate code with lotsequence](./im-code1.png)
+\begin{figure}[h]
+\centering
+\includegraphics[width=.7\textwidth]{./im-code1.png}
+\caption{caption}\label{fig-parsesig}
+\end{figure}
 
 不使用lot+sequence时：
 >* ownersalt is 8 random bytes instead of 4, and lotsequence is omitted. ownerentropy becomes an alias for ownersalt.
@@ -594,7 +622,12 @@ Addrhash为对比特币地址进行两次SHA256操作后，取前四个字节的
 >* The magic bytes are "2C E9 B3 E1 FF 39 E2 53" instead (the last byte is 0x53 instead of 0x51).
 >
 
-![intermediate code without lotsequence](./im-code2.png)
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=.7\textwidth]{./im-code2.png}
+\caption{caption}\label{fig-parsesig}
+\end{figure}
 
 \textbf{加密私钥计算}
 第三方拿到intermediate passphrase code后，可以用它为用户生成新的加密私钥。确切地说，第三方可以为用户生成新的公钥，并将计算对应私钥的所需的必要信息进行加密，同时拥有passphrase和该密文人才能从中计算出对应的私钥。  
@@ -622,7 +655,12 @@ Addrhash为对比特币地址进行两次SHA256操作后，取前四个字节的
 >* 0x01 0x43 + flagbyte + addresshash + ownerentropy +  encryptedpart1[0...7] + encryptedpart2
 
 这里最终数据的格式略有些奇怪，猜想是为了与不使用EC乘法的结果长度保持一致。相比较，这里比前面多了一个8字节的`ownerentroy`字段，因此选取的seedb长度也就限制在了24字节。
-![encryption with ec multiply](./ec.png)
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=.7\textwidth]{./ec.png}
+\caption{caption}\label{fig-parsesig}
+\end{figure}
 
 \textbf{恢复新私钥}
 从第三方返回的密文计算新私钥的过程如下（通常也是由客户端替用户计算的）：
