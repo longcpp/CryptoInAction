@@ -140,7 +140,7 @@ $$G_y = 0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8$$
 \begin{enumerate}
 \item  验证$r, s$确实是$\F_n^*$中的元素,也即$r, s \in [1, n-1]$, 否则签名值无效,
 \item 计算哈希值$e=H(m)\in\F_n^*$,并计算$s\in\F_n^*$的逆$s^{-1}$,
-\item  计算$R' = (x', y') = s^{-1}(hG + rP)$, 
+\item  计算$R' = (x', y') = s^{-1}(eG + rP)$, 
 \item 判断$R' \neq \mathcal{O}$,否则验签失败, 判断 $x' \mod n = r$, 相等则验签成功,否则验签失败.
 \end{enumerate}
 合法的签名能够验证通过是因为
@@ -375,7 +375,7 @@ $$
 \end{figure}
 
 继续追踪~\code{secp256k1_der_parse_integer}~的内部实现，可以发现导致失败的原因是上述签名值中表示$r$的部分
-在最开始的多余额全零字节$00$, 对应函数内部的代码注释: \code{/* Excessive 0x00 padding. */}.
+在最开始的全零字节$00$, 对应函数内部的代码注释: \code{/* Excessive 0x00 padding. */}.
 如下面代码展示,删掉多余的全零字节,并相应调整DER编码中指示长度的字段,则可用函数~\code{secp256k1_ecdsa_signature_parse_der}
 成功解析签名值.
 
@@ -394,10 +394,10 @@ ASN.1中另外支持的编码规则包括BER (Basic Encoding Rules)和CER( Canon
 其中DER和CER编码规则完全指定了编码规则,也即对于特定的数据仅有一个编码值是合法的.
 DER针对数据长度的不同,有两种方式来编码数据载荷的长度: Short Encoding和Long Encoding, 
 并规定当数据载荷的长度小于128个字节时,应当使用Short Encoding. 
-基于secp256k1曲线的ECDSA签名值中的$r, s$都是256比特的整数,所以采用的是Short Encoding的DER编码方式.
+基于secp256k1曲线的ECDSA签名值中的$r, s$都是32字节的整数,所以采用的是Short Encoding的DER编码方式.
 
 Bitcoin中从OpenSSL中继承了签名值的DER编码方式,这是因为早期的Bitcoin的密码能力通过OpenSSL实现,
-而OpenSSL中ECDSA签名操作的返回的是使用DER编码后的签名值.
+而OpenSSL中ECDSA签名操作返回的是使用DER编码后的签名值.
 由于签名值中的$r,s$都是证书,接下来仅考虑对INTEGER的编码方式.
 对INTEGER的编码基本上是以字节为基本单位将整数表达成256进制表示,
 编码规则同时要求对于正数($r,s$是正数),第一个字节的最高位必须为0,
@@ -580,7 +580,7 @@ typedef struct {
 
 接下来介绍可恢复签名的原理,以及可恢复签名结构体中额外的一个字节中存储的信息和必要性.
 首先关注ECDSA签名值中的$r \equiv x \mod n, (x, y) = kG, x, y \in \F_p$, 根据曲线secp256k1的参数可知,
-$n < p < 2n$, 则当$x < n$时, $r = x$, 而当$x >= n$, 有$r = x + n$. 
+$n < p < 2n$, 则当$x < n$时, $r = x$, 而当$x >= n$, 有$x = r + n$. 
 也即根据$r$以及$x$是否大于$n$这1比特的信息可以唯一确定$R = kG$的横坐标$x$.
 进一步根据椭圆曲线的方程可以从$x$的值计算出纵坐标$y$的值,前述已经论述过$y$和$-y$都是对应$x$的合法值,
 也即根据$x$的值以及$y$为奇数还是偶数这1比特信息可以唯一确定点$R = kG$.
