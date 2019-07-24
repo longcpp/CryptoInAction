@@ -18,6 +18,8 @@
 
 \usepackage{listings}
 \usepackage{fontspec}
+\usepackage{graphicx}
+\usepackage{algorithm,algorithmic}
 \newfontfamily\monaco{Monaco}
 \definecolor{dkgreen}{rgb}{0,0.6,0}
 \definecolor{gray}{rgb}{0.5,0.5,0.5}
@@ -76,13 +78,13 @@
 
 
 在比特币系统中，私钥代表着对比特币的完全控制，用户在发送交易时需要直接与私钥打交道。
-但由于私钥本身是一串256比特的二进制串，直接以二进制形式访问私钥对用户来说非常不友好。
-为了方便用户记录和识别，私钥衍生出了Hex,WIF,WIF-compressed等不同形式，
-它们与256bit二进制串相比长度更短，易于辨别。但由于一个地址就对应了一对公私钥，
+但由于私钥本身是一串256bit的二进制串，直接以二进制形式访问私钥对用户来说非常不友好。
+为了方便用户记录和识别，私钥衍生出了Hex,WIF(Wallet Import Format),WIF-compressed等不同形式，
+它们与256bit二进制串相比长度更短，易于辨别。但一个地址就对应了一对公私钥，
 这些零散的公私钥管理起来十分不便，给用户使用带来了困难。
 
-为了更好地对于私钥进行保护和管理，以及优化用户体验，BIP中一些协议对此进行了探索：
-BIP32提出了分层确定性钱包的概念，允许用户从一个seed确定性地派生出一棵密钥树，
+为了更好地对于私钥进行保护和管理，以及优化用户体验，BIP(Bitcoin Improvement Protocol)中一些协议对此进行了探索：
+BIP32提出了分层确定性钱包的概念，允许用户从一个种子seed确定性地派生出一棵密钥树，
 方便在不同钱包客户端之间进行切换，并使得公私钥的派生过程可以独立进行。
 BIP39则给出了seed的生成方法，并且允许将该seed与一组助记词对应起来，方便用户理解和记忆。
 BIP38针对私钥的安全性，提出了对私钥进行加密保护的方法，与之前相比，
@@ -100,6 +102,7 @@ BIP38针对私钥的安全性，提出了对私钥进行加密保护的方法，
 \include{sec3-bip39}
 
 \include{sec4-bip38}
+
 
 
 \end{document}

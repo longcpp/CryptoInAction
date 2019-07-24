@@ -1,11 +1,22 @@
 \section{Hierarchical Deterministic Wallets(BIP32,BIP44)}
 
-出于隐私性的考虑，中本聪在比特币的白皮书中建议： **A new key pair should be used for each transaction to keep them
-from being linked to a common owner.** 为了防止每次交易后都需要对新生成的公私钥进行备份，钱包客户端需要维护一个预留的密钥池。这种方式给用户在不同客户端之间进行切换、以及钱包对用户私钥的管理带来了困难：在切换时，用户需要导出/导入所有相关地址的私钥，并且不能在不同的系统上同时使用钱包。分层确定性钱包从根节点确定性派生密钥树的方法很好地解决了这个问题。
+出于隐私性的考虑，中本聪在比特币的白皮书中建议：\textbf{A new key pair should be used 
+for each transaction to keep them from being linked to a common owner.} 
+为了防止每次交易后都需要对新生成的公私钥进行备份，钱包客户端需要维护一个预留的密钥池。
+这种方式给用户在不同客户端之间进行切换、以及钱包对用户私钥的管理带来了困难：在切换时，用户需要导出/导入所有相关地址的私钥，并且不能在不同的系统上同时使用钱包。
+分层确定性钱包从根节点确定性派生密钥树的方法很好地解决了这个问题。
 
-分层确定性(HD)钱包是由Pieter Wuille在2012年于BIP32中提出的，在该协议下，钱包从根节点出发，按照层级结构以一种确定性的方式从parent key 派生 child key，从而建立起一棵由根节点完全派生的树。因此，当用户在两个支持该协议的不同客户端之间进行切换时，密钥的导入、导出只需要复制根节点（主密钥）的信息，钱包可以根据根节点和该协议规定的派生方法确定性地派生出整棵密钥树。因此，用户可以方便地在不同客户端之间切换，钱包也可以依据密钥的派生层级对密钥进行逻辑上的分层管理。
+分层确定性(HD)钱包是由Pieter Wuille在2012年于BIP32中提出的，在该协议下，
+钱包从根节点出发，按照层级结构以一种确定性的方式从parent key 派生 child key，
+从而建立起一棵由根节点完全派生的树。因此，当用户在两个支持该协议的不同客户端之间进行切换时，密钥的导入、
+导出只需要复制根节点（主密钥）的信息，钱包可以根据根节点和该协议规定的派生方法确定性地派生出整棵密钥树
+因此，用户可以方便地在不同客户端之间切换，钱包也可以依据密钥的派生层级对密钥进行逻辑上的分层管理。
   
-此外，该协议允许child private/public key的派生过程相互独立，即parent private key 可以派生出 child private/public key，而parent public key只能派生出 child public key。它保证了在不安全的环境中，在没有parent private key 访问权限的情况下也可以进行child public key的派生，防止父私钥的泄露。同时，钱包的树状结构有助于用户对访问权限进行选择性的共享（**这取决于共享的密钥所处的层级，以及共享的是私钥还是公钥**）。  
+此外，该协议允许child private/public key的派生过程相互独立，
+即parent private key 可以派生出 child private/public key，
+而parent public key只能派生出 child public key。
+它保证了在不安全的环境中，在没有parent private key 访问权限的情况下也可以进行child public key的派生，防止父私钥的泄露。
+同时，钱包的树状结构有助于用户对访问权限进行选择性的共享（这取决于共享的密钥所处的层级，以及共享的是私钥还是公钥）。  
 
 由于BIP32\footnote{https://github.com/bitcoin/bips/blob/33e040b7bdf5d937599d2401454878d6293476c9/bip-0032.mediawiki}着重讲述分层确定性钱包的原理，对于客户端如何实现并没有做严格的限制，因此，2014年，Marek Palatinus和Pavol Rusnak 提出了BIP44\footnote{https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki}，在BIP32的基础上对钱包具体的实现方式、 不同层级的逻辑含义进行了规定。目前已经支持BIP44的钱包有Mycelium Bitcoin Wallet，Copay， CoinVault，Samourai，Coinomi，Trezor，Keepkey，Ledger Wallet，21 Machine Wallet， Trust Wallet。  
 
@@ -13,53 +24,51 @@ from being linked to a common owner.** 为了防止每次交易后都需要对�
 
 \textbf{扩展密钥}
 
- 在使用该协议从父节点派生子节点时，实际上使用的是512比特的扩展密钥(k,c)/(K,c)，其中k代表私钥，K代表公钥，c则称为chain code，作为额外的256比特的熵。对于扩展公私钥对，其中只有公私钥部分不同，chain code是相同的。
+ 在使用该协议从父节点派生子节点时，实际上使用的是512比特的扩展密钥$(k,c)/(K,c)$，其中$k$代表私钥，$K$代表公钥，$c$则称为chain code，作为额外的256比特的熵。对于扩展公私钥对，其中只有公私钥部分不同，chain code是相同的。
  
- 每一个扩展密钥都有最多$2^{31}$个 normal child key和$2^{31}$个hardened child key， normal child key对应的index从0到$2^{31}-1$，hardened child key的index 则从$2^{31}$ 到$2^{32}-1$，为便于表示，对于hardened key的index，$i+2^{31}$记为 $i_H$。Hardened node引入的目的是为了增强整个方案的安全性，具体原理在Security一节会详细介绍。下面首先介绍从父节点到子节点的密钥派生过程。
+ 每一个扩展密钥都有最多$2^{31}$个 normal child key和$2^{31}$个hardened child key， normal child key对应的index从0到$2^{31}-1$，hardened child key的index 则从$2^{31}$ 到$2^{32}-1$，为便于表示，对于hardened key的index，$i+2^{31}$记为 $i_H$。Hardened node引入的目的是为了增强整个方案的安全性，具体原理在Security\ref{sec-security}一节会详细介绍。下面首先介绍从父节点到子节点的密钥派生过程。
 
-
-\textbf{Private Parent Key -> Private Child Key}
+\subsubsection{Private Parent Key -> Private Child Key}
  
-* Normal child 的派生过程（图片来自《Master Bitcoin》）：
+\begin{algorithm}[tbp]\footnotesize
+\caption{Private Child Key Derivation}
+  	\begin{algorithmic}[1]
+	    \STATE The function $CKDpriv((k_{par}, c_{par}), i)$ -> $(k
+		_i, c_i)$ computes a child extended private key from the parent extended private key:
+		\STATE Check whether $i ≥ 2^{31}$ (whether the child is a hardened key).  
+		\IF {hardened child}
+			\STATE let I = HMAC-SHA512($Key = c_{par}$, Data = 0x00 || $ser_{256}(k_{par}$) || $ser_{32}$(i)). (Note: The 0x00 pads the private key to make it 33 bytes long.)  
+		\ELSE
+			\STATE let I = HMAC-SHA512(Key = $c_{par}$, Data = $ser_P$(point($k_{par}$)) || $ser_{32}$(i)).  
+		\ENDIF
+		\STATE Split I into two 32-byte sequences, $I_L$ and $I_R$.
+		\STATE The returned child key $k_i$ is $parse_{256}(I_L)$ + $k_{par}$ (mod n).
+		\STATE The returned chain code $c_i$ is $I_R$.  
+		\STATE In case parse256($I_L$) ≥ n or $k_i = 0$, the resulting key is invalid, and one should proceed with the next value for i. (Note: this has probability lower than 1 in $2^{127}$.)  
+    \end{algorithmic}
+\end{algorithm}
 
+需要注意的是，对于hardened child node和normal child node的派生方法是有区别的：
+在派生private normal child key 时，首先使用父节点的私钥计算出对应的公钥后（即$point(k_{par}$)），将公钥与child的index `i` 级联后作为data，父节点的chain code作为key，一起送入HMAC-SHA512进行运算。而hardened child node 则使用0x00 || $ser_{256}(k_{par}$) || $ser_{32}$(i)作为HMAC-SHA512的data，这也就导致了hardened child 只能由private parent key来派生（无论是计算child private key还是public child key）。
+ 
 \begin{figure}[h]
 \centering
 \includegraphics[width=\textwidth]{./CKDpriv.png}
-\caption{caption}\label{fig-parsesig}
+\caption{Normal child 的派生过程（图片来自《Master Bitcoin》）}\label{fig-parsesig}
 \end{figure}
 
-* Hardened child 的派生过程（图片来自《Master Bitcoin》）：
 
 \begin{figure}[h]
 \centering
 \includegraphics[width=\textwidth]{./CKDpriv2.png}
-\caption{caption}\label{fig-parsesig}
+\caption{Hardened child 的派生过程（图片来自《Master Bitcoin》）}\label{fig-parsesig}
 \end{figure}
 
-> The function $CKDpriv((k_{par}, c_{par}), i)$ -> $(k
-_i, c_i)$ computes a child extended private key from the parent extended private key:
-
-> * Check whether $i ≥ 2^{31}$ (whether the child is a hardened key).  
-
->>* If so (hardened child): let I = HMAC-SHA512($Key = c_{par}$, Data = 0x00 || $ser_{256}(k_{par}$) || $ser_{32}$(i)). (Note: The 0x00 pads the private key to make it 33 bytes long.)  
-
->>* If not (normal child): let I = HMAC-SHA512(Key = $c_{par}$, Data = $ser_P$(point($k_{par}$)) || $ser_{32}$(i)).  
->
->* Split I into two 32-byte sequences, $I_L$ and $I_R$.  
->
->* The returned child key $k_i$ is $parse_{256}(I_L)$ + $k_{par}$ (mod n).
->
->* The returned chain code $c_i$ is $I_R$.  
->
->* In case parse256($I_L$) ≥ n or $k_i = 0$, the resulting key is invalid, and one should proceed with the next value for i. (Note: this has probability lower than 1 in $2^{127}$.)  
->
-
-* 需要注意的是，对于hardened child node和normal child node的派生方法是有区别的：
-* 在派生private normal child key 时，首先使用父节点的私钥计算出对应的公钥后（即$point(k_{par}$)），将公钥与child的index `i` 级联后作为data，父节点的chain code作为key，一起送入HMAC-SHA512进行运算。而hardened child node 则使用0x00 || $ser_{256}(k_{par}$) || $ser_{32}$(i)作为HMAC-SHA512的data，这也就导致了hardened child 只能由private parent key来派生（无论是计算child private key还是public child key）。
 
 
-\textbf{Public Parent Key -> Public Child Key}
-* 派生过程如下：
+
+\subsubsection{Public Parent Key -> Public Child Key}
+派生过程如下：
 
 \begin{figure}[h]
 \centering
@@ -156,6 +165,7 @@ Bitcoin Testnet| second|change|first|m/44'/1'/1'/1/0
 
 
 \subsection{ Security}
+\label{sec-security}
 \textbf{该方案能够提供的安全性}
 
 * 给定一个公钥K，攻击者计算出相应私钥k的难度至少和解决椭圆曲线离散对数问题一样难（这是由基于椭圆曲线的密码学方案所提供的）。
