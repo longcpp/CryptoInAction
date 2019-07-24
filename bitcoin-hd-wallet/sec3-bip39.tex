@@ -1,0 +1,59 @@
+\section{Mnemonic code for generating deterministic keys(BIP39)}
+BIP39提出了一种从助记词派生HD钱包seed的方法，使得用户只需要掌握这组助记词即可派生出HD钱包的密钥树，从而优化用户的交互体验。  
+该协议主要包含两个过程：1.从entropy生成助记词的过程；2.从助记词派生seed的过程。其中，助记词是从事先定义好的wordlist里选出的符合相应长度要求的单词集合，目前针对英语、日语、韩语、西班牙语、中文（简体/繁体）、法语、意大利语都有相应的wordlist，在使用前都对它们进行UTF-8编码处理，详见[Wordlists](https://github.com/bitcoin/bips/blob/master/bip-0039/bip-0039-wordlists.md)。
+
+
+\textbf{Entropy -> Mnemonic}
+用来产生助记词的entropy长度范围为128-512bit，但必须是32的整数倍，entropy长度越长，安全性就越高，同时生成助记词的个数也越多。助记词的产生过程如下：
+
+* 假设初始的熵值e的长度为ENT，取`SHA256(e)`的前`ENT/32`bit作为检验和附在e的后面，随后将级联后的比特串按11bit为基本单元进行分组，即每个分组的数字范围是0-2047，将其作为index从wordlist中读取相应的word，最终选出的词语即构成了一个mnemonic sentence。
+* 下面的列表展示了初始熵值长度ENT，校验和长度与生成的mnemonic sentence长度之间的关系：
+
+
+		CS = ENT / 32
+		
+		MS = (ENT + CS) / 11
+		
+		|  ENT  | CS | ENT+CS |  MS  |
+		-------+----+--------+------+
+		|  128  |  4 |   132  |  12  |
+		|  160  |  5 |   165  |  15  |
+		|  192  |  6 |   198  |  18  |
+		|  224  |  7 |   231  |  21  |
+		|  256  |  8 |   264  |  24  |
+
+
+\textbf{Mnemonic -> Seed}
+BIP39规定使用PBKDF2函数来生成seed，PBKDF2各参数设置如下：mnemonic sentence以 UTF-8 NFKD编码后作为password，"mnemonic"联接passphrase同样使用UTF-8 NFKD进行编码后作为salt，c=2048, PRF=HAMC-SHA512, dklen=512。最终该算法输出的512bit作为 seed，使用BIP32或其他类似的算法派生HD wallet。
+
+
+以下测试基于Trezor的一个python实现库[python-mnemonic](https://github.com/trezor/python-mnemonic)：
+
+\begin{lstlisting}
+def main():
+    import binascii
+    import sys
+    from bip32utils import BIP32Key
+    if len(sys.argv) > 1:
+        data = sys.argv[1]
+    else:
+        data = sys.stdin.readline().strip()
+    data = binascii.unhexlify(data)
+    m = Mnemonic('english')
+    code=m.to_mnemonic(data)
+    seed=m.to_seed(code,'TREZOR')
+    xprv = BIP32Key.fromEntropy(seed).ExtendedKey()
+    print('mnemonic : %s (%d words)' % (code, len(code.split(' '))))
+    print('seed     : %s (%d bits)' % (binascii.hexlify(seed),len(seed) * 4))
+    print('xprv     : %s' % xprv)
+\end{lstlisting}
+
+测试结果：
+\begin{lstlisting}
+BJ1806200001:mnemonic bitmain$ python mnemonic.py f585c11aec520db57dd353c69554b21a89b20fb0650966fa0a9d6f74fd989d8f
+
+mnemonic : void come effort suffer camp survey warrior heavy shoot primary clutch crush open amazing screen patrol group space point ten exist slush involve unfold (24 words)
+seed     : 01f5bced59dec48e362f2c45b5de68b9fd6c92c6634f44d6d40aab69056506f0e35524a518034ddc1192e1dacd32c1ed3eaa3c3b131c88ed8e7e54c49a5d0998 (256 bits)
+xprv     : xprv9s21ZrQH143K39rnQJknpH1WEPFJrzmAqqasiDcVrNuk926oizzJDDQkdiTvNPr2FYDYzWgiMiC63YmfPAa2oPyNB23r2g7d1yiK6WpqaQS
+\end{lstlisting}
+

@@ -1,0 +1,154 @@
+\section{Password-based Key Derivation Function}
+
+Password-based Key Derivation Function用来从一个较短的便于记忆的password派生出密码学方案中使用的密钥，通常在password之外还有一些其他参数如salt，iteration count等。这类函数通常是computationally intensive，即需要的计算量较大。对于合法用户，每次操作只需进行一次派生计算，因此计算量是可以忽略的。而对暴力攻击，攻击者可能需要执行上亿次计算，因此它大幅增加了攻击者的计算难度。并且此类算法支持随着计算机硬件的发展做对计算难度进行灵活的调整，使用起来十分方便。
+
+\subsection{PBKDF2}
+
+PBKDF2全称为Password-Based Key Derivation Function2，在PKCS\#5中作为推荐的密钥派生函数。BIP39协议使用该函数从助记词组派生一个随机串，该随机串用作BIP32 HD钱包中生成主密钥对的seed。  
+
+PBKDF2最早被包含在PKCS\#5（Public Key Cryptography Standard \#5: Password-Based Cryptography Specification）中发表，后来该规范又被IETF以RFC 2898重新发表。它取代了输出长度不大于160bit的PBKDF1作为该规范的推荐函数。在2017年发布的RFC8018中，仍然建议用它来做password hashing.
+
+PBKDF2的定义如下，它包含五个输入参数：\textsf{DK = PBKDF2(PRF, Password, Salt, c, dkLen)}
+\begin{itemize}
+\item PRF is a pseudorandom function of two parameters with output length hLen (e.g., a keyed HMAC)
+\item Password is the master password from which a derived key is generated
+\item Salt is a sequence of bits, known as a cryptographic salt
+\item c is the number of iterations desired
+\item dkLen is the desired bit-length of the derived key
+\item DK is the generated derived key
+\end{itemize}
+
+
+在PBKDF中，由于用户的passphrase取值空间一般较小，攻击者在进行暴力攻击时比较容易。Salt作为一段均匀随机分布的比特串，不需要保密，目的是为了增加攻击者的搜索空间。同时当salt足够长时（如64bit），攻击者无法通过预计算存储相应的计算结果，从而降低了攻击的可行性。
+
+PBKDF2的计算过程如下：
+
+If $dkLen > (2^{32} - 1) * hLen$, output "derived key too long" and stop.
+Let l be the number of hLen-octet blocks in the derived key, rounding up, and let r the number of octets in the last block:
+
+$ l=\lceil (dklen/hlen) \rceil $  
+$r=dklen -(l-1)*hlen$
+
+For each block of the derived key apply the function F defined below to the password P, the salt S, the iteration count c, and the block index to compute the block:
+
+$T_1=F(P,S,c,1)$
+$T_2=F(P,S,c,2)$
+$\cdots$
+$T_l=F(P,S,c,l)$  
+where F is defined as:
+$F(P,S,c,i)=U_1 \oplus U_2  \cdots \oplus U_c$  
+and   
+$U_1=PRF(P,S||INT(i))$  
+$U_2=PRF(P,U_1)$  
+$\cdots$  
+$U_c=PRF(P,U_{c-1})$  
+Here, $INT (i)$ is a four-octet encoding of the integer i, most significant octet first.  
+Concatenate the blocks and extract the first dkLen octets to produce a derived key DK:   
+ 
+$DK=T_1||T_2||\cdots|| T_L<0,\cdots r-1>$
+Output the derived key DK.
+
+\subsection{Scrypt算法}
+Scrypt算法由Colin Percival设计，与PBKDF2相比，该算法在执行时对内存的消耗较高，限制了利用硬件并行实现来划分搜索空间从而降低暴力攻击复杂度的可行性，以此来抵抗大规模的专用硬件攻击（即使用ASIC来加速暴力攻击的计算过程）。BIP38协议使用Scrypt算法作为密钥派生函数，从passphrase派生AES的加密密钥。 
+ 
+Scrypt算法定义如下：
+
+DK = Scrypt(Passphrase, Salt, N, r, p, dkLen)  
+
+Passphrase, the password string.
+Salt, a sequence of bits, known as a cryptographic salt.
+N, CPU/Memory cost parameter, must be larger than 1, a power of 2, and less than $2^{(128 * r / 8)}$.
+r, Block size parameter.
+p, Parallelization parameter, a positive integer less than or equal to $((2^{32}-1) * hLen) / MFLen$ where hLen is 32 and MFlen is 128 * r.
+dklen, Intended output length in octets of the derived key; a positive integer less than or equal to $(2^{32} - 1)$ * hLen where hLen is 32.
+
+用户可以根据当前CPU、内存的发展情况、以及要求的并行度对N，r，p参数进行调节，从而调整算法对CPU/内存的消耗。
+
+Steps:
+
+Initialize an array B consisting of p blocks of 128 * r octets each:
+
+$B[0]||B[1]||\cdots B[p-1]=PBKDF2-HMAC-SHA256(P,S,1,p*128*r)$
+
+for i=0 to p-1 do：  
+$B[i]= scryptROMix(r,B[i],N) $   
+end for  
+$DK=PBKDF2-HMAC-SHA256(P,B[0]||B[1]||\cdots B[p-1],1,dklen)$
+
+其中，scryptROMix算法用来产生一个expensive-cost 的salt，Scrypt算法对内存的消耗即来源于它。在执行时，它会产生一组长度为N的伪随机比特串（如下，V[i]），同时以一种伪随机的顺序对该比特串进行访问，这就导致攻击者必须有足够的内存来存储它。并且该比特串的计算是比较费时的，因此攻击者经过对时间和空间进行权衡的结果，要么是对内存资源要求不高但运行很慢，要么是效率较高但内存消耗较大。
+
+B'=scryptROMix(r,B,N)
+
+r, Block size parameter.
+B, Input octet vector of length 128 * r octets.
+N, CPU/Memory cost parameter, must be larger than 1, a power of 2, and less than $2^(128 * r / 8)$.
+B', Output octet vector of length 128 * r octets.
+ 
+Steps:
+
+X = B
+for i = 0 to N - 1 do  
+   $V[i]=X$  
+   $X=scryptBlockMix(X)$  
+ end for   
+ 
+ * for i=0 to N-1 do    
+ $j=Integerify(X)$ mod $N$  
+ $T=X \oplus V[j]$  
+ $X=scryptBlockMix(T)$  
+ end for
+ 
+ * $B'=X$
+
+scryptBlockMix算法如下：
+ $B'[0]||B'[1]||\cdots B'[2*r-1]=scryptBlockMix(B[0]||B[1]||\cdots B[2*r-1],r)$
+
+ r, Block size parameter
+ $B[0]||B[1]||\cdots B[2*r-1]$, Input octet string (of size 128 * r octets), treated as 2 * r 64-octet blocks, where each element in B is a 64-octet block.
+ $B'[0]||B'[1]||\cdots B'[2*r-1]$, output octet string.
+
+> Steps:
+
+* $X = B[2*r-1]$
+ for $i = 0$ to $2*r - 1$ do    
+$T=X \oplus B[i]$  
+$X=Salsa(T)$  
+end for   
+$B'=(Y[0],Y[2],\cdots,Y[2*r-2],
+Y[1],Y[3],\cdots, Y[2*r-1])$
+
+Salsa20/8是Salsa20 Core轮函数的缩减版本，算法如下：
+
+
+\begin{lstlisting}{language = c, caption = Salsa20 Core 轮函数的缩减版本, label=lst-salsa20core}
+#define R(a,b) (((a) << (b)) | ((a) >> (32 - (b)))) 
+void salsa20_word_specification(uint32 out[16],uint32 in[16]) 
+{
+
+	int i; 
+	uint32 x[16]; 
+	for (i = 0;i < 16;++i) x[i] = in[i]; 
+	for (i = 8;i > 0;i -= 2) { 
+		x[ 4] ^= R(x[ 0]+x[12], 7); x[ 8] ^= R(x[ 4]+x[ 0], 9);
+		x[12] ^= R(x[ 8]+x[ 4],13); x[ 0] ^= R(x[12]+x[ 8],18); 
+		x[ 9] ^= R(x[ 5]+x[ 1], 7); x[13] ^= R(x[ 9]+x[ 5], 9); 
+		x[ 1] ^= R(x[13]+x[ 9],13); x[ 5] ^= R(x[ 1]+x[13],18); 
+		x[14] ^= R(x[10]+x[ 6], 7); x[ 2] ^= R(x[14]+x[10], 9); 
+		x[ 6] ^= R(x[ 2]+x[14],13); x[10] ^= R(x[ 6]+x[ 2],18); 
+		x[ 3] ^= R(x[15]+x[11], 7); x[ 7] ^= R(x[ 3]+x[15], 9); 
+		x[11] ^= R(x[ 7]+x[ 3],13); x[15] ^= R(x[11]+x[ 7],18); 
+		x[ 1] ^= R(x[ 0]+x[ 3], 7); x[ 2] ^= R(x[ 1]+x[ 0], 9); 
+		x[ 3] ^= R(x[ 2]+x[ 1],13); x[ 0] ^= R(x[ 3]+x[ 2],18); 
+		x[ 6] ^= R(x[ 5]+x[ 4], 7); x[ 7] ^= R(x[ 6]+x[ 5], 9); 
+		x[ 4] ^= R(x[ 7]+x[ 6],13); x[ 5] ^= R(x[ 4]+x[ 7],18); 
+		x[11] ^= R(x[10]+x[ 9], 7); x[ 8] ^= R(x[11]+x[10], 9); 
+		x[ 9] ^= R(x[ 8]+x[11],13); x[10] ^= R(x[ 9]+x[ 8],18); 
+		x[12] ^= R(x[15]+x[14], 7); x[13] ^= R(x[12]+x[15], 9); 
+		x[14] ^= R(x[13]+x[12],13); x[15] ^= R(x[14]+x[13],18);
+
+	}
+ 	for (i = 0;i < 16;++i) out[i] = x[i] + in[i];
+
+}
+\end{lstlisting}
+
