@@ -1,13 +1,17 @@
-\section{Password-based Key Derivation Function}
-PBKDF用来从一个较短的便于记忆的password派生出密码学方案中使用的密钥，通常在password之外还有一些其他参数如salt、
-iteration count等。这类函数通常是computationally intensive，即需要的计算量较大。
-对于合法用户，每次操作只需进行一次派生计算，因此计算量是可以忽略的。
+
+\section{基于口令的密钥派生函数}
+
+PBKDF用来从一个较短的便于记忆的口令(Passphrase/Password)派生出密码学方案中使用的密钥.
+PBKDF的输入除了口令之外,通常还有一些其他的输入参数, 如盐值(Salt), 迭代次数(Iteration Count)等,
+这些参数用来引入更多的熵值(Entropy)或者用于调整一次PBKDF计算所需的计算量.
+PBKDF通常是计算密集型的,计算需要消耗较为可观的计算量.
+从口令派生密码学方案中使用的密钥时,由于只需要进行一次操作,通过调整参数,可以在用户体验和计算量之间进行权衡.
 而对暴力攻击，攻击者可能需要执行上亿次计算，因此它大幅增加了攻击者的计算难度。
 并且此类算法支持随着计算机硬件的发展做对计算难度进行灵活的调整，使用起来十分方便。
 
 \subsection{PBKDF2}
 PBKDF2全称为Password-Based Key Derivation Function 2，在PKCS\#5
-中取代了输出长度不大于160bit的PBKDF1作为该规范推荐的密钥派生函数。
+中取代了输出长度不大于160比特的PBKDF1作为该规范推荐的密钥派生函数。
 BIP39协议使用该函数从助记词组派生一个随机串，该随机串用作BIP32 HD(Hierarchical Deterministic)
 钱包中生成主密钥对的seed。  PBKDF2最早被包含在PKCS\#5中发表，后来该规范又被IETF以RFC 
 2898\footnote{https://tools.ietf.org/html/rfc2898}重新发表。在2017年发布的RFC8018中，仍然建议用它来做password hashing。

@@ -118,7 +118,6 @@ BIP38提出了一种使用passphrase对私钥进行加密保护的方案。该�
 同时拥有passphrase和该密文人才能从中计算出对应的私钥。  
 计算过程如下：
 
-
 \begin{algorithm}[tbp]\footnotesize
 \caption{New Public Key Generation}
   	\begin{algorithmic}[1]
@@ -254,9 +253,8 @@ Confirmation code生成过程如下：
 
 
 \subsubsection{ Security issues}
-\begin{itemize}
 
-\item Confirmation code存在一个安全隐患：仅仅靠4bytes的addresshash来关联
+Confirmation code存在一个安全隐患：仅仅靠4bytes的addresshash来关联
 confirmation code和encrypted key是不够的。一个不诚实的printer可以提供两个不同的factorb，
 同时它们能够产生经过double-sha256后前32bit相同的两个地址。这时，仅仅验证confirmation code是不能够保证用户一定能够计算出他使用的地址所对应的私钥的。
 这也就是说，confirmation code并不能起到他所声称的作用。
@@ -266,7 +264,7 @@ $addrhash1=SHA256(SHA256(addr1))_{4bytes}$。由于addrhash只有4字节，他�
 code中的addrhash是相同的。之后，将confirmation code和encrypted key发给用户。用户验证confirmation code可以通过，并使用其中计算出的addr2来收款，但是他无法计算出addr2对应的私钥（用户只知道factorb2*G的值），
 他从encrypted key中计算出来的私钥对应于 $factorb1 * passfactor$，所以addr2中的钱将无法被花费。
 
-\item 在新私钥的生成中，存在一个安全隐患：在同一个intermediate passphrase code下，如果printer知道了其中一个加密私钥的明文，那么它就可以绕开用户的passphrase，
+在新私钥的生成中，存在一个安全隐患：在同一个intermediate passphrase code下，如果printer知道了其中一个加密私钥的明文，那么它就可以绕开用户的passphrase，
 得到在当前intermediate passphrase code下派生的所有私钥。
  对于intermediate passphrase code $ipc1$，printer生成了一个随机数seedb1，
  按照以上计算（EC multiply used），生成的新私钥应该是$k1=passfactor * factorb1$ 
@@ -275,7 +273,6 @@ code中的addrhash是相同的。之后，将confirmation code和encrypted key�
 这种场景是存在的：如用户委托printer为自己生成新的加密私钥后，不小心又委托他对该私钥按照本协议第一种方法
 （with no EC multiply）进行加密，恶意的printer可以检测到该私钥是它之前按照第二种方法生成的（对比公钥或地址），
 这时它就具备了以上攻击的条件。
-\end{itemize}
 
 \begin{lstlisting}[language=python, caption = 测试代码, label=lst-baddersig]
 
@@ -293,7 +290,6 @@ from ecdsa.ecdsa import int_to_string, string_to_int
 SCRYPT_N=16384
 SCRYPT_R=8
 SCRYPT_P=8
-
 
 def b58check(data):
 	# return base58 encoding of data with checksum
@@ -325,9 +321,7 @@ def enc_without_ec_multi(privkey,address,passphrase,compressed):
 	flagbyte=b'\xe0' if compressed==1 else b'\xC0'
 	res=b'\x01\x42'+flagbyte+addrhash+e1+e2
 	return b58check(res)
-
-
-
+	
 def dec_without_ec_multi(encrypted_privkey,passphrase):
 	# unpack data 
 	data=base58check.b58decode(encrypted_privkey)
@@ -424,7 +418,6 @@ def enc_with_ec_multi(intermediate_passphrase_code,flag_lotseq,flag_compr):
 	res=b'\x01\x43'+flagbyte+addrhash[:4]+ownerentropy+e1[:8]+e2
 
 	return b58check(res)
-
 
 def dec_with_ec_multi(passphrase,enc_priv):
 	#unpack encrpted private key

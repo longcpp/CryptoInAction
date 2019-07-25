@@ -36,7 +36,7 @@
   showspaces=false,               % show spaces adding particular underscores
   showstringspaces=false,         % underline spaces within strings
   showtabs=false,                 % show tabs within strings adding particular underscores
-  frame=single,                   % adds a frame around the code
+  frame=lines,                   % adds a frame around the code
   rulecolor=\color{black},        % if not set, the frame-color may be changed on line-breaks within not-black text (e.g. commens (green here))
   tabsize=4,                      % sets default tabsize to 2 spaces
   captionpos=t,                   % sets the caption-position to bottom
@@ -69,32 +69,70 @@
 
 \setlength{\parindent}{2.1em}
 
+%%%设置页眉和页码格式
+\usepackage{fancyhdr}
+\newcommand{\makeheadrule}{%
+\rule[0.85\baselineskip]{\headwidth}{0.5pt}\vskip-.8\baselineskip}%1.5 0.4->0.5
+\makeatletter
+\renewcommand{\headrule}{%
+{\if@fancyplain\let\headrulewidth\plainheadrulewidth\fi
+\makeheadrule}}
+\makeatother
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[r]{\textit{Crypto In Action}}
+\fancyfoot[C]{--{~\thepage~}--}
+%%%设置页眉和页码格式结束
+
 \begin{document}
 
-\title{深入理解Bitcoin钱包机制}
+\title{深入理解Bitcoin钱包的密钥机制}
 \author{Jia, longcpp \\ \small{yin.jia987@gmail.com, longcpp9@gmail.com}}
 
 \maketitle
 
+Bitcoin系统中对Bitcoin (BTC)的控制权实际上是对基于secp256k1的ECDSA签名机制的私钥的控制权,
+私钥是256位的随机值. 为了构建一笔合法的交易, 需要利用私钥对这笔交易进行ECDSA签名值.
+但由于私钥本身是一串256位的比特串,直接以二进制形式访问私钥对用户来说非常不友好.
+为了方便用户记录和识别, 衍生出了Hex, WIF (Wallet Import Format), WIF-compressed等各种展示和存储私钥的新格式.
+相比256比特的二进制比特串, 这些格式的字符长度更短, 更易于辨别. 
 
-在比特币系统中，私钥代表着对比特币的完全控制，用户在发送交易时需要直接与私钥打交道。
-但由于私钥本身是一串256bit的二进制串，直接以二进制形式访问私钥对用户来说非常不友好。
-为了方便用户记录和识别，私钥衍生出了Hex,WIF(Wallet Import Format),WIF-compressed等不同形式，
-它们与256bit二进制串相比长度更短，易于辨别。但一个地址就对应了一对公私钥，
-这些零散的公私钥管理起来十分不便，给用户使用带来了困难。
+为了在所有交易信息都公开的前提下保护Bitcoin用户的隐私,
+中本聪建议每次交易时都启用新的Bitcoin地址\footnote{
+\textit{A new key pair should be used for each transaction to keep them from being linked to a common owner.}
+摘录自 Satoshi Nakamoto. Bitcoin: A Peer-to-Peer Electronic Cash System. 2008. 
+\url{https://bitcoin.org/bitcoin.pdf}}.
+遵循中本聪的建议,可以期待的是会有相当比例的Bitcoin钱包中管理了多个地址和对应的多个私钥.
+可以期待的是,维护和保管多个零散的公私钥会使用户体验变差,也更容易犯错.
+如果多个私钥都可以从某个值确定性派生而来,则管理多个私钥的复杂性就简化为对这一个值的管理.
 
-为了更好地对于私钥进行保护和管理，以及优化用户体验，BIP(Bitcoin Improvement Protocol)中一些协议对此进行了探索：
-BIP32提出了分层确定性钱包的概念，允许用户从一个种子seed确定性地派生出一棵密钥树，
-方便在不同钱包客户端之间进行切换，并使得公私钥的派生过程可以独立进行。
-BIP39则给出了seed的生成方法，并且允许将该seed与一组助记词对应起来，方便用户理解和记忆。
-BIP38针对私钥的安全性，提出了对私钥进行加密保护的方法，与之前相比，
-用户只需要多记忆一个passphrase，同时获得了更高的安全性。
+基于这样的思路以及椭圆曲线secp256k1的ECDSA签名机制具有的公私钥之间的关系,
+Pieter Wuille在BIP-32\footnote{
+Pieter Wuille. BIP-32: Hierarchical Deterministic Wallets. 2012. 
+\url{https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki}}
+中提出了分层确定性钱包(Hierarchical Deterministic Wallets, HDW)的理念以及技术说明.
+HDW允许从一个种子(Seed)确定性地派生出一整棵密钥树, 从而对多个地址/私钥的管理就简化为对种子的管理.
+BIP32着重介绍分层确定性钱包的原理,并没有就如何分层以及每一层的逻辑功能给规范,
+为了在不同的分层确定性钱包实现之间保持兼容性, Marek Palatinus和Marek Palatinus
+在2014年提出了BIP-44\footnote{
+Marek Palatinus, Pavol Rusnak. BIP-44: Multi-Account Hierarchy for Deterministic Wallets. 2014.
+\url{https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki}},
+在BIP-32的基础上就逻辑分层等给出了具体的描述.
+为了方便种子的导入导出和保管, 
+BIP-39\footnote{Marek Palatinus, Pavol Rusnak, Aaron Voisine, Sean Bowe. 
+BIP-39: Mnemonic code for generating deterministic keys. 2013.
+\url{https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki}}
+给出了将种子和助记词(Mnemonic Code)进行确定性相互转化的具体操作过程.
+另外BIP-38\footnote{Mike Caldwell, Aaron Voisine. BIP-38: Passphrase-protected private key. 2012.
+\url{https://github.com/bitcoin/bips/blob/master/bip-0038.mediawiki}}
+给出了在纯软件环境下保护种子信息的措施: 从用户口令(Passphrase)派生密钥实现对种子信息的加密保护.
+每次需要使用种子信息都要求用户输入口令并派生密钥来解密出种子信息.
+这种通过口令进行种子信息加解密的方式,在提升种子信息的存储安全之外,同时引入了通过口令进行鉴权的功能, 可谓一举两.得
 
-上述的BIP协议主要是在如何简化用户与钱包软件的交互、以及在不过多增加用户负担的情况下提高安全性等方面进行的探索，
-主要是希望由用户掌握一个较短的、方便记忆的字符串，通过密码学的方法，派生出不同用途的密钥（签名、加密）。
-因此这些方案中除了基本的加密（AES)，签名（ECDSA)算法之外，
-用到的另外一类算法就是Password-based Key Derivation Function（PBKDF）。
-下面首先会对涉及到的PBKDF做简要介绍，然后逐一说明每个BIP的原理、功能。
+前述的各个BIP协议主要是在如何简化用户与钱包软件的交互以及在不过多增加用户负担的情况下提高安全性等方面进行的探索,
+主要是希望由用户掌握一个短的方便记忆的字符串,通过密码算法,派生出不同用途的密钥(签名密钥, 加解密密钥)
+因此这些方案中除了基本的加解密算法(如AES)和签名算法(如ECDSA)之外,
+用到的另外一类算法就是基于口令的密钥派生函数(Password-based Key Derivation Function, PBKDF).
 
 \include{sec1-pbkdf}
 
