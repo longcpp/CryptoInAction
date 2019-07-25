@@ -1,31 +1,52 @@
-\section{Passphrase-protected private key(BIP38)}
-BIP38提出了一种使用passphrase对私钥进行加密保护的方案。该方案只考虑了针对私钥的机密性保护，而没有考虑提供完整性保护，因此其主要针对纸钱包和physical Bitcoin等私钥密文不容易遭受篡改的应用场景。该协议主要提出了两种加密私钥的方法，其中一种方法使用了EC 乘法操作，另一种没有，从而导致两种方法实现的功能有很大的区别：
-\begin{itemize}
-\item Encryption when EC multiply is not used: 对于已经产生的私钥，使用用户设置的passphrase对私钥进行加密。加密后的密文与passphrase在解密私钥时缺一不可，由于两者可以独立存储、传输，从而提高了私钥的安全性。
-\item Encryption when EC multiply is used: 用户首先会生成一个intermediate passphrase code（包含一个由passphrase单向生成的椭圆曲线群上的点，以及用户产生的salt），并将其传输给一个第三方（由于该方案针对的场景主要是纸钱包，这里的第三方通常是一个printer），第三方可以为用户生成新的地址，并对恢复该地址对应私钥的必要信息加密后展示给用户。用户拿到密文解密后，结合passphrase，即可算出新地址对应的私钥。这种方式允许用户将生成新地址的工作委托给一个不那么可信的第三方来做，同时保证只有知道passphrase和密文的人才能计算出对应私钥。
-\end{itemize}
+\section{BIP38: 基于口令保护私钥}
 
+BIP38提出了一种使用passphrase对私钥进行加密保护的方案.该方案只考虑了针对私钥的机密性保护,
+而没有考虑提供完整性保护,因此其主要针对纸钱包和physical Bitcoin等私钥密文不容易遭受篡改的应用场景.
+该协议主要提出了两种加密私钥的方法,其中一种方法使用了EC 乘法操作,
+另一种没有,从而导致两种方法实现的功能有很大的区别.
+
+Encryption when EC multiply is not used: 对于已经产生的私钥,
+使用用户设置的passphrase对私钥进行加密.
+加密后的密文与passphrase在解密私钥时缺一不可,
+由于两者可以独立存储、传输,从而提高了私钥的安全性.
+
+Encryption when EC multiply is used: 用户首先会生成一个intermediate passphrase code 
+(包含一个由passphrase单向生成的椭圆曲线群上的点,以及用户产生的salt),
+并将其传输给一个第三方(由于该方案针对的场景主要是纸钱包,这里的第三方通常是一个printer),
+第三方可以为用户生成新的地址,并对恢复该地址对应私钥的必要信息加密后展示给用户.
+用户拿到密文解密后,结合passphrase,即可算出新地址对应的私钥.
+这种方式允许用户将生成新地址的工作委托给一个不那么可信的第三方来做,
+同时保证只有知道passphrase和密文的人才能计算出对应私钥.
 
 \subsection{ 编码格式}
-针对两种私钥加密方式，对私钥加密保护后的数据编码格式略有不同，但长度都是39字节。
+
+针对两种私钥加密方式,加密后的数据编码格式略有不同,但长度都是39字节.
+
 \begin{itemize}
-\item 对于不使用EC乘法的，最终的数据由对 $0x01$ $0x42+ flagbyte+ addrhash+ encryptedhalf1$ $+ encryptedhalf2$进行Base58Check编码后的数据构成。
-而对于使用EC乘法的，加密保护后的私钥数据由$0x01$ $0x43+ flagbyte+ addrhash+ ownerentropy+ encryptedhalf1$ $+ encryptedhalf2$进行Base58Check编码后的数据构成（具体含义会在后面详细介绍）。
+\item 对于不使用EC乘法的,最终的数据由对$0x01$ $0x42+ flagbyte+ addrhash+ encryptedhalf1$ 
+ $+ encryptedhalf2$进行Base58Check编码后的数据构成.
+而对于使用EC乘法的,加密保护后的私钥数据由$0x01$
+ $0x43+ flagbyte+ addrhash+ ownerentropy+ encryptedhalf1$ $+ encryptedhalf2$
+ 进行Base58Check编码后的数据构成（具体含义会在后面详细介绍）.
 
-\item $0x01$ $0x42/43$是为了使经过Base58Check编码后的结果以$6P$开头，6代表了"a private key that needs something else to be usable"，P代表了上一句中的"something is a passphrase"。
+\item $0x01$ $0x42/43$是为了使经过Base58Check编码后的结果以$6P$开头,
+6代表了"a private key that needs something else to be usable",P代表了上一句中的"something is a passphrase".
 
-\item flagbyte为1字节，最高两位用来区分是否使用EC乘法：11表示不使用EC乘法，反之设置为00。$0x20$用来表示私钥转换成比特币地址时使用的是压缩公钥的格式。$0x40$用来表示在使用EC乘法时，同时也使用了lot+sequence，这两个数字的作用会在后面说明。$0x10,0x08$予以保留。
+\item flagbyte为1字节,最高两位用来区分是否使用EC乘法:
+11表示不使用EC乘法,反之设置为00.$0x20$用来表示私钥转换成比特币地址时使用的是压缩公钥的格式.
+$0x40$用来表示在使用EC乘法时,同时也使用了lot+sequence,这两个数字的作用会在后面说明.$0x10,0x08$予以保留.
 
-\item Addrhash为对比特币地址进行两次SHA256操作后，取前四个字节的结果。
+\item Addrhash为对比特币地址进行两次SHA256操作后,取前四个字节的结果.
 \end{itemize}
 
 \subsection{Encryption when EC multiply is not used}
-该方法对已知的私钥进行加密，加密过程分为两部分：从passphrase使用Scrypt派生AES加密的密钥；使用AES对私钥信息进行加密。
+
+该方法对已知的私钥进行加密,加密过程分为两部分:从passphrase使用Scrypt派生AES加密的密钥;使用AES对私钥信息进行加密.
 
 \begin{algorithm}[tbp]\footnotesize
 \caption{Encryption}\label{encryption without ec multiply}
   	\begin{algorithmic}[1]
-	    \STATE Compute the Bitcoin address (ASCII), and take the first four bytes of $SHA256(SHA256())$ of it. Let's call this "addresshash".
+	    \STATE 计算Bitcoin地址(ASCII), and take the first four bytes of $SHA256(SHA256())$ of it. Let's call this "addresshash".
 		\STATE Derive a key from the passphrase using scrypt  
 		
 		\STATE Parameters: passphrase is the passphrase itself encoded in UTF-8 and normalized using Unicode Normalization Form C (NFC). salt is addresshash from the earlier step, $n=16384, r=8, p=8, length=64 $(n, r, p are provisional and subject to consensus)  
@@ -42,11 +63,12 @@ BIP38提出了一种使用passphrase对私钥进行加密保护的方案。该�
 \caption{caption}\label{fig-parsesig}
 \end{figure}
 
-在使用Scrypt派生密钥时，Scrypt参数中salt设置为比特币地址经过double-SHA256后的前4个字节。该字段无需保密，目的是为了增加攻击者进行暴力破解时的搜索空间，增加攻击的时间/空间复杂度。
+在使用Scrypt派生密钥时,Scrypt参数中salt设置为比特币地址经过double-SHA256后的前4个字节.
+该字段无需保密,目的是为了增加攻击者进行暴力破解时的搜索空间,增加攻击的时间/空间复杂度.
 
 
 
-解密过程首先根据用户掌握的passphrase计算出AES的解密密钥，随后对密文解密：
+解密过程首先根据用户掌握的passphrase计算出AES的解密密钥,随后对密文解密:
 
 \begin{algorithm}[tbp]\footnotesize
 \caption{Decryption}
@@ -62,15 +84,24 @@ BIP38提出了一种使用passphrase对私钥进行加密保护的方案。该�
 
 \subsection{Encryption when EC multiply is used}
 
-该方法利用了EC 乘法的同态性质，主要思想类似于一个基于椭圆曲线的密钥协商方案：用户事先由passphrase和entropy等生成一个随机数x，并计算对应的椭圆曲线群上的点$P=x*G$，将其发给第三方。随后，第三方选择一个随机数k与该点进行EC的乘法操作，即视为新生成的公钥$P'=k*P=(x \cdot k)*G$。随后将k加密后发送给用户（加密过程与上一个方法类似）。用户收到数据解密后，计算出新私钥$x\cdot k$。假设用于生成x的passphrase被保护的足够好，那么用户就可以确认新私钥是足够安全的（只有掌握passphrase的人才能计算），这一点可以认为是使用该方法生成新的加密私钥所额外带来的一个安全性方面的好处。
-该算法包含两个阶段：初始化阶段、私钥生成阶段。
+该方法利用了EC 乘法的同态性质,主要思想类似于一个基于椭圆曲线的密钥协商方案:
+用户事先由passphrase和entropy等生成一个随机数x,并计算对应的椭圆曲线群上的点$P=x*G$,
+将其发给第三方.随后,第三方选择一个随机数k与该点进行EC的乘法操作,即视为新生成的公钥$P'=k*P=(x \cdot k)*G$.
+随后将k加密后发送给用户(加密过程与上一个方法类似).
+用户收到数据解密后,计算出新私钥$x\cdot k$.假设用于生成x的passphrase被保护的足够好,
+那么用户就可以确认新私钥是足够安全的(只有掌握passphrase的人才能计算), 这
+一点可以认为是使用该方法生成新的加密私钥所额外带来的一个安全性方面的好处.
+该算法包含两个阶段:初始化阶段、私钥生成阶段.
 
 \subsubsection{初始化}
-初始化阶段主要功能是用户由passphrase和ownerentrpy计算intermediate passphrase code，并发送给第三方。  
+初始化阶段主要功能是用户由passphrase和ownerentrpy计算intermediate passphrase code,并发送给第三方.  
 
-在计算时，用户可以选择性的生成一个20bit的lot number和12bit的sequence number。在用户向第三方请求大量的加密私钥时，需要检查返回的私钥对应的lot和sequence number是否与他所提供的intermediate passphrase code一致，以防止来自第三方的潜在攻击。这4字节lot+sequence number并不是必须的，在两种场景下，初始化阶段稍微不同。 
+在计算时,用户可以选择性的生成一个20bit的lot number和12bit的sequence number.
+在用户向第三方请求大量的加密私钥时,需要检查返回的私钥对应的lot和sequence number
+是否与他所提供的intermediate passphrase code一致,以防止来自第三方的潜在攻击.
+这4字节lot+sequence number并不是必须的,在两种场景下,初始化阶段稍微不同. 
  
-在使用lot+sequence时：  
+在使用lot+sequence时:  
 
 \begin{algorithm}[tbp]\footnotesize
 \caption{Initialize with lot sequence}
@@ -113,10 +144,10 @@ BIP38提出了一种使用passphrase对私钥进行加密保护的方案。该�
 \end{figure}
 
 \subsubsection{加密私钥计算}
-第三方拿到intermediate passphrase code后，可以用它为用户生成新的加密私钥。确切地说，
-第三方可以为用户生成新的公钥，并将计算对应私钥的所需的必要信息进行加密，
-同时拥有passphrase和该密文人才能从中计算出对应的私钥。  
-计算过程如下：
+第三方拿到intermediate passphrase code后,可以用它为用户生成新的加密私钥.确切地说,
+第三方可以为用户生成新的公钥,并将计算对应私钥的所需的必要信息进行加密,
+同时拥有passphrase和该密文人才能从中计算出对应的私钥.  
+计算过程如下:
 
 \begin{algorithm}[tbp]\footnotesize
 \caption{New Public Key Generation}
@@ -134,7 +165,9 @@ BIP38提出了一种使用passphrase对私钥进行加密保护的方案。该�
     \end{algorithmic}
 \end{algorithm}
 
-以上完成了新公钥（passpoint*factorb）的生成过程。以下过程即是加密过程，与encryption when EC multiply is not used的过程类似。即由passpoint和salt派生AES的加密密钥，然后对新公钥对应私钥的部分信息(seedb)进行加密。
+以上完成了新公钥（passpoint*factorb）的生成过程.以下过程即是加密过程,
+与encryption when EC multiply is not used的过程类似.
+即由passpoint和salt派生AES的加密密钥,然后对新公钥对应私钥的部分信息(seedb)进行加密.
 
 \begin{algorithm}[tbp]\footnotesize
 \caption{Encryption}
@@ -161,8 +194,8 @@ BIP38提出了一种使用passphrase对私钥进行加密保护的方案。该�
     \end{algorithmic}
 \end{algorithm}
 
-这里最终数据的格式略有些奇怪，猜想是为了与不使用EC乘法的结果长度保持一致。相比较，这里比前面多了一个
-8字节的ownerentroy字段，因此选取的seedb长度也就限制在了24字节。
+这里最终数据的格式略有些奇怪,猜想是为了与不使用EC乘法的结果长度保持一致.相比较,这里比前面多了一个
+8字节的ownerentroy字段,因此选取的seedb长度也就限制在了24字节.
 
 \begin{figure}[h]
 \centering
@@ -171,7 +204,7 @@ BIP38提出了一种使用passphrase对私钥进行加密保护的方案。该�
 \end{figure}
 
 \subsubsection{恢复新私钥}
-从第三方返回的密文计算新私钥的过程如下（通常也是由客户端替用户计算的）：
+从第三方返回的密文计算新私钥的过程如下（通常也是由客户端替用户计算的）:
 
 \begin{algorithm}[tbp]\footnotesize
 \caption{Decryption and Private Key Computation}
@@ -195,20 +228,21 @@ BIP38提出了一种使用passphrase对私钥进行加密保护的方案。该�
     \end{algorithmic}
 \end{algorithm}
 
-以上过程完成了从密文中恢复seedb，以及从seedb计算factorb的过程。由于新公钥为$passpoint\cdot 
-factorb=passfactor\cdot factorb *G$，对应的私钥即为$passfactor\cdot factorb$。
+以上过程完成了从密文中恢复seedb,以及从seedb计算factorb的过程.由于新公钥为$passpoint\cdot 
+factorb=passfactor\cdot factorb *G$,对应的私钥即为$passfactor\cdot factorb$.
 
-在恢复了新私钥后，客户端还需要验证计算出的私钥与之前addresshash给出的地址是否对应，如果不是，
-则需要向用户返回错误信息，即用户输入了错误的passphrase。（由于该协议描述的目的场景是针对纸钱包，
-所以可以假定上述编码后的密文的完整性是可以保证的，不会被篡改。）
+在恢复了新私钥后,客户端还需要验证计算出的私钥与之前addresshash给出的地址是否对应,如果不是,
+则需要向用户返回错误信息,即用户输入了错误的passphrase.（由于该协议描述的目的场景是针对纸钱包,
+所以可以假定上述编码后的密文的完整性是可以保证的,不会被篡改.）
 
 
 \subsubsection{ Confirmation Code}
-在printer为用户生成新的加密后的私钥后，用户当时可能并不需要进行解密（私钥只有在花费对应地址的UTXO时才需要），
-但他需要对产生的新地址进行确认，以防自己使用的地址对应的私钥并不是自己可计算的。因此，对于使用EC multiply加密私钥的方式，该协议还设计了一个独立的验证方式，即printer可以向用户返回一个以“cfrm38”开头的
-75个字符的confirmation code，用来协助用户验证新地址是否是自己可计算的。
+在printer为用户生成新的加密后的私钥后,用户当时可能并不需要进行解密（私钥只有在花费对应地址的UTXO时才需要）,
+但他需要对产生的新地址进行确认,以防自己使用的地址对应的私钥并不是自己可计算的.
+因此,对于使用EC multiply加密私钥的方式,该协议还设计了一个独立的验证方式,即printer可以向用户返回一个以“cfrm38”开头的
+75个字符的confirmation code,用来协助用户验证新地址是否是自己可计算的.
  
-Confirmation code生成过程如下：
+Confirmation code生成过程如下:
 
 \begin{algorithm}[tbp]\footnotesize
 \caption{Confirmation Code}
@@ -230,12 +264,12 @@ Confirmation code生成过程如下：
     \end{algorithmic}
 \end{algorithm}
 
-除了常数部分，Confirmation code与私钥密文数据的不同之处在于encryptedpointb，
-其中包含了$factor*G$的信息，允许用户收到confirmation code后计算出地址，
-进行两次SHA256后去前四个字节与addresshash进行比对验证。
-如果验证通过，用户可以使用该地址进行交易，且可以在进行花费时再解密相应私钥。
+除了常数部分,Confirmation code与私钥密文数据的不同之处在于encryptedpointb,
+其中包含了$factor*G$的信息,允许用户收到confirmation code后计算出地址,
+进行两次SHA256后去前四个字节与addresshash进行比对验证.
+如果验证通过,用户可以使用该地址进行交易,且可以在进行花费时再解密相应私钥.
 
-验证过程如下：
+验证过程如下:
 
 \begin{algorithm}[tbp]\footnotesize
 \caption{Confirmation}
@@ -254,25 +288,29 @@ Confirmation code生成过程如下：
 
 \subsubsection{ Security issues}
 
-Confirmation code存在一个安全隐患：仅仅靠4bytes的addresshash来关联
-confirmation code和encrypted key是不够的。一个不诚实的printer可以提供两个不同的factorb，
-同时它们能够产生经过double-sha256后前32bit相同的两个地址。这时，仅仅验证confirmation code是不能够保证用户一定能够计算出他使用的地址所对应的私钥的。
-这也就是说，confirmation code并不能起到他所声称的作用。
-比如，printer计算出seedb1以及相应的factorb1，并计算出新私钥对应的地址addr1、
-$addrhash1=SHA256(SHA256(addr1))_{4bytes}$。由于addrhash只有4字节，他可以遍历factorb的取值，
-直到找到addrhash2=addrhash1的factorb2（计算复杂度为$O(2^{16})$）。这时，他就可以根据seedb1来计算encrypted key，根据factorb2来构造confirmation code，并且encrypted key和confirmation 
-code中的addrhash是相同的。之后，将confirmation code和encrypted key发给用户。用户验证confirmation code可以通过，并使用其中计算出的addr2来收款，但是他无法计算出addr2对应的私钥（用户只知道factorb2*G的值），
-他从encrypted key中计算出来的私钥对应于 $factorb1 * passfactor$，所以addr2中的钱将无法被花费。
+Confirmation code存在一个安全隐患:仅仅靠4bytes的addresshash来关联
+confirmation code和encrypted key是不够的.一个不诚实的printer可以提供两个不同的factorb,
+同时它们能够产生经过double-sha256后前32bit相同的两个地址.这时,
+仅仅验证confirmation code是不能够保证用户一定能够计算出他使用的地址所对应的私钥的.
+这也就是说,confirmation code并不能起到他所声称的作用.
+比如,printer计算出seedb1以及相应的factorb1,并计算出新私钥对应的地址addr1、
+$addrhash1=SHA256(SHA256(addr1))_{4bytes}$.由于addrhash只有4字节,他可以遍历factorb的取值,
+直到找到addrhash2=addrhash1的factorb2（计算复杂度为$O(2^{16})$）.
+这时,他就可以根据seedb1来计算encrypted key,根据factorb2来构造confirmation code,并且encrypted key和confirmation 
+code中的addrhash是相同的.之后,将confirmation code和encrypted key发给用户.
+用户验证confirmation code可以通过,并使用其中计算出的addr2来收款,但是他无法计算出addr2对应的私钥（用户只知道factorb2*G的值）,
+他从encrypted key中计算出来的私钥对应于 $factorb1 * passfactor$,所以addr2中的钱将无法被花费.
 
-在新私钥的生成中，存在一个安全隐患：在同一个intermediate passphrase code下，如果printer知道了其中一个加密私钥的明文，那么它就可以绕开用户的passphrase，
-得到在当前intermediate passphrase code下派生的所有私钥。
- 对于intermediate passphrase code $ipc1$，printer生成了一个随机数seedb1，
- 按照以上计算（EC multiply used），生成的新私钥应该是$k1=passfactor * factorb1$ 
- $mod n$, $factorb1=SHA256(SHA256(seedb1))$。 假如printer知道了该私钥k1，他就可以计算 
- $passfactor=k1 * factorb1^{-1}$ $mod$ $n$， 因此，在同一个ipc1下的所有私钥都可以被printer计算出来。  
-这种场景是存在的：如用户委托printer为自己生成新的加密私钥后，不小心又委托他对该私钥按照本协议第一种方法
-（with no EC multiply）进行加密，恶意的printer可以检测到该私钥是它之前按照第二种方法生成的（对比公钥或地址），
-这时它就具备了以上攻击的条件。
+在新私钥的生成中,存在一个安全隐患:在同一个intermediate passphrase code下,
+如果printer知道了其中一个加密私钥的明文,那么它就可以绕开用户的passphrase,
+得到在当前intermediate passphrase code下派生的所有私钥.
+ 对于intermediate passphrase code $ipc1$,printer生成了一个随机数seedb1,
+ 按照以上计算（EC multiply used）,生成的新私钥应该是$k1=passfactor * factorb1$ 
+ $mod n$, $factorb1=SHA256(SHA256(seedb1))$. 假如printer知道了该私钥k1,他就可以计算 
+ $passfactor=k1 * factorb1^{-1}$ $mod$ $n$, 因此,在同一个ipc1下的所有私钥都可以被printer计算出来.  
+这种场景是存在的:如用户委托printer为自己生成新的加密私钥后,不小心又委托他对该私钥按照本协议第一种方法
+（with no EC multiply）进行加密,恶意的printer可以检测到该私钥是它之前按照第二种方法生成的（对比公钥或地址）,
+这时它就具备了以上攻击的条件.
 
 \begin{lstlisting}[language=python, caption = 测试代码, label=lst-baddersig]
 
