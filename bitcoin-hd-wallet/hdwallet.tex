@@ -92,7 +92,8 @@ BIP38针对私钥的安全性，提出了对私钥进行加密保护的方法，
 
 上述的BIP协议主要是在如何简化用户与钱包软件的交互、以及在不过多增加用户负担的情况下提高安全性等方面进行的探索，
 主要是希望由用户掌握一个较短的、方便记忆的字符串，通过密码学的方法，派生出不同用途的密钥（签名、加密）。
-因此这些方案中除了基本的加密（AES)，签名（ECDSA)算法之外，用到的另外一类算法就是Password-based Key Derivation Function（PBKDF）。
+因此这些方案中除了基本的加密（AES)，签名（ECDSA)算法之外，
+用到的另外一类算法就是Password-based Key Derivation Function（PBKDF）。
 下面首先会对涉及到的PBKDF做简要介绍，然后逐一说明每个BIP的原理、功能。
 
 \include{sec1-pbkdf}

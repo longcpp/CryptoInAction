@@ -9,7 +9,8 @@ iteration count等。这类函数通常是computationally intensive，即需要�
 PBKDF2全称为Password-Based Key Derivation Function 2，在PKCS\#5
 中取代了输出长度不大于160bit的PBKDF1作为该规范推荐的密钥派生函数。
 BIP39协议使用该函数从助记词组派生一个随机串，该随机串用作BIP32 HD(Hierarchical Deterministic)
-钱包中生成主密钥对的seed。  PBKDF2最早被包含在PKCS\#5中发表，后来该规范又被IETF以RFC 2898\footnote{https://tools.ietf.org/html/rfc2898}重新发表。在2017年发布的RFC8018中，仍然建议用它来做password hashing。
+钱包中生成主密钥对的seed。  PBKDF2最早被包含在PKCS\#5中发表，后来该规范又被IETF以RFC 
+2898\footnote{https://tools.ietf.org/html/rfc2898}重新发表。在2017年发布的RFC8018中，仍然建议用它来做password hashing。
 
 在PBKDF中，由于用户的passphrase取值空间一般较小，攻击者在进行暴力攻击时比较容易。
 Salt作为一段均匀随机分布的比特串，不需要保密，目的是为了增加攻击者的搜索空间。
@@ -78,14 +79,14 @@ N，r，p参数进行调节，从而调整算法对CPU/内存的消耗。
 		 and less than $2^{(128 * r / 8)}$.\\
 		r, Block size parameter.\\
 		p, Parallelization parameter, a positive integer less than or equal 
-		to $((2^{32}-1) * hLen) / MFLen$ where hLen is 32 and MFlen is 128 * r.\\
-		dklen, Intended output length in octets of the derived key; 
-		a positive integer less than or equal to $(2^{32} - 1)$ * hLen where hLen is 32.\\
+		to $((2^{32}-1) * hLen) / MFLen$ where $hLen$ is 32 and $MFlen$ is $128 * r$.\\
+		$dklen$, Intended output length in octets of the derived key; 
+		a positive integer less than or equal to $(2^{32} - 1) * hLen$ where $hLen$ is 32.\\
 	    \ENSURE ~~\\
 	    DK: the generated derived key\\
 	    \STATE Initialize an array $B$ consisting of $p$ blocks of $128 * r$ octets each:\\
 			$B[0]||B[1]||\cdots B[p-1]=PBKDF2-HMAC-SHA256(P,S,1,p*128*r)$
-		\FOR{$i=0 to p-1$} 
+		\FOR{$i=0$ to $p-1$} 
 			\STATE $B[i]= scryptROMix(r,B[i],N)$   
 		\ENDFOR 
 		\STATE $DK=PBKDF2-HMAC-SHA256(P,B[0]||B[1]||\cdots B[p-1],1,dklen)$
@@ -107,7 +108,7 @@ N，r，p参数进行调节，从而调整算法对CPU/内存的消耗。
 	    \ENSURE ~~\\
 	    B', Output octet vector of length $128 * r$ octets.\\
 	    \STATE $X = B$
-		\FOR{$i = 0 to N - 1$}  
+		\FOR{$i = 0$ to $N - 1$}  
 			\STATE $V[i]=X$  
 			\STATE $X=scryptBlockMix(X)$  
  		\ENDFOR 
@@ -135,6 +136,7 @@ N，r，p参数进行调节，从而调整算法对CPU/内存的消耗。
 		\FOR {$i = 0$ to $2*r - 1$} 
 			\STATE $T=X \oplus B[i]$  
 			\STATE $X=Salsa(T)$  
+			\STATE $Y[i]=X$
 		\ENDFOR 
 		\RETURN $B'=(Y[0],Y[2],\cdots,Y[2*r-2],Y[1],Y[3],\cdots, Y[2*r-1])$
     \end{algorithmic}
