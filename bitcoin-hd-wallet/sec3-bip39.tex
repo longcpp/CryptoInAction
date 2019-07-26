@@ -49,7 +49,7 @@ $c=2048, PRF=\textsf{HMAC-SHA512}, dklen=512$.
 最终该算法输出的512比特作为分层确定性钱包的种子.
 Listing~\ref{lst-seed}中的代码基于Trezor的python-mnemonic库\footnote{\url{https://github.com/trezor/python-mnemonic}}:
 
-\begin{lstlisting}[language=python, caption=想一个名字, label=lst-seed]
+\begin{lstlisting}[language=python, caption=想一个名字函数重命名执行结果展示, label=lst-seed]
 def main():
     import binascii
     import sys

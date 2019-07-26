@@ -148,7 +148,7 @@ N，r，p参数进行调节，从而调整算法对CPU/内存的消耗。
     \end{algorithmic}
 \end{algorithm}
 
-\begin{lstlisting}[language = c, caption = Salsa20/8, label=lst-salsa20core]
+\begin{lstlisting}[language = c, caption = Salsa20/8, label=lst-salsa20core][h]
 #define R(a,b) (((a) << (b)) | ((a) >> (32 - (b)))) 
 void salsa20_word_specification(uint32 out[16],uint32 in[16]) 
 {
