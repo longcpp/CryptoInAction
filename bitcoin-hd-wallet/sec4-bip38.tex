@@ -46,13 +46,14 @@ $0x40$用来表示在使用EC乘法时,同时也使用了lot+sequence,这两个�
 \begin{algorithm}[tbp]\footnotesize
 \caption{Encryption}\label{encryption without ec multiply}
   	\begin{algorithmic}[1]
-	    \STATE 计算Bitcoin地址(ASCII), and take the first four bytes of $SHA256(SHA256())$ of it. Let's call this "addresshash".
-		\STATE Derive a key from the passphrase using scrypt  
+	    \STATE 计算Bitcoin地址(ASCII), 计算addresshash,也即地址哈希值$\textsf{SHA256(SHA256())}$的前4个字节
+		\STATE 用scrypt从口令派生密钥
 		
-		\STATE Parameters: passphrase is the passphrase itself encoded in UTF-8 and normalized using Unicode Normalization Form C (NFC). salt is addresshash from the earlier step, $n=16384, r=8, p=8, length=64 $(n, r, p are provisional and subject to consensus)  
+		\STATE 参数: passphrase 是用UTF-8编码并用NFC (Unicode Normalization Form C)正则化后的值. 
+		salt 是之前计算的addresshash, $n=16384, r=8, p=8, length=64 $(n, r, p are provisional and subject to consensus)  
 		\STATE Let's split the resulting 64 bytes in half, and call them derivedhalf1 and derivedhalf2
-		\STATE Do $AES256Encrypt(block = bitcoinprivkey[0...15] \oplus derivedhalf1[0...15], key = derivedhalf2)$, call the 16-byte result encryptedhalf1  
-		\STATE Do $AES256Encrypt(block = bitcoinprivkey[16...31] \oplus derivedhalf1[16...31], key = derivedhalf2)$, call the 16-byte result encryptedhalf2 
+		\STATE Do $encryptedhalf1 = AES256Encrypt(block = bitcoinprivkey[0...15] \oplus derivedhalf1[0...15], key = derivedhalf2)$,
+		\STATE Do $encryptedhalf2 = AES256Encrypt(block = bitcoinprivkey[16...31] \oplus derivedhalf1[16...31], key = derivedhalf2)$, 
 		\STATE The encrypted private key is the Base58Check-encoded concatenation of the following, which totals 39 bytes without Base58 checksum:$0x01$ $0x42 + flagbyte + salt + encryptedhalf1 + encryptedhalf2$
     \end{algorithmic}
 \end{algorithm}
@@ -63,7 +64,7 @@ $0x40$用来表示在使用EC乘法时,同时也使用了lot+sequence,这两个�
 \caption{caption}\label{fig-parsesig}
 \end{figure}
 
-在使用Scrypt派生密钥时,Scrypt参数中salt设置为比特币地址经过double-SHA256后的前4个字节.
+在使用Scrypt派生密钥时, Scrypt参数中salt设置为比特币地址经过double-SHA256后的前4个字节.
 该字段无需保密,目的是为了增加攻击者进行暴力破解时的搜索空间,增加攻击的时间/空间复杂度.
 
 
