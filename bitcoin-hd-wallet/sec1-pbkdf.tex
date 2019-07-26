@@ -14,7 +14,9 @@ PBKDF2全称为Password-Based Key Derivation Function 2，在PKCS\#5
 中取代了输出长度不大于160比特的PBKDF1作为该规范推荐的密钥派生函数。
 BIP39协议使用该函数从助记词组派生一个随机串，该随机串用作BIP32 HD(Hierarchical Deterministic)
 钱包中生成主密钥对的seed。  PBKDF2最早被包含在PKCS\#5中发表，后来该规范又被IETF以RFC 
-2898\footnote{https://tools.ietf.org/html/rfc2898}重新发表。在2017年发布的RFC8018中，仍然建议用它来做password hashing。
+2898\footnote{
+RFC2898: PKCS \#5: Password-Based Cryptography Specification Version 2.0.
+\url{https://tools.ietf.org/html/rfc2898}}重新发表。在2017年发布的RFC8018中，仍然建议用它来做password hashing。
 
 在PBKDF中，由于用户的passphrase取值空间一般较小，攻击者在进行暴力攻击时比较容易。
 Salt作为一段均匀随机分布的比特串，不需要保密，目的是为了增加攻击者的搜索空间。

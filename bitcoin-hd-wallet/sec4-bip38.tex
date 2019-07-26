@@ -1,9 +1,10 @@
 \section{BIP38: 基于口令保护私钥}
 
-BIP38提出了一种使用passphrase对私钥进行加密保护的方案.该方案只考虑了针对私钥的机密性保护,
-而没有考虑提供完整性保护,因此其主要针对纸钱包和physical Bitcoin等私钥密文不容易遭受篡改的应用场景.
-该协议主要提出了两种加密私钥的方法,其中一种方法使用了EC 乘法操作,
-另一种没有,从而导致两种方法实现的功能有很大的区别.
+BIP38提出了基于口令(Passphrase/Password)对私钥进行加密保护的方案.
+该方案只考虑了针对私钥的机密性保护,而没有考虑提供完整性保护(从密码学角度来讲不算是最佳实践),
+因此其主要针对纸钱包(Paper Wallet)等私钥密文不容易遭受篡改的应用场景.
+BIP38中给出了两种加密私钥的方法,其中一种方法使用了EC 乘法操作,
+另一种则直接使用AES加密.两种方法实现的功能有很大的区别.
 
 Encryption when EC multiply is not used: 对于已经产生的私钥,
 使用用户设置的passphrase对私钥进行加密.
@@ -48,11 +49,11 @@ $0x40$用来表示在使用EC乘法时,同时也使用了lot+sequence,这两个�
   	\begin{algorithmic}[1]
 	    \STATE 计算Bitcoin地址(ASCII), 计算addresshash,也即地址哈希值$\textsf{SHA256(SHA256())}$的前4个字节
 		\STATE 用scrypt从口令派生密钥
-		
+	⁃	
 		\STATE 参数: passphrase 是用UTF-8编码并用NFC (Unicode Normalization Form C)正则化后的值. 
 		salt 是之前计算的addresshash, $n=16384, r=8, p=8, length=64 $(n, r, p are provisional and subject to consensus)  
 		\STATE Let's split the resulting 64 bytes in half, and call them derivedhalf1 and derivedhalf2
-		\STATE Do $encryptedhalf1 = AES256Encrypt(block = bitcoinprivkey[0...15] \oplus derivedhalf1[0...15], key = derivedhalf2)$,
+		\STATE Do $encryptedhalf1 = \textsf{AES256Encrypt}(block = bitcoinprivkey[0...15] \oplus derivedhalf1[0...15], key = derivedhalf2)$,
 		\STATE Do $encryptedhalf2 = AES256Encrypt(block = bitcoinprivkey[16...31] \oplus derivedhalf1[16...31], key = derivedhalf2)$, 
 		\STATE The encrypted private key is the Base58Check-encoded concatenation of the following, which totals 39 bytes without Base58 checksum:$0x01$ $0x42 + flagbyte + salt + encryptedhalf1 + encryptedhalf2$
     \end{algorithmic}
