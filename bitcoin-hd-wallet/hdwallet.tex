@@ -87,6 +87,11 @@
 \fancyfoot[C]{--{~\thepage~}--}
 %%%设置页眉和页码格式结束
 
+\usepackage{color}
+\newcommand{\red}{\textcolor{red}}
+\newcommand{\blue}{\textcolor{blue}}
+
+
 \begin{document}
 
 \title{深入理解Bitcoin钱包的密钥机制}
@@ -95,7 +100,7 @@
 \maketitle
 
 Bitcoin系统中对Bitcoin (BTC)的控制权实际上是对基于secp256k1的ECDSA签名机制的私钥的控制权,
-私钥是256位的随机值. 为了构建一笔合法的交易, 需要利用私钥对这笔交易进行ECDSA签名值.
+私钥是256比特的随机值. 为了构建一笔合法的交易, 需要利用私钥对这笔交易进行ECDSA签名值.
 但由于私钥本身是一串256位的比特串,直接以二进制形式访问私钥对用户来说非常不友好.
 为了方便用户记录和识别, 衍生出了Hex, WIF (Wallet Import Format), WIF-compressed等各种展示和存储私钥的新格式.
 相比256比特的二进制比特串, 这些格式的字符长度更短, 更易于辨别. 
