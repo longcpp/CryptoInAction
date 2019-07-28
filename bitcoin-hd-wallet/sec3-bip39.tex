@@ -12,7 +12,7 @@ BIP39提出了一种从助记词(Mnemonic Code)派生HD钱包种子的方法,
 熵值的比特长度越大,安全性就越高,但同时生成助记词中单词的个数也越多.
 助记词的产生过程: 假设初始的熵值为$e$, 比特长度为$\textsf{bits}(e)$,
 取$\textsf{SHA256}(e)$的前$\textsf{bits}(e)/32$比特作为检验和(Checksum)缀在$e$的后面,
-随后将级联后的比特串以11比特位单位进行分组,即每个分组的数字范围是为$[0,\cdots,2047]$,
+随后将级联后的比特串以11比特为单位进行分组,即每个分组的数字范围是为$[0,\cdots,2047]$,
 将其作为索引从单词列表中读取相应的单词,最终选出的词语即构成了一个助记词句子(Mnemonic Sentence).
 当$\textsf{bits}(e)=128,192,256$时,对应的助记词的个数为12, 18, 24.
 参见Figure~\ref{fig-entropy2mnemonic}, 图片Figure~\ref{fig-entropy2mnemonic}
@@ -49,8 +49,8 @@ $c=2048, PRF=\textsf{HMAC-SHA512}, dklen=512$.
 最终该算法输出的512比特作为分层确定性钱包的种子.
 Listing~\ref{lst-seed}中的代码基于Trezor的python-mnemonic库\footnote{\url{https://github.com/trezor/python-mnemonic}}:
 
-\begin{lstlisting}[language=python, caption=想一个名字函数重命名执行结果展示, label=lst-seed]
-def main():
+\begin{lstlisting}[language=python, caption=基于助记词句子的种子派生, label=lst-seed]
+def seed_derivation_from_mnemonic():
     import binascii
     import sys
     from bip32utils import BIP32Key
@@ -68,3 +68,11 @@ def main():
     print('xprv     : %s' % xprv)
 \end{lstlisting}
 
+\begin{lstlisting}[language=bash, caption = Listing~\ref{lst-seed}~的执行结果示例]
+mnemonic : void come effort suffer camp survey warrior heavy shoot primary clutch crush open amazing screen patrol group space point ten exist slush involve unfold (24 words) 
+
+seed : 01f5bced59dec48e362f2c45b5de68b9fd6c92c6634f44d6d40aab69056506f0e35524a    518034ddc1192e1dacd32c1ed3eaa3c3b131c88ed8e7e54c49a5d0998 (256 bits) 
+
+xprv : xprv9s21ZrQH143K39rnQJknpH1WEPFJrzmAqqasiDcVrNuk926oizzJDDQkdiTv
+       NPr2FYDYzWgiMiC63YmfPAa2oPyNB23r2g7d1yiK6WpqaQS
+\end{lstlisting}

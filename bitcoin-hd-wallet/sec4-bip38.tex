@@ -50,7 +50,7 @@ BIP38中给出了两种加密私钥的方法,其中一种方法使用了EC乘法
 \caption{不使用EC乘法的加密方法一}\label{algo-m1}
 \begin{algorithmic}[1]
 	    	\STATE 计算地址哈希值 $addresshash = \textsf{SHA256}(\textsf{SHA256}(address))[0,1,2,3]$
-		\STATE 用Scrypt根据口令等派生32字节值$v=v_1||v_2, v_1 = v[0,\cdots, 31], v_2= [32,\cdots,63]$
+		\STATE 用Scrypt根据口令等派生64字节值$v=v_1||v_2, v_1 = v[0,\cdots, 31], v_2= [32,\cdots,63]$
 		\STATE 计算$ek_1 = \textsf{AES256Encrypt}(block = k[0...15] \oplus v_1[0,\cdots,15], key = v_2)$
 		\STATE 计算$ek_2 = \textsf{AES256Encrypt}(block = k[16...31] \oplus v_1[16...31], key = v_2)$
 		\STATE 密文为$0x01 || 0x42 || flagbyte || addrhash || ek_1 || ek_2$的\textsf{Base58CheckEncode}
@@ -84,7 +84,7 @@ $flagbyte_{7,6}=11$表示不使用EC乘法,
 $flagbyte_{7,6}=00$表示使用了EC乘法.
 比特$flagbyte_{5}=1$表示使用比特币地址是根据压缩形式的公钥计算而来的,
 注意Bitcoin中同一个私钥可以有两种比特币地址,分别对应压缩形式公钥和不压缩形式公钥.
-$flagbyte_{3}=1$表示在使用EC乘法加密时还使用了lot+sequence字段,这两个字段的作用会在后面说明.
+$flagbyte_{2}=1$表示在使用EC乘法加密时还使用了lot+sequence字段,这两个字段的作用会在后面说明.
 其余比特位保留.
 [todo这里有问题 关于flagbyte]
 
@@ -282,8 +282,9 @@ $$\textsf{Base58CheckEncode}(\textit{2C E9 B3 E1 FF 39 E2 51} || ownerentropy ||
 确切地说,第三方可以为用户生成新的公钥,并将计算对应私钥的所需的信息加密后一并发送给用户,
 同时拥有口令和密文信息的人才能从中计算出对应的私钥.  
 
-计算时首先需要设置\textit{flagbyte}, 如果采用压缩形式的公钥派生Bitcoin地址,则设置$flagbyte_5=1$.
-如果字段$ownerentropy$中包含批号系列号字段,则设置$flagbyte_6=1$.[\red{todo完善flagbyte设置信息}].
+计算时首先需要设置\textit{flagbyte}, 由于使用了EC
+乘法，$flagbyte_{7,6}=00$. 如果采用压缩形式的公钥派生Bitcoin地址,则设置$flagbyte_5=1$.
+如果字段$ownerentropy$中包含批号系列号字段,则设置$flagbyte_3=1$.
 然后生成24个字节的随机数$seedb$,并计算$factorb=\textsf{SHA256}(\textsf{SHA256}(seedb))$.
 计算$generatedpubkey = factorb * passpoint$并计算对应的Bitcoin地址
 $generatedaddress=\textsf{RIPEMD160}(\textsf{SHA256}(generatedpubkey))[0,\cdots,19]$,
