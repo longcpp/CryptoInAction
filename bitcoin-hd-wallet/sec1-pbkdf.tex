@@ -21,23 +21,26 @@ RFC 2898: PKCS \#5: Password-Based Cryptography Specification Version 2.0.
 RFC 8018: PKCS \#5: Password-Based Cryptography Specification Version 2.1 \url{https://tools.ietf.org/html/rfc8018}}
 中,仍然建议用PBKDF2函数作为处理口令时的哈希函数.
 
-由于用户的口令取值空间一般较小,容易被穷举攻击,因此PBKDF在口令之外的还有参数盐值$S$.
-使用盐值时,同样的口令值在选用不同的盐值时,可以映射成为不同的密钥.
-如果盐值为64比特,就意味着一个口令可以被映射成为$2^{64}$个不同的密钥,
+记PBKDF2函数为$DK = \textsf{PBKDF2}(P, S, c, dkLen)$,其中$DK$为派生的密钥,$dkLen$为$DK$的字节数,
+$P$为口令,$S$为盐值,$c$为迭代次数.
+另外还需要为\textsf{PBKDF2}配置要使用的伪随机函数,伪随机数函数输出为$hLen$字节.
+例如选用\textsf{HMAC-SHA256}函数时, $hLen = 32$.
+由于用户的口令取值空间一般较小,容易被穷举攻击,
+因此PBKDF2的输入参数除了口令$P$和派生密钥的字节长度$dkLen$之外还有盐值$S$用来增加熵值.
+同样的口令在选用不同的盐值时,可以映射成为不同的密钥.
+如果$S$为64比特,就意味着一个口令可以被映射成为$2^{64}$个不同的密钥,
 这样可以防范彩虹表攻击(Rainbow Table Attack)\footnote{
 Wikipedia: Rainbow table. \url{https://en.wikipedia.org/wiki/Rainbow_table}},
-另外也可以防止同一个口令通过PBKDF计算出来的密钥相同,例如在选用64比特的盐值时,
+另外也可以防止同一个口令通过PBKDF计算出来的密钥相同,例如在选用64比特的$S$时,
 根据生日攻击\footnote{
 Wikipedia: Birthday problem. \url{https://en.wikipedia.org/wiki/Birthday_problem}}
 的理论,发生碰撞的概率(也即同样口令不同的盐值通过PBKDF生成的密钥值相同)大约为$2^{-32}$.
-
-PBKDF的另一个重要参数为迭代次数$c$,通过调整次数可以增大一次密钥派生计算的代价,
-也同样增加了攻击的难度.迭代次数的调整,可以显著增加攻击者海量穷举时海量计算时的成本,
-而对一次诚实的派生计算没有显著影响.
+参数为迭代次数$c$,用于调整一次\textsf{PBKDF2}计算的代价,因此也会改变攻击的难度.
+通过增加迭代次数,可以显著增加攻击者海量穷举时海量计算时的成本,而对一次诚实的派生计算没有显著影响.
 因此,在密钥派生的计算代价可以承受的范围内(不影响用户体验),$c$的取值越大越好.
 PKCS\#5建议$c$的最小取值为1000,在一些关键的应用场景中甚至需要取到10000000.
 
-PBKDF2算法的大致流程为：根据算法选取的伪随机函数(PRF)的输出长度$hLen$和需要派生的密钥长度$dklen$,
+PBKDF2算法的大致流程为：根据算法选取的伪随机函数(PRF)的输出的字节数$hLen$和需要派生的密钥的字节数$dkLen$,
 将计算过程划分为$l=\lceil (dklen/hlen) \rceil$个可并行的过程.在每一个独立进行的过程中,需要迭代$c$次PRF的计算,
 并且后面的计算依赖于前面的计算结果,因此必须顺序执行.将这$l$个计算结果级联起来即得到了最终派生的密钥.
 
@@ -45,20 +48,28 @@ PBKDF2算法的大致流程为：根据算法选取的伪随机函数(PRF)的输
 Scrypt算法由Colin Percival设计\footnote{
 Colin Percival. Stronger key derivation via sequential memory-hard functions. 2009.
 \url{http://www.tarsnap.com/scrypt/scrypt.pdf}},
-与PBKDF2相比,该算法在执行时对内存的消耗较高,
+并收录在RFC 7914\footnote{
+RFC 7914: The scrypt Password-Based Key Derivation Function
+\url{https://tools.ietf.org/html/rfc7914}
+}中.
+Scrypt算法基于memory-hard函数,因此在执行时对内存的消耗较高,
 限制了利用硬件实现进行并行搜索空间的能力,从而降低暴力攻击复杂度的可行性,
 以此来抵抗大规模的专用硬件攻击(例如使用ASIC来加速暴力穷举攻击).
-BIP38协议使用Scrypt算法作为密钥派生函数,从口令派生AES的加密密钥. 
+BIP38使用Scrypt算法作为密钥派生函数,从口令派生AES的加密密钥. 
 
-Scrypt算法对内存消耗的由来在于其中使用的一个名为\textsf{scryptROMix}的子算法,
-该算法用来产生一个expensive-cost 的salt.在执行时,它会产生一组长度为$N$的伪随机比特串(如下,$V[i]$,长度为$128*r$比特),
-同时以一种伪随机的顺序对该比特串进行访问,这就导致攻击者必须有足够的内存来存储它.
-并且该比特串的计算是比较费时的,因此攻击者经过对时间和空间进行权衡的结果,
-要么是对内存资源要求不高但运行很慢,要么是效率较高但内存消耗较大.
-
-Scrypt算法在PBKDF之外引入了$N, r, p$三个参数,
-算法对内存的消耗与$N*r$成线性关系, $p$表示算法在执行时的可并行度.
-用户可以根据当前CPU性能, 内存容量, 以及要求的并行度对进行它们调节, 以调整算法的CPU/内存消耗.
+Scrypt算法可以写为$DK = \textsf{scrypt}(P,S,N,r,p,dkLen)$,其中$DK$为派生的密钥,
+$P$为口令, $S$为盐值, $N$为CPU/内存消耗参数, $r$为区块大小参数, $p$为并行参数, $dkLen$为$DK$的字节数.
+\textsf{scrypt}内部首先调用$\textsf{PBKDF2-HMAC-SHA256}(P, S, 1, p \times 128 \times r)$
+生成包含$p$个区块的数组$B$,每个区块的长度为$128\times r$字节.
+数组中的每个区块然后经由函数\textsf{scryptROMix}进行更新$B[i]=\textsf{scryptROMix}(r, B[i], N), 0\leq i \leq p-1$,
+更新后的数组$B$作为盐值再次调用PBKDF2得到最终结果$DK = \textsf{PBKDF2-HMAC-SHA256} (P, B, 1, dkLen)$.
+Memory-hard的特性主要来自于对子函数\textsf{scryptROMix}的调用,此处不再展开详述.
+%该算法用来产生一个expensive-cost 的salt.在执行时,它会产生一组长度为$N$的伪随机比特串(如下,$V[i]$,长度为$128*r$比特),
+%同时以一种伪随机的顺序对该比特串进行访问,这就导致攻击者必须有足够的内存来存储它.
+%并且该比特串的计算是比较费时的,因此攻击者经过对时间和空间进行权衡的结果,
+%要么是对内存资源要求不高但运行很慢,要么是效率较高但内存消耗较大.
+算法对内存的消耗与$N*r$成线性关系, 用户可以根据当前CPU性能, 内存容量, 
+以及要求的并行度对进行它们调节, 以调整算法的CPU/内存消耗.
 
 
 % \begin{algorithm}[tbp]\footnotesize

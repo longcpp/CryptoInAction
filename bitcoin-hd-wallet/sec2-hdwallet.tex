@@ -112,18 +112,20 @@ $$ f(x+\Delta_x)=f(x)+f(\Delta_x) \Leftrightarrow (x + \Delta_x)G = xG + \Delta_
 这也就是说,将私钥$x$先加上一个偏移量$\Delta_x$,再通过$f$变换得到的结果,
 与先将私钥$x$和偏移$\Delta_x$映射到公钥,再做加法得到的结果是相同的.
 
-根据算法~\ref{algo-drc-priv}~和算法~\ref{algo-drc-pub}~可知,有两种方式从父私钥派生子公钥.
-可以先根据算法~\ref{algo-drc-priv}~从父私钥派生出子私钥然后得到子公钥:
-$$k_i, c_i = \textsf{CKDpriv}((k_{par}, c_{par}), i),\ K_i = k_iG.$$
-也可以先根据父私钥计算父公钥,然后根据算法~\ref{algo-drc-pub}~得到子公钥
-$$K_{par} = k_{par}G,\ K_i, c_i = \textsf{CKDpub}((K_{par}, c_{par}), i).$$ 
-如前所述,算法~\ref{algo-drc-pub}~只适用于平凡子密钥派生的情形.
 
 \begin{figure}
 \centering
 \includegraphics[width=.7\textwidth]{./outline.png}
 \caption{分层确定性钱包密钥派生原理}\label{fig-bip32}
 \end{figure}
+
+
+根据算法~\ref{algo-drc-priv}~和算法~\ref{algo-drc-pub}~可知,有两种方式从父私钥派生子公钥.
+可以先根据算法~\ref{algo-drc-priv}~从父私钥派生出子私钥然后得到子公钥:
+$$k_i, c_i = \textsf{CKDpriv}((k_{par}, c_{par}), i),\ K_i = k_iG.$$
+也可以先根据父私钥计算父公钥,然后根据算法~\ref{algo-drc-pub}~得到子公钥
+$$K_{par} = k_{par}G,\ K_i, c_i = \textsf{CKDpub}((K_{par}, c_{par}), i).$$ 
+如前所述,算法~\ref{algo-drc-pub}~只适用于平凡子密钥派生的情形.
 
 根据算法~\ref{algo-drc-priv}~和算法~\ref{algo-drc-pub}~可知, 可以从一个扩展密钥出发,
 逐层派生出一棵密钥树,通常称这个扩展密钥为扩展主密钥.
@@ -236,9 +238,11 @@ def recover_parent_privkey(parent_pubkey,child_privkey):
 	return int_to_string(ppk_int).encode('hex')
 \end{lstlisting}
 
-按照BIP32\footnote{\url{https://github.com/bitcoin/bips/blob/33e040b7bdf5d937599d2401454878d6293476c9/bip-0032.mediawiki\#Test_vector_2}}测试向量2中给定的seed，
+按照BIP32\footnote{
+\url{https://github.com/bitcoin/bips/blob/33e040b7bdf5d937599d2401454878d6293476c9/bip-0032.mediawiki\#Test_vector_2}}
+测试向量2中给定的seed，
 计算出相应路径下的child private/public key，按照上述算法
-\ref{lst-recover}，通过调用recover_parent_privkey(M,m/0)可成功恢复M的私钥m。
+\ref{lst-recover}，通过调用\textsf{recover_parent_privkey(M,m/0)}可成功恢复M的私钥m。
 
 这对于分层确定性钱包的安全性有重要影响,因为这意味着知道一个扩展父公钥和平凡子私钥,
 就可以推算出父私钥. 因此管理扩展公钥需要比通常的公钥更为谨慎.

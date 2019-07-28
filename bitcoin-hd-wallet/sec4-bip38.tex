@@ -43,7 +43,8 @@ BIP38中给出了两种加密私钥的方法,其中一种方法使用了EC乘法
 
 \subsection{不使用EC乘法的加密方法一}
 
-该方法对已有私钥$k$进行加密,加密过程分为两步:用Scrypt算法从口令t派生AES算法加密所需密钥;使用AES算法对私钥信息进行加密.
+该方法对已有私钥$k$进行加密,加密过程分为两步:用Scrypt算法从口令$P$
+派生AES算法加密所需密钥;使用AES算法对私钥信息进行加密.
 记该私钥对应的Bitcoin地址为$address$, 按照以下Algorithm~\ref{algo-m1}~展示的步骤进行.
 
 \begin{algorithm}[h]\footnotesize
@@ -73,11 +74,10 @@ BIP38中给出了两种加密私钥的方法,其中一种方法使用了EC乘法
 \caption{不使用EC乘法的加密方法一: 加密过程}\label{fig-m1-enc}
 \end{figure}
 
-在使用Scrypt派生密钥时, Scrypt参数中passphrase值为用UTF-8编码
-并用NFC (Unicode Normalization Form C)正则化后的口令,
-salt设置为$addresshash$,也即$ \textsf{SHA256}(\textsf{SHA256}(address))$的前4个字节, 
+在使用Scrypt派生密钥时, 参数$P$为用UTF-8编码并用NFC (Unicode Normalization Form C)正则化后的口令,
+$S$设置为$addresshash$,也即$ \textsf{SHA256}(\textsf{SHA256}(address))$的前4个字节, 
 该字段无需保密,目的是为了引入更多的熵值,以增加攻击者进行暴力破解时的搜索空间.
-$n, r, p$的值为系统设置参数,并且$n=16384, r=8, p=8, length=64$.
+$n, r, p$的值为系统设置参数,并且$n=16384,\ r=8,\ p=8,\ length=64$.
 最终的密文为39个字节,参见Figure~\ref{fig-m1-enc}.
 其中$flagbyte$为1个字节,最高两位用来区分是否使用EC乘法:
 $flagbyte_{7,6}=11$表示不使用EC乘法,
@@ -86,8 +86,6 @@ $flagbyte_{7,6}=00$表示使用了EC乘法.
 注意Bitcoin中同一个私钥可以有两种比特币地址,分别对应压缩形式公钥和不压缩形式公钥.
 $flagbyte_{2}=1$表示在使用EC乘法加密时还使用了lot+sequence字段,这两个字段的作用会在后面说明.
 其余比特位保留.
-[todo这里有问题 关于flagbyte]
-
 
 %\begin{algorithm}[h]\footnotesize
 %\caption{Encryption}\label{encryption without ec multiply}
@@ -222,8 +220,8 @@ Private key is  b'\xcb\xf4\xb9\xf7\x04p\x85k\xb4\xf4\x0f\x80\xb8~\xdb\x90\x86Y\x
  
  
  在使用批号和序列号时, 按照Algorithm~\ref{algo-m2initwithlnsn}~中的步骤进行初始化. 
- 其中第3步中Scrypt输入参数中的passphrase为UTF-8编码的并用NFC形式正则化后的用户口令,
- salt为第1步中生成的$ownersalt$,  $n=16384, r=8, p=8, length=32$.
+ 其中第3步中Scrypt输入参数中的$P$为UTF-8编码的并用NFC形式正则化后的用户口令,
+ 盐值$S$为第1步中生成的$ownersalt$,  $n=16384, r=8, p=8, length=32$.
  第5步中的点的压缩表示形式约束仅限于这一步的计算, 与生成Bitcoin地址时使用的公钥的表示形式无关.
  
 \begin{algorithm}[h]\footnotesize
@@ -323,8 +321,8 @@ $generatedaddress=\textsf{RIPEMD160}(\textsf{SHA256}(generatedpubkey))[0,\cdots,
     \end{algorithmic}
 \end{algorithm}
 
-第2步中函数Scrypt的参数passphrase为用户提供的33字节的$passpoint$, 
-参数salt为$addresshash || ownerentropy$, $n=1024, r=1, p=1, length=64$.
+第2步中函数Scrypt的参数$P$为用户提供的33字节的$passpoint$, 
+参数$S$为$addresshash || ownerentropy$, $n=1024, r=1, p=1, length=64$.
 这里最终数据的格式略有些奇怪,推测是为了方法一中的结果保持长度一致(都是39个字节).
 相比较,这里比前面多了一个8字节的$ownerentropy$字段,
 \red{因此选取的$seedb$长度也就限制在了24字节 这句怎么理解 跟上一句串不起来},参见Figure~\ref{fig-m2enc}.
@@ -382,7 +380,7 @@ $generatedaddress=\textsf{RIPEMD160}(\textsf{SHA256}(generatedpubkey))[0,\cdots,
 \end{algorithm}
 
 在恢复了新私钥后,客户端还需要验证计算出的私钥与之前$addresshash$给出的地址是否对应,
-如果不是,则需要向用户返回错误信息,即用户输入了错误的passphrase.
+如果不是,则需要向用户返回错误信息,即用户输入了错误的口令.
 由于该协议描述的目的场景是针对纸钱包,所以可假定上述编码后的密文的完整性是保证的.
 使用EC乘法的加解密过程示例在Listing~\ref{lst-m2}中给出,执行结果在Listing~\ref{lst-m2res}中给出.
 %\begin{algorithm}[h]\footnotesize
@@ -539,8 +537,7 @@ L41y9jwBDLa1h2nHxNnhKGCtn7MDEpMNNvrd1o3WTuoXN8srsrD9
 因此,对于使用EC乘法的私钥加密方式,协议还设计了一个独立的验证方式:
 第三方可以向用户返回一个以“cfrm38”开头的75个字符的确认码(Confirmation Code),
 用来协助用户验证新地址对应的私钥是用户可计算出来的.
- 
-Confirmation code生成过程如下:
+确认码的生成过程参见Algorithm~\ref{algo-ccgen}.
 
 \begin{algorithm}[h]\footnotesize
 \caption{确认码生成过程}\label{algo-ccgen}

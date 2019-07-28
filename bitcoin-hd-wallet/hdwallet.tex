@@ -127,11 +127,13 @@ Marek Palatinus, Pavol Rusnak. BIP-44: Multi-Account Hierarchy for Deterministic
 \url{https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki}},
 在BIP-32的基础上就逻辑分层等给出了具体的描述.
 为了方便种子的导入导出和保管, 
-BIP-39\footnote{Marek Palatinus, Pavol Rusnak, Aaron Voisine, Sean Bowe. 
+BIP-39\footnote{
+Marek Palatinus, Pavol Rusnak, Aaron Voisine, Sean Bowe. 
 BIP-39: Mnemonic code for generating deterministic keys. 2013.
 \url{https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki}}
 给出了将种子和助记词(Mnemonic Code)相互转化的操作过程.
-另外BIP-38\footnote{Mike Caldwell, Aaron Voisine. BIP-38: Passphrase-protected private key. 2012.
+另外BIP-38\footnote{
+Mike Caldwell, Aaron Voisine. BIP-38: Passphrase-protected private key. 2012.
 \url{https://github.com/bitcoin/bips/blob/master/bip-0038.mediawiki}}
 给出了在纯软件环境下保护种子信息的措施: 从用户口令(Passphrase)派生密钥实现对种子信息的加密保护.
 每次需要使用种子信息都要求用户输入口令并派生密钥来解密出种子信息.
