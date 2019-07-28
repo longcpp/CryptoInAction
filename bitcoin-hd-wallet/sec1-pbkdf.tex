@@ -1,49 +1,64 @@
 
 \section{基于口令的密钥派生函数}
 
-PBKDF用来从一个较短的便于记忆的口令(Passphrase/Password)派生出密码学方案中使用的密钥.
-PBKDF的输入除了口令之外,通常还有一些其他的输入参数, 如盐值(Salt), 迭代次数(Iteration Count)等,
-这些参数用来引入更多的熵值(Entropy)或者用于调整一次PBKDF计算所需的计算量.
+PBKDF用来从一个较短的便于记忆的口令(Passphrase/Password)派生出密码学方案中所需的密钥.
+PBKDF的输入除了口令之外,通常还有一些其他的输入参数, 如盐值(Salt), 迭代次数(Iteration Count)等.
+盐值用来引入更多的熵值(Entropy)以进一步提升PBKDF的安全性, 迭代次数等信息则用来调整一次PBKDF计算所需的计算量.
 PBKDF通常是计算密集型的,计算需要消耗较为可观的计算量.
 从口令派生密码学方案中使用的密钥时,由于只需要进行一次操作,通过调整参数,可以在用户体验和计算量之间进行权衡.
-而对暴力攻击，攻击者可能需要执行上亿次计算，因此它大幅增加了攻击者的计算难度。
-并且此类算法支持随着计算机硬件的发展做对计算难度进行灵活的调整，使用起来十分方便。
+而对暴力穷举攻击,由于攻击者需要进行海量的PBKDF计算,提升每次PBKDF计算的难度意味着攻击者需要付出更多的计算资源.
+并且由于迭代次数等参数的存在,可以根据计算机硬件的发展做对计算难度进行灵活的调整.
 
 \subsection{PBKDF2}
-PBKDF2全称为Password-Based Key Derivation Function 2，在PKCS\#5
-中取代了输出长度不大于160比特的PBKDF1作为该规范推荐的密钥派生函数。
-BIP39协议使用该函数从助记词组派生一个随机串，该随机串用作BIP32 HD(Hierarchical Deterministic)
-钱包中生成主密钥对的seed。  PBKDF2最早被包含在PKCS\#5中发表，后来该规范又被IETF以RFC 
+PBKDF2全称为Password-Based Key Derivation Function 2,在PKCS\#5
+中取代了输出长度不大于160比特的PBKDF1作为该推荐使用的密钥派生函数.
+BIP39协议使用该函数从助记词组派生一个一串随机比特,作为BIP32的分层确定性钱包中用于生成主密钥对的种子值.
+PBKDF2最早被包含在PKCS\#5中发表,后来该规范又被IETF以RFC 
 2898\footnote{
-RFC2898: PKCS \#5: Password-Based Cryptography Specification Version 2.0.
-\url{https://tools.ietf.org/html/rfc2898}}重新发表。在2017年发布的RFC8018中，仍然建议用它来做password hashing。
+RFC 2898: PKCS \#5: Password-Based Cryptography Specification Version 2.0.
+\url{https://tools.ietf.org/html/rfc2898}}重新发表.
+在2017年发布的RFC 8018\footnote{
+RFC 8018: PKCS \#5: Password-Based Cryptography Specification Version 2.1 \url{https://tools.ietf.org/html/rfc8018}}
+中,仍然建议用PBKDF2函数作为处理口令时的哈希函数.
 
-在PBKDF中，由于用户的passphrase取值空间一般较小，攻击者在进行暴力攻击时比较容易。
-Salt作为一段均匀随机分布的比特串，不需要保密，目的是为了增加攻击者的搜索空间。
-同时当salt足够长时（如64bit），攻击者无法通过预计算存储相应的计算结果，从而降低了攻击的可行性。
-另外，也降低了从同一个passphrase派生出来的密钥碰撞的概率，如：在salt为64比特时，这个概率为$2^{-32}$.
+由于用户的口令取值空间一般较小,容易被穷举攻击,因此PBKDF在口令之外的还有参数盐值$S$.
+使用盐值时,同样的口令值在选用不同的盐值时,可以映射成为不同的密钥.
+如果盐值为64比特,就意味着一个口令可以被映射成为$2^{64}$个不同的密钥,
+这样可以防范彩虹表攻击(Rainbow Table Attack)\footnote{
+Wikipedia: Rainbow table. \url{https://en.wikipedia.org/wiki/Rainbow_table}},
+另外也可以防止同一个口令通过PBKDF计算出来的密钥相同,例如在选用64比特的盐值时,
+根据生日攻击\footnote{
+Wikipedia: Birthday problem. \url{https://en.wikipedia.org/wiki/Birthday_problem}}
+的理论,发生碰撞的概率(也即同样口令不同的盐值通过PBKDF生成的密钥值相同)大约为$2^{-32}$.
 
-PBKDF的另一个重要参数$c$为迭代轮数，限定了密钥派生的计算代价，也增加了攻击的复杂度。因此，在密钥派生的计算代价可以承受的范围内，
-$c$的取值越大越好。PKCS\#5建议$c$的最小取值为1000，在一些关键的应用场景中甚至需要取到1000 0000.
+PBKDF的另一个重要参数为迭代次数$c$,通过调整次数可以增大一次密钥派生计算的代价,
+也同样增加了攻击的难度.迭代次数的调整,可以显著增加攻击者海量穷举时海量计算时的成本,
+而对一次诚实的派生计算没有显著影响.
+因此,在密钥派生的计算代价可以承受的范围内(不影响用户体验),$c$的取值越大越好.
+PKCS\#5建议$c$的最小取值为1000,在一些关键的应用场景中甚至需要取到10000000.
 
-PBKDF2算法的大致流程为：根据算法选取的伪随机函数(PRF)的输出长度$hLen$和需要派生的密钥长度$dklen$，
-将计算过程划分为$l=\lceil (dklen/hlen) \rceil$个可并行的过程。在每一个独立进行的过程中，需要迭代$c$次PRF的计算，
-并且后面的计算依赖于前面的计算结果，因此必须顺序执行。将这$l$个计算结果级联起来即得到了最终派生的密钥。
+PBKDF2算法的大致流程为：根据算法选取的伪随机函数(PRF)的输出长度$hLen$和需要派生的密钥长度$dklen$,
+将计算过程划分为$l=\lceil (dklen/hlen) \rceil$个可并行的过程.在每一个独立进行的过程中,需要迭代$c$次PRF的计算,
+并且后面的计算依赖于前面的计算结果,因此必须顺序执行.将这$l$个计算结果级联起来即得到了最终派生的密钥.
 
 \subsection{Scrypt算法}
-Scrypt算法由Colin Percival设计，与PBKDF2相比，该算法在执行时对内存的消耗较高，
-限制了利用硬件并行实现来划分搜索空间的能力从而降低暴力攻击复杂度的可行性，
-以此来抵抗大规模的专用硬件攻击（即使用ASIC来加速暴力攻击的计算过程）。
-BIP38协议使用Scrypt算法作为密钥派生函数，从passphrase派生AES的加密密钥。 
+Scrypt算法由Colin Percival设计\footnote{
+Colin Percival. Stronger key derivation via sequential memory-hard functions. 2009.
+\url{http://www.tarsnap.com/scrypt/scrypt.pdf}},
+与PBKDF2相比,该算法在执行时对内存的消耗较高,
+限制了利用硬件实现进行并行搜索空间的能力,从而降低暴力攻击复杂度的可行性,
+以此来抵抗大规模的专用硬件攻击(例如使用ASIC来加速暴力穷举攻击).
+BIP38协议使用Scrypt算法作为密钥派生函数,从口令派生AES的加密密钥. 
 
-Scrypt算法对内存消耗的由来在于其中使用的一个scryptROMix子算法，
-该算法用来产生一个expensive-cost 的salt。在执行时，它会产生一组长度为$N$的伪随机比特串（如下，$V[i]$，长度为$128*r$比特），
-同时以一种伪随机的顺序对该比特串进行访问，这就导致攻击者必须有足够的内存来存储它。
-并且该比特串的计算是比较费时的，因此攻击者经过对时间和空间进行权衡的结果，
-要么是对内存资源要求不高但运行很慢，要么是效率较高但内存消耗较大。
+Scrypt算法对内存消耗的由来在于其中使用的一个名为\textsf{scryptROMix}的子算法,
+该算法用来产生一个expensive-cost 的salt.在执行时,它会产生一组长度为$N$的伪随机比特串(如下,$V[i]$,长度为$128*r$比特),
+同时以一种伪随机的顺序对该比特串进行访问,这就导致攻击者必须有足够的内存来存储它.
+并且该比特串的计算是比较费时的,因此攻击者经过对时间和空间进行权衡的结果,
+要么是对内存资源要求不高但运行很慢,要么是效率较高但内存消耗较大.
 
-Scrypt算法在PBKDF之外引入了$N\cdot r\cdot p$三个参数，算法对内存的消耗与$N*r$成线性关系，$p$表示算法在执行时的可并行度。用户可以根据当前CPU、内存的发展情况、以及要求的并行度对
-进行它们调节，以调整算法对CPU/内存的消耗。
+Scrypt算法在PBKDF之外引入了$N, r, p$三个参数,
+算法对内存的消耗与$N*r$成线性关系, $p$表示算法在执行时的可并行度.
+用户可以根据当前CPU性能, 内存容量, 以及要求的并行度对进行它们调节, 以调整算法的CPU/内存消耗.
 
 
 % \begin{algorithm}[tbp]\footnotesize

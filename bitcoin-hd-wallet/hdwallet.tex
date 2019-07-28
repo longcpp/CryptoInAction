@@ -102,7 +102,7 @@
 Bitcoin系统中对Bitcoin (BTC)的控制权实际上是对基于secp256k1的ECDSA签名机制的私钥的控制权,
 私钥是256比特的随机值. 为了构建一笔合法的交易, 需要利用私钥对这笔交易进行ECDSA签名值.
 但由于私钥本身是一串256位的比特串,直接以二进制形式访问私钥对用户来说非常不友好.
-为了方便用户记录和识别, 衍生出了Hex, WIF (Wallet Import Format), WIF-compressed等各种展示和存储私钥的新格式.
+为了方便用户记录和识别, 衍生出了Hex, WIF (Wallet Import Format), 压缩的WIF等各种展示和存储私钥的新格式.
 相比256比特的二进制比特串, 这些格式的字符长度更短, 更易于辨别. 
 
 为了在所有交易信息都公开的前提下保护Bitcoin用户的隐私,
@@ -110,16 +110,16 @@ Bitcoin系统中对Bitcoin (BTC)的控制权实际上是对基于secp256k1的ECD
 \textit{A new key pair should be used for each transaction to keep them from being linked to a common owner.}
 摘录自 Satoshi Nakamoto. Bitcoin: A Peer-to-Peer Electronic Cash System. 2008. 
 \url{https://bitcoin.org/bitcoin.pdf}}.
-遵循中本聪的建议,可以期待的是会有相当比例的Bitcoin钱包中管理了多个地址和对应的多个私钥.
-但同时,维护和保管多个零散的公私钥会使用户体验变差,也更容易犯错.
+遵循中本聪的建议,可以预期相当比例的Bitcoin钱包中会管理多个地址及其相应的公私钥对.
+维护和保管多个零散的公私钥会使用户体验变差,用户在使用中也更容易犯错.
 如果多个私钥都可以从某个值确定性派生而来,则管理多个私钥的复杂性就简化为对这一个值的管理.
 
-基于这样的思路以及椭圆曲线secp256k1的ECDSA签名机制具有的公私钥之间的关系,
+基于这样的思路以及椭圆曲线secp256k1的ECDSA签名机制的公私钥之间的关系,
 Pieter Wuille在BIP-32\footnote{
 Pieter Wuille. BIP-32: Hierarchical Deterministic Wallets. 2012. 
 \url{https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki}}
 中提出了分层确定性钱包(Hierarchical Deterministic Wallets, HDW)的理念以及技术说明.
-HDW允许从一个种子(Seed)确定性地派生出一整棵密钥树, 从而对多个地址/私钥的管理就简化为对种子的管理.
+HDW允许从一个种子(Seed)确定性地派生出一整棵密钥树, 从而简化了对多个地址及相应公私钥对的管理.
 BIP32着重介绍分层确定性钱包的原理,并没有就如何分层以及每一层的逻辑功能给规范,
 为了在不同的分层确定性钱包实现之间保持兼容性, Marek Palatinus和Marek Palatinus
 在2014年提出了BIP-44\footnote{
@@ -130,12 +130,13 @@ Marek Palatinus, Pavol Rusnak. BIP-44: Multi-Account Hierarchy for Deterministic
 BIP-39\footnote{Marek Palatinus, Pavol Rusnak, Aaron Voisine, Sean Bowe. 
 BIP-39: Mnemonic code for generating deterministic keys. 2013.
 \url{https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki}}
-给出了将种子和助记词(Mnemonic Code)进行确定性相互转化的具体操作过程.
+给出了将种子和助记词(Mnemonic Code)相互转化的操作过程.
 另外BIP-38\footnote{Mike Caldwell, Aaron Voisine. BIP-38: Passphrase-protected private key. 2012.
 \url{https://github.com/bitcoin/bips/blob/master/bip-0038.mediawiki}}
 给出了在纯软件环境下保护种子信息的措施: 从用户口令(Passphrase)派生密钥实现对种子信息的加密保护.
 每次需要使用种子信息都要求用户输入口令并派生密钥来解密出种子信息.
-这种通过口令进行种子信息加解密的方式,在提升种子信息的存储安全之外,同时引入了通过口令进行鉴权的功能, 可谓一举两得.
+这种通过口令进行种子信息加解密的方式,
+不仅保证了种子的存储安全,也同时引入了通过口令进行鉴权的功能, 可谓一举两得.
 
 前述的各个BIP协议主要是在如何简化用户与钱包软件的交互以及在不过多增加用户负担的情况下提高安全性等方面进行的探索,
 主要是希望由用户掌握一个短的方便记忆的字符串,通过密码算法,派生出不同用途的密钥(签名密钥, 加解密密钥).
