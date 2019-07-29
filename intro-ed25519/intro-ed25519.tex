@@ -99,7 +99,12 @@
 
 \maketitle
 
-
+EdDSA算法(Edwards-curve Digital Signature Algorithm)是Bernstein等人\footnote{
+Bernstein, Daniel J., Niels Duif, Tanja Lange, Peter Schwabe, and Bo-Yin Yang. 
+High-speed high-security signatures. Journal of Cryptographic Engineering 2, no. 2 (2012): 77-89.
+\url{https://ed25519.cr.yp.to/ed25519-20110926.pdf}}
+在2012年设计的基于Twisted Edwards Curves的数字签名算法.
+EdDSA签名机制是Schnorr签名机制的一个变种,其设计初衷是在不牺牲安全性的前提下提升签名/验签速度.
 
 \include{sec1-pbkdf}
 
