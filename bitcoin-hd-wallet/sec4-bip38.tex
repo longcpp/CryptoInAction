@@ -323,9 +323,9 @@ $generatedaddress=\textsf{RIPEMD160}(\textsf{SHA256}(generatedpubkey))[0,\cdots,
 
 第2步中函数Scrypt的参数$P$为用户提供的33字节的$passpoint$, 
 参数$S$为$addresshash || ownerentropy$, $n=1024, r=1, p=1, length=64$.
-这里最终数据的格式略有些奇怪,推测是为了方法一中的结果保持长度一致(都是39个字节).
-相比较,这里比前面多了一个8字节的$ownerentropy$字段,
-\red{因此选取的$seedb$长度也就限制在了24字节 这句怎么理解 跟上一句串不起来},参见Figure~\ref{fig-m2enc}.
+这里最终数据的格式略有些奇怪,推测是为了方法一中的结果保持长度一致(都是39个字节),参见Figure~\ref{fig-m2enc}.
+%相比较,这里比前面多了一个8字节的$ownerentropy$字段,
+%\red{因此选取的$seedb$长度也就限制在了24字节 这句怎么理解 跟上一句串不起来},参见Figure~\ref{fig-m2enc}.
 
 %\begin{algorithm}[h]\footnotesize
 %\caption{Encryption}
