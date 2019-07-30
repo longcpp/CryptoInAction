@@ -103,17 +103,77 @@ EdDSA算法(Edwards-curve Digital Signature Algorithm)是Bernstein等人\footnot
 Bernstein, Daniel J., Niels Duif, Tanja Lange, Peter Schwabe, and Bo-Yin Yang. 
 High-speed high-security signatures. Journal of Cryptographic Engineering 2, no. 2 (2012): 77-89.
 \url{https://ed25519.cr.yp.to/ed25519-20110926.pdf}}
-在2012年设计的基于Twisted Edwards Curves的数字签名算法.
+在2012年设计的基于扭曲爱德华曲线(Twisted Edwards Curves)的数字签名算法.
 EdDSA签名机制是Schnorr签名机制的一个变种,其设计初衷是在不牺牲安全性的前提下提升签名/验签速度.
 
-\include{sec1-pbkdf}
+Ed25519签名算法是基于哈希函数SHA-512和椭圆曲线Curve25519的EdDSA签名机制,旨在提供128比特的安全强度.
 
-\include{sec2-hdwallet}
+Curve25519是定义在有限域$\F_q, \ q = 2^{255}-19$上的扭曲爱德华曲线
+$$-x^2 + y^2 = 1 - \frac{121665}{121666}x^2y^2,$$
+曲线上点的个数为$\#E(F_q)=2^c\cdot\ell, $
 
-\include{sec3-bip39}
+$$
+(x_1, y_1) + (x_2, y_2) = \left( \frac{x_1y_2 + y_1x_2}{1 + dx_1x_2y_1y_2}, \frac{y_1y_2 - x_1x_2}{1-dx_1x_2y_1y_2} \right),
+$$
+并且单位元为点$(0,1)$.
 
-\include{sec4-bip38}
+RFC 8032中总结到, EdDSA签名机制的优势在于
+\begin{enumerate}
+\item EdDSA在多种计算平台上都能达到较高的性能
+\item 签名过程中不需要唯一的随机数,能够避免随机数引发的安全问题
+\item 对于侧信道攻击等具有更好的免疫效果
+\item 公钥和签名值都较小(Ed25519公钥为32个字节,签名值为64字节)
+\item 计算公式是完备(Complete),无需对不相信的点执行点的验证操作
+\item EdDSA能抵抗碰撞,底层哈希函数的碰撞不会破坏EdDSA签名机制(PureEdDSA)
+\end{enumerate}
 
+
+Montgomery, Peter L. "Speeding the Pollard and elliptic curve methods of factorization." 
+Mathematics of computation 48, no. 177 (1987): 243-264. 
+\url{https://www.ams.org/journals/mcom/1987-48-177/S0025-5718-1987-0866113-7/S0025--5718-1987-0866113-7.pdf}
+
+RFC 7748\footnote{
+RFC 7748. https://tools.ietf.org/html/rfc7748.
+\url{https://tools.ietf.org/html/rfc7748}
+}
+中定义了椭圆曲线Curve25519和Curve448,以及基于这两条曲线的ECDH协议: X25519和X448.
+RFC 8032\footnote{
+RFC 8032. Edwards-Curve Digital Signature Algorithm (EdDSA).
+\url{https://tools.ietf.org/html/rfc8032}
+}
+描述了EdDSA (Edwards-curve Digital Signature Algorithm)机制并给出了
+基于两个椭圆曲线edwards25519和edwards448的EdDSA算法的具体实例化: 
+Ed25519, Ed25519ph, Ed25519ctx, Ed448, Ed448ph.
+RFC 8031\footnote{
+RFC 8031. Curve25519 and Curve448 for the Internet Key Exchange Protocol Version 2 (IKEv2) Key Agreement. 
+\url{https://tools.ietf.org/html/rfc8031}
+}
+中给出了在IKEv2使用Curve25519和Curve448进行临时密钥交换的规范.
+RFC 8080\footnote{
+RFC 8080. Edwards-Curve Digital Security Algorithm (EdDSA) for DNSSEC. 
+\url{https://tools.ietf.org/html/rfc8080}
+}
+中给出了在DNSSEC中使用Ed25519和Ed448的规范.
+RFC 8410\footnote{
+RFC 8410. Algorithm Identifiers for Ed25519, Ed448, X25519, and X448 for Use in the Internet X.509 Public Key Infrastructure.
+\url{https://tools.ietf.org/html/rfc8410}
+}
+中为算法Ed25519, Ed448, X25519, X448定义了用于PKI体系的X.509证书的标识符.
+RFC 8420\footnote{
+RFC 8420. Using the Edwards-Curve Digital Signature Algorithm (EdDSA) in the Internet Key Exchange Protocol Version 2 (IKEv2).
+\url{https://tools.ietf.org/html/rfc8420}
+}
+中给出了在IKEv2中使用EdDSA时Ed25519和Ed448的ASN.1 Objects.
+RFC 8446\footnote{
+RFC 8446. The Transport Layer Security (TLS) Protocol Version 1.3.
+\url{https://tools.ietf.org/html/rfc8446}
+}
+中TLS1.3的算法套件中包含了Ed25519和Ed448.
+RFC 8463\footnote{
+RFC 8463. A New Cryptographic Signature Method for DomainKeys Identified Mail (DKIM).
+\url{https://tools.ietf.org/html/rfc8463}
+}
+为DomainKeys Identified Mail (DKIM) (RFC 6376)添加了新的签名算法Ed25519-SHA256
 
 
 \end{document}
