@@ -268,10 +268,10 @@ $$kP = k_1P + k_2\lambda P = k_1P + k_2\phi(P) = k_1 P + k_2 Q, Q = \phi(P)$$
 其中$Q=\phi(P)$仅需要一次域中的乘法运算($(x_Q, y_Q) = (\beta x_P, y_P)$),
 而$k_1 P + k_2 Q$的计算可以利用多点并行乘法(Simultaneous Multiple Point Multiplication)完成.
 
-标量$k$的分解$k=k_1+k_2\lambda \mod n$在~\cite{glv01}中有讨论,完整的算法参见~\cite{guidetoecc}~中的Algorithm 3.74.
+标量$k$的分解$k \equiv k_1+k_2\lambda \mod n$在~\cite{glv01}中有讨论,完整的算法参见~\cite{guidetoecc}~中的Algorithm 3.74.
 分解$k$的算法,输入为$n, \lambda, k\in [1, n-1]$,输出结果为$(k_1, k_2) \in \Z \times \Z$满足
 $k \equiv k_1 + k_2 \lambda \mod n$,并且$(k_1, k_2)$的欧几里得范数(Euclidean Norm)较小.
-考虑定义为$(i,j) \rightarrow i + j\lambda)$的同态映射$f: \Z\times\Z \rightarrow \Z_n$,
+考虑定义为$(i,j) \rightarrow i + j\lambda$的同态映射$f: \Z\times\Z \rightarrow \Z_n$,
 我们希望找到的是向量$\mathbf{k}=(k_1, k_2)\in \Z\times\Z$并且满足$f(\mathbf{k})= k$.
 注意$\mathbf{k} = (k, 0)$满足上述要求,但是这种值对我们加速点倍乘的初衷没有任何帮助,
 我们需要的是具有小的欧几里得范数的向量$\mathbf{k}$.
@@ -285,7 +285,7 @@ $k \equiv k_1 + k_2 \lambda \mod n$,并且$(k_1, k_2)$的欧几里得范数(Eucl
 将扩展的欧几里得算法应用到$n$和$\lambda$, 则计算过程中会产生一系列的等式:
 \begin{equation}
 \label{eq-eea}
-s_i n. + t_i \lambda = r_i, i = 0, 1, 2, ....
+s_i n + t_i \lambda = r_i, i = 0, 1, 2, ....
 \end{equation}
 其中$s_0 = 1, t_0 = 0, r_0 = n, s_1 =0, t_1 = 1, r_1 = \lambda$并且有$r_i \ge 0$.
 则有如下性质:
@@ -330,7 +330,7 @@ $$s_{m+1}n + t_{m+1}\lambda = r_{m+1} \rightarrow r_{m+1} - t_{m+1} \lambda = s_
 取$(a_1, b_1) = \mathbf{v_1}  = (r_{m+1}, - t_{m+1})$,就能满足$f(\mathbf{v_1}) = 0$.
 由于$|t_{m+1}|<\sqrt{n}$以及$|r_{m+1}| < \sqrt{n}$, 则$\mathbf{v_1}$的欧几里得范数$||\mathbf{v_1}|| <\sqrt{2n}$.
 取$(a_2, b_2) = \mathbf{v_2}$为$(r_{m}, - t_{m})$和$(r_{m+2}, - t_{m+2})$中欧几里得范数较小的那个,则根据Equaiton (\ref{eq-eea})有$f(\mathbf{v_2}) = 0$.直观上感觉,$\mathbf{v_2}$在所有满足条件的向量中也具有较小的欧几里得范数.
-可以注意到$\mathbf{v_1}$和$\mathbf{v_2}$是相互独立的,否则,不失一般性假设$\mathbf{v_2}=(r_m,-t_m)$,则有
+可以注意到$\mathbf{v_1}$和$\mathbf{v_2}$是相互独立的,不失一般性假设$\mathbf{v_2}=(r_m,-t_m)$,则有
 $$
 \dfrac{r_{m+1}}{r_m} = \dfrac{-t_{m+1}}{-t_m} = \dfrac{t_{m+1}}{t_m},
 $$
@@ -343,7 +343,7 @@ $$
 求得$\beta_1, \beta_2$之后, 在$\Z$中选取距离$\beta_1, \beta_2$最近的整数$c_1, c_2$,
 则$\mathbf{v} = c_1\mathbf{v_1} + c_2\mathbf{v_2}$, 则期望构建的向量 
 $$\mathbf{k} = (k,0) - \mathbf{v} = (k, 0) - c_1\mathbf{v_1} + c_2\mathbf{v_2},$$
-其中,$k_1 =  k - c_1a_1 - c_2a_2, \ k_2 = \ -c_1b_1-c_2b_2$.
+其中, $k_1 =  k - c_1a_1 - c_2a_2, \ k_2 = \ -c_1b_1-c_2b_2$.
 
 \begin{figure}[h]
 \centering
@@ -373,7 +373,7 @@ $a_1, b_1, a_2, b_2, c_1, c_2$的值.与~\cite{halfinney}对比发现输出的$a
 
 \lstinputlisting[caption=\texttt{split_k with $\lambda$ for secp256k1},label=lst-splitk]{./split-k.sage}
 
-为了进一步验证$k$分解的有效性, Listing~\ref{lst-splitkverify}中对随机选取的$k\in_R[1,n-1]$,用$\lambda$进行了分解,
+为了进一步验证$k$分解的有效性, Listing~\ref{lst-splitkverify}~中对随机选取的$k\in_R[1,n-1]$,用$\lambda$进行了分解,
 可以发现~\code{split_k}~返回的$k_1, k_2$,满足$k_1 + k_2\lambda\equiv k\mod n$.
 \begin{lstlisting}[language=python, caption=\texttt{verify multiplier split  with $\lambda$ for secp256k1}, label=lst-splitkverify]
 sage: load("split-k.sage")
