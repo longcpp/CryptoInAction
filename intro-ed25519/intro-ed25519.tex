@@ -99,51 +99,105 @@
 
 \maketitle
 
-EdDSA算法(Edwards-curve Digital Signature Algorithm)是Bernstein等人\footnote{
+ECDSA签名算法(基于secp256k1或者secp256r1曲线)是目前主流的数字签名算法.
+然而在具体应用ECDSA签名算法时,稍有不慎就会引发诸多问题\footnote{
+longcpp. ECDSA 签名机制在区块链领域中的应⽤. 2019.
+\url{https://github.com/longcpp/CryptoInAction/tree/master/ecdsa-blockchain-dangers}},
+这包括签名过程中对随机数需求会在随机数选取不当的情况下引发多种安全问题,
+也包括签名值$(r,s)$的可锻造性在特殊应用场景下(例如区块链场景)引发的干扰,
+还包括公钥压缩时总需要额外的一个字节来表示一个比特的信息造成的存储空间浪费.
+随着各种问题的出现,也有了相应的应对措施,
+例如RFC 6979\footnote{
+RFC 6979. 
+Deterministic Usage of the Digital Signature Algorithm (DSA) and Elliptic Curve Digital Signature Algorithm (ECDSA).
+\url{https://tools.ietf.org/html/rfc6979}}
+中将签名过程中随机数的随机选取变更为通过私钥和待签名消息
+进行确定性行派生过程能够以避开与随机数选取相关的安全问题;
+而通过在应用层约束$s$的取值范围,则可以规避可锻造性的问题;
+同样通过在应用层的逻辑约束,例如利用素数域上二次剩余\footnote{
+Pieter Wuille. Schnorr Signatures for secp256k1. 2018.
+\url{https://github.com/sipa/bips/blob/bip-schnorr/bip-schnorr.mediawiki}}
+的性质,也可以将压缩公钥的表示从33个字节压缩为32个字节.
+在实现方面,尤其是在椭圆曲线点群的加法运算,由于secp256k1和secp256r1曲线上
+椭圆曲线点群加法的不完备性(需要判定多种边界条件)使得签名过程的常量时间实现愈发困难.
+通过相应技术手段同样可以达到常量实现时间,但也相应增加了实现的难度与代码复杂度,
+同时不可避免的会对执行速度产生影响.
+虽然secp256k1和secp256r1在构造曲线和选取参数时纳入了工程实现的考量,
+例如secp256k1自带的自同态映射\footnote{
+longcpp. 基于 secp256k1 的⾃同态映射加速 ECDSA 验签. 2019.
+\url{https://github.com/longcpp/CryptoInAction/tree/master/secp256k1-endomorphism}
+}能够加速验签操作以及
+secp256r1所采用的蒙哥马利友好的(Montgomery Friendly)\footnote{
+Gueron, Shay, and Vlad Krasnov. 
+Fast prime field elliptic-curve cryptography with 256-bit primes. 
+Journal of Cryptographic Engineering 5, no. 2 (2015): 141-151.
+\url{https://eprint.iacr.org/2013/816.pdf}}
+底层素数域的特征$p$.
+但是一个很自然的问题是,数字签名算法的运行效率可否做到更快?借助工程手段以及SIMD指令集的应用,
+可以逐步提升执行效率.然而更好安全性与更高的执行效率的诉求,或许无法通过这种小步迭代的方式得到满足.
+
+同时解决前述的应用安全,实现安全以及执行效率的问题,
+要求在工程手段之外更为深度的改进,一个自然的方向是重新构建椭圆曲线以及签名机制
+以便在多个层次上同时改进:改进底层算术运算加速中层点群运算,中层点群运算适配上层协议,
+并同时考虑ECDSA签名机制的问题与局限性加以避免.
+EdDSA (Edwards-curve Digital Signature Algorithm)签名机制是这个研究方向上的成果.
+EdDSA签名机制是Bernstein等人\footnote{
 Bernstein, Daniel J., Niels Duif, Tanja Lange, Peter Schwabe, and Bo-Yin Yang. 
 High-speed high-security signatures. Journal of Cryptographic Engineering 2, no. 2 (2012): 77-89.
 \url{https://ed25519.cr.yp.to/ed25519-20110926.pdf}}
-在2012年设计的基于扭曲爱德华曲线(Twisted Edwards Curves)的数字签名算法.
-EdDSA签名机制是Schnorr签名机制的一个变种,其设计初衷是在不牺牲安全性的前提下提升签名/验签速度.
+在2012年设计的基于爱德华曲线(Edwards Curves)的数字签名算法.
+%更具体来说是基于扭曲爱德华曲线(Twisted Edwards Curves)的数字签名算法.
+EdDSA签名机制是Schnorr签名机制的一个变种,其设计初衷是在不牺牲安全性的前提下提升签名/验签速度,
+并同时解决前述的ECDSA在应用方面存在的一些问题.
 
-Ed25519签名算法是基于哈希函数SHA-512和椭圆曲线Curve25519的EdDSA签名机制,旨在提供128比特的安全强度.
+目前广泛使用的EdDSA签名机制是基于哈希函数SHA-512和椭圆曲线Curve25519的Ed25519签名机制.
+Ed25519签名机制定义在爱德华曲线Edwards25519上,旨在提供128比特的安全强度(与secp256k1和secp256r1安全强度一致).
+Curve25519是Bernstein\footnote{
+Bernstein, Daniel J. Curve25519: new Diffie-Hellman speed records.
+In International Workshop on Public Key Cryptography, pp. 207-228. Springer, Berlin, Heidelberg, 2006.
+\url{https://cr.yp.to/ecdh/curve25519-20060209.pdf}}
+在2005年为了提升ECDH密钥交换协议(Elliptic Curve Diffie-Hellman Key Agreement)效率而构建的椭圆曲线,
+并同时提供了高速软件实现,相关文献和代码实现参见Curve25519的网站\footnote{
+Daniel J. Bernstein. A state-of-the-art Diffie-Hellman function. \url{https://cr.yp.to/ecdh.html}}.
+\red{实现相关的信息 值得注意的是,C hou在SAC 2017上改进了Curve25519的实现效率}
+值得注意的是,在2005年的论文中Curve25519实际上用来指代ECDH密钥交换协议,
+本文档中遵循Bernstein在邮件中给出的名词约定规范\footnote{
+Daniel J. Bernstein. [Cfrg] 25519 naming.
+\url{https://mailarchive.ietf.org/arch/msg/cfrg/-9LEdnzVrE5RORux3Oo_oDDRksU}
+},用Curve25519指代底层的椭圆曲线,用X25519指代基于Curve25519的ECDH密钥协议.
 
-Curve25519是定义在有限域$\F_q, \ q = 2^{255}-19$上的扭曲爱德华曲线
-$$-x^2 + y^2 = 1 - \frac{121665}{121666}x^2y^2,$$
-曲线上点的个数为$\#E(F_q)=2^c\cdot\ell, $
+Curve25519是基于素数域$\F_q, \ q = 2^{255}-19$上的蒙哥马利曲线(Montgomery Curve),
+曲线方程为$y^2 = x^3 + 486662x^2 + x$.
+Curve25519曲线双向有理等价(Birational Equivalent)爱德华曲线(Edwards Curves) Edwards25519:
+$x^2 + y^2 = 1 + (121665/121666)x^2y^2$, 而这条爱德华曲线则同构于(Isomorphic)
+扭曲爱德华曲线(Twisted Edwards Curves) twisted-Edwards25519: $-x^2+y^2 = 1 - (121665/121666)x^2y^2$.
+前述的Ed25519签名算法精确来说并不是直接构建在Curve25519曲线上的,
+而是基于扭曲爱德华曲线(Twisted Edwards Curves) twisted-Edwards25519.
+为什么X25519直接构建在Curve25519之上, 而Ed25519构建在Twisted-Edwards25519之上,
+而Curve25519和Twisted-Edwards25519是双向有理等价的.
+这是因为ECDH协议和EdDSA协议计算过程中重度依赖的点群运算不同,
+这是为更好的适配的上层协议而刻意选择的中层的椭圆曲线点的表示的结果.
+在继续深入技术原理之前,我们先看下Ed25519和X25519在工业界的应用情况.
 
-$$
-(x_1, y_1) + (x_2, y_2) = \left( \frac{x_1y_2 + y_1x_2}{1 + dx_1x_2y_1y_2}, \frac{y_1y_2 - x_1x_2}{1-dx_1x_2y_1y_2} \right),
-$$
-并且单位元为点$(0,1)$.
-
-RFC 8032中总结到, EdDSA签名机制的优势在于
-\begin{enumerate}
-\item EdDSA在多种计算平台上都能达到较高的性能
-\item 签名过程中不需要唯一的随机数,能够避免随机数引发的安全问题
-\item 对于侧信道攻击等具有更好的免疫效果
-\item 公钥和签名值都较小(Ed25519公钥为32个字节,签名值为64字节)
-\item 计算公式是完备(Complete),无需对不相信的点执行点的验证操作
-\item EdDSA能抵抗碰撞,底层哈希函数的碰撞不会破坏EdDSA签名机制(PureEdDSA)
-\end{enumerate}
-
-
-Montgomery, Peter L. "Speeding the Pollard and elliptic curve methods of factorization." 
-Mathematics of computation 48, no. 177 (1987): 243-264. 
-\url{https://www.ams.org/journals/mcom/1987-48-177/S0025-5718-1987-0866113-7/S0025--5718-1987-0866113-7.pdf}
-
+2005年就提出的Curve25519以及X25519起初并没有得到广泛的重视和应用,
+然而受Dual_EC_DRBG事件\footnote{
+Bernstein, D.J., Lange, T. and Niederhagen, R., 2016. Dual EC: A standardized back door. In The New Codebreakers (pp. 256-281). Springer, Berlin, Heidelberg.
+\url{https://projectbullrun.org/dual-ec/documents/dual-ec-20150731.pdf}}
+的影响,工业界有了很多关于NIST推荐的密码算法标准的质疑.
+也因此,设计规则完全透明,没有版权保护并且效率更高的X25519和Ed25519得到重视.
 RFC 7748\footnote{
 RFC 7748. https://tools.ietf.org/html/rfc7748.
 \url{https://tools.ietf.org/html/rfc7748}
 }
-中定义了椭圆曲线Curve25519和Curve448,以及基于这两条曲线的ECDH协议: X25519和X448.
+中描述了椭圆曲线Curve25519和Curve448,以及基于这两条曲线的ECDH协议规范: X25519和X448.
 RFC 8032\footnote{
 RFC 8032. Edwards-Curve Digital Signature Algorithm (EdDSA).
 \url{https://tools.ietf.org/html/rfc8032}
 }
-描述了EdDSA (Edwards-curve Digital Signature Algorithm)机制并给出了
-基于两个椭圆曲线edwards25519和edwards448的EdDSA算法的具体实例化: 
+则给出了EdDSA (Edwards-curve Digital Signature Algorithm)签名机制的规范,并给出了
+基于两个椭圆曲线Edwards25519和Edwards448的EdDSA算法的具体实例化: 
 Ed25519, Ed25519ph, Ed25519ctx, Ed448, Ed448ph.
+更多的RFC规则进一步给出了在特定场景下使用X25519或者Ed25519的规范.
 RFC 8031\footnote{
 RFC 8031. Curve25519 and Curve448 for the Internet Key Exchange Protocol Version 2 (IKEv2) Key Agreement. 
 \url{https://tools.ietf.org/html/rfc8031}
@@ -173,7 +227,49 @@ RFC 8463\footnote{
 RFC 8463. A New Cryptographic Signature Method for DomainKeys Identified Mail (DKIM).
 \url{https://tools.ietf.org/html/rfc8463}
 }
-为DomainKeys Identified Mail (DKIM) (RFC 6376)添加了新的签名算法Ed25519-SHA256
+为DomainKeys Identified Mail (DKIM) (RFC 6376)添加了新的签名算法Ed25519-SHA256.
+
+\section{蒙哥马利曲线与爱德华曲线}
+
+相比secp256k1/secp256r1的Short Weierstrass形式的椭圆曲线表示$y^2 = x^3 + ax + b$,
+蒙哥马利曲线$Y^2 = X^3 + AX^2 + X$与爱德华曲线(扭曲爱德华曲线) 
+$x^2+y^2 = 1  + dx^2y^2$ ($-X^2+Y^2 = 1  - dX^2Y^2$)较为陌生.
+Short Weierstrass, 蒙哥马利曲线以及爱德华曲线都可以通过符号代换与
+广义Weierstrass曲线$y^2 + a_1xy + a_3y = x^3 + a_2x^2 + a_4x + a_6$相互转换.
+X25519和Ed25519的做依赖的点的运算也都可以转换成为Weierstrass曲线上的点运算,
+然而使用特定的曲线形式,对于高效安全的X25519或者Ed25519大有裨益.
+
+蒙哥马利曲线是Montgomery在1987年提出椭圆曲线形式\footnote{
+Montgomery, Peter L. "Speeding the Pollard and elliptic curve methods of factorization." 
+Mathematics of computation 48, no. 177 (1987): 243-264. 
+\url{https://www.ams.org/journals/mcom/1987-48-177/S0025-5718-1987-0866113-7/S0025--5718-1987-0866113-7.pdf}
+},
+
+接下来我们讨论的曲线的默认都是定义在素数域$\F_q, q = 2^{255}-19$上的,别处不再复述.
+
+Curve25519是定义在有限域$\F_q, \ q = 2^{255}-19$上的扭曲爱德华曲线
+$$-x^2 + y^2 = 1 - \frac{121665}{121666}x^2y^2,$$
+曲线上点的个数为$\#E(F_q)=2^c\cdot\ell, $
+
+$$
+(x_1, y_1) + (x_2, y_2) = \left( \frac{x_1y_2 + y_1x_2}{1 + dx_1x_2y_1y_2}, \frac{y_1y_2 - x_1x_2}{1-dx_1x_2y_1y_2} \right),
+$$
+并且单位元为点$(0,1)$.
+
+RFC 8032中总结到, EdDSA签名机制的优势在于
+\begin{enumerate}
+\item EdDSA在多种计算平台上都能达到较高的性能
+\item 签名过程中不需要唯一的随机数,能够避免随机数引发的安全问题
+\item 对于侧信道攻击等具有更好的免疫效果
+\item 公钥和签名值都较小(Ed25519公钥为32个字节,签名值为64字节)
+\item 计算公式是完备(Complete),无需对不相信的点执行点的验证操作
+\item EdDSA能抵抗碰撞,底层哈希函数的碰撞不会破坏EdDSA签名机制(PureEdDSA)
+\end{enumerate}
+
+
+
+
+
 
 
 \end{document}
