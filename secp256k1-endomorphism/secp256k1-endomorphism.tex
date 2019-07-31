@@ -70,7 +70,7 @@
 \begin{document}
 
 \title{基于secp256k1的自同态映射加速ECDSA验签}
-\author{longcpp \\ longcpp9@gmail.com}
+\author{longcpp \\ \small{longcpp9@gmail.com}}
 
 \maketitle
 
@@ -78,9 +78,10 @@
 Bitcoin最开始采用的是OpenSSL中实现的基于secp256k1的ECDSA签名机制,
 然而OpenSSL中没有针对曲线secp256k1进行针对性优化,也就导致OpenSSL中基于secp256k1曲线的ECDSA效率很差.
 值得注意的是, OpenSSL项目中对基于secp256r1曲线的ECDSA进行了深度优化.
-OpenSSL中的两种ECDSA的实现速度测试在Listing~\ref{openssl-bench}~中给出.
+ 
+%OpenSSL中的两种ECDSA的实现速度测试在Listing~\ref{openssl-bench}~中给出.
+% \lstinputlisting[firstline=9, lastline=72, caption=\texttt{openssl_ecdsa_benchmark},label=openssl-bench]{./openssl-bench.cpp}
 
-\lstinputlisting[firstline=9, lastline=72, caption=\texttt{openssl_ecdsa_benchmark},label=openssl-bench]{./openssl-bench.cpp}
 
 编译链接OpenSSL 1.1版本,在Intel(R) Core(TM) i7-6700HQ CPU上的执行结果显示
 OpenSSL提供的基于secp256k1的ECDSA的执行速度大约为2000  sign/s和2300 verify/s,
@@ -96,34 +97,70 @@ OpenSSL实现的速度安全问题以及OpenSSL版本变动可能引入的不一
 libsep256k1项目中采用了大量技巧以提升签名验签的执行效率,
 这里我们仅关注利用secp256k1的自同态(Endomorphism)特性提升验签效率.
 开始讨论技术之前,首先感受下自同态特性的利用在libsecp256k1项目中带来的速度提升,
-注意为了利用自同态特性加速验签过程,需要在~\code{./configure}~时候指定~\code{--enable-endomorphism}~选项,
+注意为了利用自同态特性加速验签过程,需要在~\code{./configure}~时候指定~\code{--enable-endomorphism}~选项.
+另外libsecp256k1还提供了选项~\code{--with-bignum=gmp|no},可以利用GMP中实现进一步提升速度.
 为了利用libsec256k1自带的速度测试用例,也同时需要指定~\code{--enable-benchmark}.
-编译时不指定~\code{--enable-endomorphism}~选项,利用libsecp256k1自带的测试工具执行结果如下:
+Listing~\ref{lst-openssl-libsecp256k1-bench}~中列出了
+指定不同的编译选项(是否使用GMP库以及是否开启自同态选项)时,
+利用libsecp256k1自带的性能测试工具得到的测试数据.
+%编译时不指定~\code{--enable-endomorphism}~选项,利用libsecp256k1自带的测试工具执行结果如下:
 
-\begin{lstlisting}[caption=\texttt{libsecp256k1 benchmark without --enable-endomorphism}]
-$  secp256k1 git:(master) ./bench_sign
-ecdsa_sign: min 45.6us / avg 46.1us / max 48.3us
-$  secp256k1 git:(master) ./bench_verify 
-ecdsa_verify: min 65.4us / avg 66.5us / max 68.6us
-ecdsa_verify_openssl: min 471us / avg 474us / max 476us
+
+\begin{lstlisting}[caption=\texttt{ECDSA with secp256k1 benchmark, OpenSSL vs libsecp256k1 }, label=lst-openssl-libsecp256k1-bench]
+# no gmp, no endomorphism, 12330 veiry/s
+secp256k1 git:(master) ./configure --enable-benchmark --with-bignum=no
+secp256k1 git:(master) ./bench_verify
+ecdsa_verify: min 80.0us / avg 81.1us / max 82.5us
+ecdsa_verify_openssl: min 498us / avg 510us / max 522us
+
+# with gmp, no endomorphism, 14320verify/s
+secp256k1 git:(master) ./configure --enable-benchmark --with-bignum=gmp
+secp256k1 git:(master) ./bench_verify
+ecdsa_verify: min 68.6us / avg 69.8us / max 70.7us
+ecdsa_verify_openssl: min 498us / avg 510us / max 522us
+
+# no gmp, with endomorphism, ~15950 verify/s
+secp256k1 git:(master) ./configure --enable-benchmark --with-bignum=no --enable-endomorphism
+secp256k1 git:(master) ./bench_verify
+ecdsa_verify: min 61.6us / avg 62.7us / max 66.5us
+ecdsa_verify_openssl: min 498us / avg 510us / max 522us
+
+# with gmp, with endomorphism, ~19800 verify/s
+secp256k1 git:(master) ./configure --enable-benchmark --with-bignum=gmp --enable-endomorphism
+secp256k1 git:(master) ./bench_verify
+ecdsa_verify: min 49.9us / avg 50.5us / max 51.4us
+ecdsa_verify_openssl: min 498us / avg 510us / max 522us
 \end{lstlisting}
 
-编译时指定\code{--enable-endomorphism}选项,利用libsecp256k1自带的效率测试工具执行结果如下:
+%\begin{lstlisting}[caption=\texttt{libsecp256k1 benchmark without --enable-endomorphism}]
+%$  secp256k1 git:(master) ./bench_sign
+%ecdsa_sign: min 45.6us / avg 46.1us / max 48.3us
+%$  secp256k1 git:(master) ./bench_verify 
+%ecdsa_verify: min 65.4us / avg 66.5us / max 68.6us
+%ecdsa_verify_openssl: min 471us / avg 474us / max 476us
+%\end{lstlisting}
 
-\begin{lstlisting}[caption=\texttt{libsecp256k1 benchmark with --enable-endomorphism}]
-$  secp256k1 git:(master) ./bench_sign  
-ecdsa_sign: min 45.5us / avg 46.1us / max 48.2us
-$  secp256k1 git:(master) ./bench_verify 
-ecdsa_verify: min 47.0us / avg 47.6us / max 49.6us
-ecdsa_verify_openssl: min 470us / avg 476us / max 490us
-\end{lstlisting}
+%编译时指定\code{--enable-endomorphism}选项,利用libsecp256k1自带的效率测试工具执行结果如下:
 
-可以看到,是否指定选项~\code{--enable-endomorphism}~对于libsecp256k1的ECDSA签名速度没有影响,
-每次签名耗时大约为46 us, 也即大约为22000 sign/s. 指定选项~\\code{--enable-endomorphism}~验签的速度有了明显提升,
-从平均66.5 us提高至平均47.6 us,也即从15000 verify/s提高至21000 verify/s, 大约有40\%的速度提升.
+%\begin{lstlisting}[caption=\texttt{libsecp256k1 benchmark with --enable-endomorphism}]
+%$  secp256k1 git:(master) ./bench_sign  
+%vecdsa_sign: min 45.5us / avg 46.1us / max 48.2us
+%$  secp256k1 git:(master) ./bench_verify 
+%ecdsa_verify: min 47.0us / avg 47.6us / max 49.6us
+%ecdsa_verify_openssl: min 470us / avg 476us / max 490us
+%\end{lstlisting}
+
+%可以看到,是否指定选项~\code{--enable-endomorphism}~对于libsecp256k1的ECDSA签名速度没有影响,
+%每次签名耗时大约为46 us, 也即大约为22000 sign/s. 
+可以看到同时指定选项~\code{--enable-endomorphism}~和~\code{--with-bignum=gmp}~验签时,
+验签速度最快,大约50.5us即可完成一次验签操作,相比不使用这两个选项时的81.1us,有了大约37\%的速度提升.
+仅使用~\code{--with-bignum=gmp}~选项时,大约有14\%的速度提升,
+而仅使用~\code{--enable-endomorphism}~时,大约有22\%的速度提升.
+%从平均66.5 us提高至平均47.6 us,也即从15000 verify/s提高至21000 verify/s, 大约有40\%的速度提升.
 值得注意的是, libsecp256k1的速度测试工具中同时测试了OpenSSL中基于secp256k1的ECDSA的运行速度,
-每次验签操作耗大约耗时475 us,等价于2100 verify/s与我们之前的测试基本一致.
-前述所有测试的结果在Table~\ref{tbl-ecdsa-bench}~中给出, 本文接下来关注自同态特性的原理.
+每次验签操作耗大约耗时510us,大约为2000 verify/s.
+libsecp256k1指定不同的编译选项时的速度,以及OpenSSL中基于secp256k1和secp256r1的ECDSA速度对比在
+在Table~\ref{tbl-ecdsa-bench}~中给出, 本文接下来关注自同态特性的原理.
 
 \begin{table}[h]
 \centering
@@ -131,11 +168,11 @@ ecdsa_verify_openssl: min 470us / avg 476us / max 490us
 \begin{tabular}{|c|c|c|c|c|c|}
 \hline
 \small
-         & OpenSSL & OpenSSL & libsecp256k1 & libsecp256k1 \\
-         & secp256r1 & secp256k1 & secp256k1  & secp256k1 \\
-         &                 &                 & w.o. endomorphism & w. endomorphism \\\hline
- sign  & 33000/s  & 2000/s & 22000/s & 22000/s \\\hline
- verify & 12000/s & 2300/s & 15000/s & 21000/s \\\hline
+         & OpenSSL & OpenSSL & libsecp256k1  & libsecp256k1 \\
+         & secp256r1 & secp256k1 & secp256k1        & secp256k1 \\
+         &                 &                 &   no end, no gmp & end, gmp \\\hline
+ sign/s  & 31000  & 1900 & 20800 & 20800 \\\hline
+ verify/s & 11600 & 2000 & 12300 & 19800 \\\hline
 \end{tabular}
 \end{table}
 
@@ -396,7 +433,8 @@ sage: k
 
 \lstinputlisting[firstline=67, lastline=155, firstnumber=67, caption=\texttt{PoC of speeding up ECDSA verification with endomorphism},label=lst-endpoc]{./secp256k1-endomorphism.c}
 
-libsecp256k1中40\%的速度提升整合了更多的优化技巧,例如通过预计算避免在分解$k$的时候执行除法运算等,留作以后分析.
+libsecp256k1中仅使用~\code{--enable-endomorphism}~选项时22\%的速度提升整合了更多的优化技巧,
+例如通过预计算避免在分解$k$的时候执行除法运算等,留作以后分析.
 
 \begin{thebibliography}{99}
 
