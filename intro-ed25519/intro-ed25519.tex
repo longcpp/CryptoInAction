@@ -52,6 +52,7 @@
 }
 
 \usepackage{amssymb} 
+\usepackage{amsmath}
 
 \setlength{\parindent}{2em}
 
@@ -92,6 +93,7 @@
 \newcommand{\blue}{\textcolor{blue}}
 
 
+
 \begin{document}
 
 \title{Ed25519: EdDSA over Edwards25519}
@@ -106,8 +108,7 @@ longcpp. ECDSA 签名机制在区块链领域中的应⽤. 2019.
 这包括签名过程中对随机数需求会在随机数选取不当的情况下引发多种安全问题,
 也包括签名值$(r,s)$的可锻造性在特殊应用场景下(例如区块链场景)引发的干扰,
 还包括公钥压缩时总需要额外的一个字节来表示一个比特的信息造成的存储空间浪费.
-随着各种问题的出现,也有了相应的应对措施,
-例如RFC 6979\footnote{
+随着各种问题的出现,也有了应对措施,例如RFC 6979\footnote{
 RFC 6979. 
 Deterministic Usage of the Digital Signature Algorithm (DSA) and Elliptic Curve Digital Signature Algorithm (ECDSA).
 \url{https://tools.ietf.org/html/rfc6979}}
@@ -134,7 +135,7 @@ Journal of Cryptographic Engineering 5, no. 2 (2015): 141-151.
 \url{https://eprint.iacr.org/2013/816.pdf}}
 底层素数域的特征$p$.
 但是一个很自然的问题是,数字签名算法的运行效率可否做到更快?借助工程手段以及SIMD指令集的应用,
-可以逐步提升执行效率.然而更好安全性与更高的执行效率的诉求,或许无法通过这种小步迭代的方式得到满足.
+可以逐步提升执行效率.然而更好安全性与更高的执行效率的诉求,或许无法通过这种小步迭代和缝缝补补方式得到满足.
 
 同时解决前述的应用安全,实现安全以及执行效率的问题,
 要求在工程手段之外更为深度的改进,一个自然的方向是重新构建椭圆曲线以及签名机制
@@ -238,38 +239,280 @@ Short Weierstrass, 蒙哥马利曲线以及爱德华曲线都可以通过符号�
 广义Weierstrass曲线$y^2 + a_1xy + a_3y = x^3 + a_2x^2 + a_4x + a_6$相互转换.
 X25519和Ed25519的做依赖的点的运算也都可以转换成为Weierstrass曲线上的点运算,
 然而使用特定的曲线形式,对于高效安全的X25519或者Ed25519大有裨益.
-
-蒙哥马利曲线是Montgomery在1987年提出椭圆曲线形式\footnote{
-Montgomery, Peter L. "Speeding the Pollard and elliptic curve methods of factorization." 
-Mathematics of computation 48, no. 177 (1987): 243-264. 
-\url{https://www.ams.org/journals/mcom/1987-48-177/S0025-5718-1987-0866113-7/S0025--5718-1987-0866113-7.pdf}
-},
-
-接下来我们讨论的曲线的默认都是定义在素数域$\F_q, q = 2^{255}-19$上的,别处不再复述.
-
-Curve25519是定义在有限域$\F_q, \ q = 2^{255}-19$上的扭曲爱德华曲线
-$$-x^2 + y^2 = 1 - \frac{121665}{121666}x^2y^2,$$
-曲线上点的个数为$\#E(F_q)=2^c\cdot\ell, $
-
+以twist-Edwards25519为例,其上的点的加法运算是完备(Complete):
 $$
 (x_1, y_1) + (x_2, y_2) = \left( \frac{x_1y_2 + y_1x_2}{1 + dx_1x_2y_1y_2}, \frac{y_1y_2 - x_1x_2}{1-dx_1x_2y_1y_2} \right),
 $$
-并且单位元为点$(0,1)$.
+并且单位元为点$(0,1)$. 习惯了Short Weierstrass形式下椭圆曲线点加运算的各种边界条件判断,
+上面的完备的点加运算,简洁优雅的让人有些意外.更值得注意的是,为了构造椭圆曲线的加法点群,
+这里无需引入一个假想的无穷远点来满足群的条件.
+接下来我们介绍如何从椭圆曲线的一种形式转换成另一种形式,以理解蒙哥马利曲线和扭曲爱德华曲线
+形式的采用为X25519密钥交换和Ed25519签名机制带来的益处.
 
-RFC 8032中总结到, EdDSA签名机制的优势在于
+\subsection{从广义Weierstrass约化到Short Weierstrass}
+
+一种构造椭圆曲线的方式是将其定义为满足Weierstrass方程的点的结合
+\begin{equation}\label{eq-gw}
+E: y^2 + a_1xy + a_3y = x^3 + a_2x^2 + a_4x + a_6,
+\end{equation}
+如果系数$a_1, a_2, a_3, a_4, a_6$取自域(Field) $\F$, 则$E$就是定义在$\F$上的.
+注意所有的有限域都可以写成$\F_p^m$的形式,其中$m$为任意正整数,
+而$p$是有限域$\F_p^m$的特征(Characteristic),记为$char(\F_p^m)=p$.
+当$p\neq 2$并且$p\neq3$时,可以将广义Weierstrass形式简化成为Short Weierstrass形式,
+随着推算的进行,我们会看到排除$p\neq 2$并且$p\neq3$情况的原因.
+本文中,默认都是在有限域$\F$上椭圆曲线,别处不再复述.
+
+方程(\ref{eq-gw})等号左边,可以看成关于$y$的一元二次多项式,这意味着总可以找到
+$\lambda$满足
+$$(y+\lambda)^2 - \lambda^2 = y^2 + a_1xy + a_3y,$$
+由于$\lambda$的值与$y$无关,则可以通过符号代换,用$\gamma = y + \lambda$替换$y$
+从而将方程(\ref{eq-gw})中的变量$y$消除. 
+从上式中可以得到$2y\lambda = a_1xy + a_3y$,也即$\lambda = (a_1x + a_3) / 2$.
+由于当$char(\F) = 2$时, $2\equiv 0\mod 2$, 也即在$\F$中2的逆不存在,因此我们要求$char(\F)\neq 2$.
+将$\lambda$带入方程(\ref{eq-gw})中得到:
+\begin{equation*}
+\begin{split}
+\gamma^2 & - \frac{a_1x + a_3}{2}^2 =  x^3 + a_2x^2 + a_4x + a_6 \\
+\implies \gamma^2 & = \frac{a_1x}{2}^2 + \frac{a_3}{2}^2 + \frac{a_1a_3x}{2} + x^3 + a_2x^2 + a_4x + a_6\\
+\implies \gamma^2  & = x^3 + (a_2 + \frac{a_1^2}{4})x^2 + (a_4 + \frac{a_1a_3}{2})x + (a_6 + \frac{a_3^2}{4})
+\end{split}
+\end{equation*}
+继续用$a_2' = a_2 + \frac{a_1^2}{4}, a_4' = a_4 + \frac{a_1a_3}{2}, a_6' = a_6 + \frac{a_3^2}{4}$
+进行符号代换,得到:
+$$
+E: \gamma^2 = x^3 + a_2'x^2 + a_4'x + a_6'
+$$
+继续化简上述方程的等式右边将$x^2$消除掉即可得到期望的Short Weierstrass形式.
+用$\chi = x + \nu$代换$x$,其中$\nu$是按照特意选择的值,在带入上面方程后可以消除掉平方项.
+计算过程如下:
+\begin{equation*}
+\begin{split}
+\gamma^2 & = (\chi - \nu)^3 + a_2'(\chi - \nu)^2 + a_4'(\chi - \nu) + a_6' \\
+\implies \gamma^2 & = \chi^3 -3\nu\chi^2 + 3\nu^2\chi - \nu^3 + a_2'\chi^2 -2a_2'\nu\chi + a_2'\nu^2 + a_4'\chi - a_4'\nu + a_6' \\
+\implies \gamma^2 & = \chi^3 + (a_2' - 3\nu)\chi^2 + (3\nu^2 - 2a_2'\nu + a_4')\chi - \nu^3 + a_2'\nu^2 - a_4'\nu + a_6'\\
+\end{split}
+\end{equation*}
+我们希望消除掉$\chi^2$, 则需要给$\nu$添加约束$a_2'-3\nu = 0$, 意味着需要$\nu = a_2' / 3$.
+当$\F$的特征为3的时候, 在$\F$中3没有逆元,因此我们要求$char(\F)\neq3$. 由此我们得到
+\begin{equation*}
+\begin{split}
+\gamma^2 & = \chi^3 + (a_2' - 3\nu)\chi^2 + (3\nu^2 - 2a_2'\nu + a_4')\chi - \nu^3 + a_2'\nu^2 - a_4'\nu + a_6'\\
+\implies \gamma^2 & = \chi^3 + \left(a_4'-\frac{(a_2')^2}{3}\right)\chi + \left(a_6' + \frac{2(a_2')^3}{27} - \frac{a_2'a_4'}{3}\right)
+\end{split}
+\end{equation*}
+用符号$x$代换$\chi$, 用$y$代换$\gamma$, 并记
+$$a = a_4'-\frac{(a_2')^2}{3},\  b = a_6' + \frac{2(a_2')^3}{27} - \frac{a_2'a_4'}{3}$$
+就得到了有限域$\F$上的Short Weierstrass形式
+$$E: y^2 = x^3 + ax + b,\ \text{其中}\ a, b \in \F, char(\F) \neq 2 \ \text{且}\ char(\F) \neq 3.$$
+
+接下来考虑在$E:  y^2 = x^3 + ax + b$ (也可记为$E: f(x,y) = y^2 - x^3 + ax + b = 0$)上构建椭圆曲线点群所需的条件.
+$E$上两个点的加法运算规则依赖过两点的直线与曲线的另一个交点.
+当两个点为同一个点时,则是该点的切线与曲线的另一个交点.
+由此需要在点群中的每个点都是可微的(Diﬀerentiable).也因此我们想要避开包含奇点(Singularity)的曲线.
+接下来考察椭圆曲线在何种情况下会包含奇点.
+椭圆曲线$f(x,y) = 0$上一个点$(x_P,y_P)$是奇点的充分必要条件为在该点的偏导数为0,也即:
+\begin{equation*}
+\begin{split}
+f(x_P, y_P) = 0 & \implies y_P^2 - x_P^3 - ax_P - b = 0, \\
+ f_x(x_P, y_P) = 0 & \implies  -3x_P^2 - a = 0, \\
+ f_y(x_P, y_P) = 0 & \implies 2y_P  = 0
+\end{split}
+\end{equation*}
+则有$y_P = 0$, $x_P^3 + ax_P + b = 0$以及$3x_P^2 + a = 0$.
+也即点$(x_P,y_P)$是奇点的充分必要条件$x_P^3 + ax_P + b = 0$以及$3x_P^2 + a = 0$.
+注意到$x_P$同时满足是$x^3 + ax + b$以及其导数$3x^2 + a$的根,
+则$x_P$是$x^3 + ax + b$的二重根,假设另一个根为$\alpha$,则有
+\begin{equation*}
+\begin{split}
+x^3 + ax + b & = (x-x_P)^2(x-\alpha) = (x^2 -2x_Px + x_P^2)(x-\alpha)\\
+ & = x^3 - (2x_P + \alpha)x^2 + (x_P^2 + 2x_P\alpha)x - x_P^2\alpha
+\end{split}
+\end{equation*}
+要使等式成立,则有以下条件:
+\begin{equation*}
+\begin{split}
+2x_P + \alpha = 0 & \implies \alpha = -2x_P, \\
+a = x_P^2 + 2x_P\alpha & \implies a = x_P^2 + 2x_P(-2x_P) = -3x_P^2\\
+b = - x_P^2\alpha & \implies b = -x_P^2(-2x_P) = 2x_P^3
+\end{split}
+\end{equation*}
+由于$a^3 = -27x_P^6$并且$b^2 = 4x_P^6$,合并两个条件就有
+$$
+a  = -3x_P^2, b = 2x_P^3 \implies  \Delta = 4a^3 + 27b^2 = 0.
+$$
+则定义在$\F$上的椭圆曲线$E: f(x,y) = y^2 - x^3 - ax - b = 0, a, b \in \F, char(\F)\neq 2, char(\F)\neq 3$
+存在奇点的充分必要条件为$\Delta = 4a^3 + 27b^2 = 0$.
+然而还存在一种情况,当过一个点的切线斜率的垂直于横坐标时,
+则过该点的曲线没有第三个交点,为了处理这种情况,引入了无穷远点$\mathcal{O}$来处理该特殊情况.
+$\mathcal{O}$也在点群中扮演了单位元的角色.
+由此,定义在有限域$\F_p$上的基于Short Weierstrass形式的椭圆曲线点群可记为$(E_{a,b}^{W}(\F_p), +^W)$:
+\begin{equation*}
+\begin{split}
+E_{a,b}^{W}(\F_p)= \{(x,y)\in \F_p^2\ | & \ y^2 \equiv x^3 + ax + b \mod p, \\
+ & a, b \in \F_p, \Delta = 4a^3 + 27b^2 \neq 0, \ p \notin \{2,3\}\} \cup \{\mathcal{O}^W\},
+\end{split}
+\end{equation*}
+而$+^W$表示对应Short Weierstrass形式的椭圆曲线点群上的加法运算.
+对于$E_{a,b}^{W}(\F_p)$中的两个点$P=(x_1,y_1), Q = (x_2, y_2)$,则运算$+^W$按照如下规则计算:
 \begin{enumerate}
-\item EdDSA在多种计算平台上都能达到较高的性能
-\item 签名过程中不需要唯一的随机数,能够避免随机数引发的安全问题
-\item 对于侧信道攻击等具有更好的免疫效果
-\item 公钥和签名值都较小(Ed25519公钥为32个字节,签名值为64字节)
-\item 计算公式是完备(Complete),无需对不相信的点执行点的验证操作
-\item EdDSA能抵抗碰撞,底层哈希函数的碰撞不会破坏EdDSA签名机制(PureEdDSA)
+\item $-\mathcal{O}^W = \mathcal{O}^W$, $-P = (x_ 1, -y_1)$, $\mathcal{O}^W +^W P = P$
+\item 如果$Q = -P$, 则$P +^W Q=\mathcal{O}^W$
+\item 如果$Q\neq -P$, 则$P +^W Q=(x_3,y_3)$, 其中
+\begin{equation*}
+\left\{
+\begin{array}{ll}
+x_3 &= \lambda^2 - x_1 - x_2 \\
+y_3 & = -y_1 + \lambda(x_1-x_3) \\
+\end{array},
+\right.
+\lambda = 
+\left\{
+\begin{array}{ll}
+\frac{y_2-y_1}{x_2-x_1}, & x_2\neq x_1\\
+\frac{3x_1^2+a}{2y_1}, & x_2 =  x_1\\
+\end{array}.
+\right.
+\end{equation*}
 \end{enumerate}
 
 
+\subsection{蒙哥马利曲线Curve25519}
+
+蒙哥马利曲线是Montgomery在1987年为了加速Lenstra的ECM大数分解算法而提出椭圆曲线形式\footnote{
+Montgomery, Peter L. Speeding the Pollard and elliptic curve methods of factorization.
+Mathematics of computation 48, no. 177 (1987): 243-264. 
+\url{https://www.ams.org/journals/mcom/1987-48-177/S0025-5718-1987-0866113-7/S0025--5718-1987-0866113-7.pdf}}.
+2017年Costello等人总结了蒙哥马利曲线及其上的算术运算\footnote{
+Costello, Craig, and Benjamin Smith. 
+Montgomery curves and their arithmetic. 
+Journal of Cryptographic Engineering 8, no. 3 (2018): 227-240.
+\url{https://arxiv.org/pdf/1703.01863.pdf}}.
+定义在有限域$\F_p, p>2$上的蒙哥马利曲线可以表示为$(E_{A,B}^M(\F_p), +^M)$:
+\begin{equation*}
+\begin{split}
+E_{A,B}^M(\F_p) = \{(x,y)\in\F_p^2\  | &\  B y^2 \equiv x^3 + A x^2 + x\mod p, \\
+& p >2, A, B \in \F_p, B(A^2-4)\neq 0 \} \cup \{\mathcal{O}^M\},
+\end{split}
+\end{equation*}
+点加运算$+^M$可以通过经典的chord-and-tangent方式推算出来.
+接下来展示蒙哥马利形式椭圆曲线点群$(E_{A,B}^M(\F_p), +^M)$
+与Short Weierstrass形式椭圆曲线点群$(E_{a,b}^{W}(\F_p), +^W)$之间的转换.
+\begin{equation*}
+\begin{split}
+E_{a,b}^{W}(\F_p)= \{(x,y)\in \F_p^2\ | & \ y^2 \equiv x^3 + ax + b \mod p, \\
+ & a, b \in \F_p, \Delta = 4a^3 + 27b^2 \neq 0, \ p \notin \{2,3\}\} \cup \{\mathcal{O}^W\},
+\end{split}
+\end{equation*}
+从$E_{A,B}^M(\F_p)$到$E_{a,b}^{W}(\F_p)$的映射
+必须每一个点$(u,v)\in E_{A,B}^M(\F_p)$映射到$E_{a,b}^{W}(\F_p)$中的一个点$(x,y)$.
+先考虑非无穷远点的情况.
+进行符号代换$u = xB - \frac{A}{3}, v = yB$
+\begin{equation*}
+\begin{split}
+B\left(y^2B^2\right) & = \left( xB - \frac{A}{3} \right)^3 + 
+A \left( xB - \frac{A}{3} \right)^2 +  \left(xB - \frac{A}{3}\right) \\
+\implies 
+27 y^2 B^3 & = (3xB - A)^3 + 3A(3xB-A)^2 + 9(3xB - A) \\
+\implies 
+27 B^3 y^2 & = 27B^3x^3 - 9A^2Bx + 27Bx + 2A^3 - 9A \\
+\end{split}
+\end{equation*}
+Short Weierstrass形式要求$y^2$的系数为1,则等式两边除以$27B^3$,
+这也同时要求$B\neq 0\mod p$ (以及$B$在$\F_p$有逆元),则有:
+\begin{equation*}
+\begin{split}
+y^2 & = x^3 - \frac{A^2}{3B^2}x + \frac{1}{B^2}x + \frac{2A^3 - 9A}{27B^3} \\
+\implies 
+y^2 & = x^3 + \frac{3-A^2}{3B^2} x + \frac{2A^3 - 9A}{27B^3} \\
+\end{split}
+\end{equation*}
+再进行符号代换$a = \frac{3-A^2}{3B^2}$和$b = \frac{2A^3 - 9A}{27B^3}$即可得到Short Weierstrass形式.
+注意Short Weierstrass形式要求$\Delta = 4a^3 + 27b^2 \neq 0$,等价于要求
+\begin{equation*}
+\begin{split}
+& 4\left(\frac{3-A^2}{3B^2}\right)^3  + 27\left(  \frac{2A^3 - 9A}{27B^3} \right)^2  \neq 0 \\
+\implies 
+& 4\left(3-A^2\right)^3 + \left(  2A^3 - 9A \right)^2 \neq 0 \implies  A^2 \neq 4.
+\end{split}
+\end{equation*}
+在上述推算过程中,有两个约束$B\neq 0\mod p$以及$A^2\neq 4\mod p$,
+可以通过乘法运算合并成$B(A^2-4)\neq 0  \mod p$,也即蒙哥马利曲线对参数$A,B$的约束.
+前述的映射中将每一个蒙哥马利形式椭圆曲线上的点映射到了short-Weierstrass形式椭圆曲线上的点,
+但是没有一个点能够映射到$\mathcal{O}^W$.因此需要引入$\mathcal{O}^M$并将其映射到$\mathcal{O}^W$.
+因此我们有了如下定义的从$E_{A,B}^M(\F_p)$到$E_{a,b}^{W}(\F_p)$的映射$\phi$:
+\begin{equation*}
+\begin{array}{rl}
+\phi: E_{A,B}^M(\F_p) &  \rightarrow E_{a,b}^{W}(\F_p) \\
+\phi(u,v)  & \rightarrow  (x,y) = \left( \frac{3u+A}{3B}, \frac{v}{B} \right),\ \text{if}\  (u,v)\neq \mathcal{O}^M \\
+\phi(\mathcal{O}^M) &\rightarrow \mathcal{O}^W
+\end{array}
+\end{equation*}
+同样的,也可以将short-Weierstrass形式可以转换为蒙哥马利形式:
+\begin{equation*}
+\begin{array}{rl}
+\phi^{-1}: E_{a,b}^{W}(\F_p) &  \rightarrow  E_{A,B}^M(\F_p)\\
+\phi(x, y)  & \rightarrow (u,v) = \left(xB - \frac{A}{3}, yB\right),\ \text{if}\  (x, y)\neq \mathcal{O}^W \\
+\phi(\mathcal{O}^W) &\rightarrow \mathcal{O}^M
+\end{array}
+\end{equation*}
+另外可以注意到,除了对两个无穷远点的处理, $\phi$和$\phi^{-1}$都是$\F_p$上的有理映射(Rational Map),
+Short-Weierstrass形式和蒙哥马利形式之间的这种双射关系称为双向有理等价(Birational Equivalence).
+
+
+取$A = 486662, B = 1, p = 2^{255}-19$就得到了蒙哥马利形式的Curve25519曲线:
+$$
+y^2 = x^3 + 486662x^2 + x,\  B(A^2-4)\neq 0 \mod (2^{255}-19).
+$$
+根据前面的讨论,取$a = \frac{3-A^2}{3B^2}$和$b = \frac{2A^3 - 9A}{27B^3}$
+可以得到与之双向有理等价的short-Weierstrass形式的曲线方程:
+$$
+y^2 = x^3 + ax + b, \Delta = 4a^3 + 27b^2 \neq 0\mod (2^{255}-19),
+$$
+根据Listing~\ref{lst-curve25519-sw}, 得到$a,b,\Delta$的具体值如下
+\begin{equation*}
+\begin{array}{rl}
+a & = \texttt{0x2aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa984914a144} \\
+b & = \texttt{0x7b425ed097b425ed097b425ed097b425ed097b425ed097b4260b5e9c7710c864} \\
+\Delta &= \texttt{0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffc8db3de3cd}\\
+\end{array}
+\end{equation*}
+并且有$\Delta\neq 0\mod (2^{255}-19)$满足约束条件.
+与secp256k1和secp256r1的$a,b$取值相比较, 这样的$a,b$的值非常不利于高效的工程实现.
+
+\begin{lstlisting}[language = python, caption = Curve25519曲线的short-Weierstrass形式的曲线参数,label=lst-curve25519-sw]
+sage: fp = GF(2^255 - 19)
+sage: A = fp(486662)
+sage: B = fp(1)
+sage: hex(int(B * (A^2 - 4)))
+'0x3724c21c20'
+sage: a = (3 - A^2) * (3 * B^2)^(-1)
+sage: b = (2 * A^3 - 9 * A) * (27 * B^3)^-1
+sage: hex(int(a))
+'0x2aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa984914a144L'
+sage: hex(int(b))
+'0x7b425ed097b425ed097b425ed097b425ed097b425ed097b4260b5e9c7710c864L'
+sage: delta = 4 * a^3 + 27 * b^2
+sage: hex(int(delta))
+'0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffc8db3de3cdL'
+\end{lstlisting}
+
+\subsection{(扭曲)爱德华曲线(Twisted) Edwards25519}
+
+Twisted-Edwards25519是定义在有限域$\F_p, \ p = 2^{255}-19$上的扭曲爱德华曲线
+$$-x^2 + y^2 = 1 - \frac{121665}{121666}x^2y^2,$$
+曲线上点的个数为$\#E(F_q)=2^c\cdot\ell$.
+
+
+\section{X25519与Ed25519}
 
 
 
+RFC 8032中总结到, EdDSA签名机制的优势在于: 在多种计算平台上都能达到较高的性能;
+签名过程中不需要唯一的随机数,能够避免随机数引发的安全问题; 
+对于侧信道攻击等具有更好的免疫效果; 公钥和签名值都较小(Ed25519公钥为32个字节,签名值为64字节);
+计算公式是完备(Complete),无需对不相信的点执行点的验证操作;
+EdDSA能抵抗碰撞,底层哈希函数的碰撞不会破坏EdDSA签名机制(PureEdDSA).
 
 
 \end{document}
+
