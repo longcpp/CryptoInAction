@@ -96,7 +96,7 @@
 
 \begin{document}
 
-\title{Ed25519: EdDSA over Edwards25519}
+\title{蒙哥马利曲线与扭曲爱德华曲线}
 \author{longcpp \\ \small{longcpp9@gmail.com}}
 
 \maketitle
@@ -160,7 +160,7 @@ In International Workshop on Public Key Cryptography, pp. 207-228. Springer, Ber
 在2005年为了提升ECDH密钥交换协议(Elliptic Curve Diffie-Hellman Key Agreement)效率而构建的椭圆曲线,
 并同时提供了高速软件实现,相关文献和代码实现参见Curve25519的网站\footnote{
 Daniel J. Bernstein. A state-of-the-art Diffie-Hellman function. \url{https://cr.yp.to/ecdh.html}}.
-\red{实现相关的信息 值得注意的是,C hou在SAC 2017上改进了Curve25519的实现效率}
+%\red{实现相关的信息 值得注意的是,C hou在SAC 2017上改进了Curve25519的实现效率}
 值得注意的是,在2005年的论文中Curve25519实际上用来指代ECDH密钥交换协议,
 本文档中遵循Bernstein在邮件中给出的名词约定规范\footnote{
 Daniel J. Bernstein. [Cfrg] 25519 naming.
@@ -387,7 +387,7 @@ Costello, Craig, and Benjamin Smith.
 Montgomery curves and their arithmetic. 
 Journal of Cryptographic Engineering 8, no. 3 (2018): 227-240.
 \url{https://arxiv.org/pdf/1703.01863.pdf}}.
-定义在有限域$\F_p, p>2$上的蒙哥马利曲线可以表示为$(E_{A,B}^M(\F_p), +^M)$:
+定义在有限域$\F_p, p>2$上的蒙哥马利曲线点群可以表示为$(E_{A,B}^M(\F_p), +^M)$:
 \begin{equation*}
 \begin{split}
 E_{A,B}^M(\F_p) = \{(x,y)\in\F_p^2\  | &\  B y^2 \equiv x^3 + A x^2 + x\mod p, \\
@@ -476,7 +476,7 @@ b & = \texttt{0x7b425ed097b425ed097b425ed097b425ed097b425ed097b4260b5e9c7710c864
 \Delta &= \texttt{0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffc8db3de3cd}\\
 \end{array}
 \end{equation*}
-并且有$\Delta\neq 0\mod (2^{255}-19)$满足约束条件.
+并且$\Delta\neq 0\mod (2^{255}-19)$满足约束条件.
 与secp256k1和secp256r1的$a,b$取值相比较, 这样的$a,b$的值非常不利于高效的工程实现.
 
 \begin{lstlisting}[language = python, caption = Curve25519曲线的short-Weierstrass形式的曲线参数,label=lst-curve25519-sw]
@@ -496,22 +496,221 @@ sage: hex(int(delta))
 '0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffc8db3de3cdL'
 \end{lstlisting}
 
-\subsection{(扭曲)爱德华曲线(Twisted) Edwards25519}
+X25519是定义在蒙哥马利曲线Curve25519上的ECDH密钥交换协议,
+其特殊之处在于由于蒙哥马利曲线的采用,点群的加法运算可以进利用点的横坐标构建,
+并可以利用蒙哥马利阶梯算法(Montgomery Ladder)算法加速运算
+并利用蒙哥马利的double-and-add算法实现常量时间运算.
+下一篇中再具体介绍X25519密钥交换协议.
 
-Twisted-Edwards25519是定义在有限域$\F_p, \ p = 2^{255}-19$上的扭曲爱德华曲线
-$$-x^2 + y^2 = 1 - \frac{121665}{121666}x^2y^2,$$
-曲线上点的个数为$\#E(F_q)=2^c\cdot\ell$.
+\subsection{扭曲爱德华曲线 Twisted-Edwards25519}
+
+爱德华曲线是Harold M. Edwards在2007年提出的椭圆曲线形式\footnote{
+Edwards, Harold. 
+A normal form for elliptic curves. 
+Bulletin of the American mathematical society 44, no. 3 (2007): 393-422.
+\url{https://www.ams.org/journals/bull/2007-44-03/S0273-0979-07-01153-6/S0273-0979-07-01153-6.pdf}},
+定义在有限域$\F_p, p>2$上的爱德华曲线$E_{d}^E$方程为:
+$$
+x^2+y^2 = 1 + dx^2y^2, d \in \F_p, d \notin \{0,1\}
+$$
+如果$(x_1,y_1), (x_2, y_2)$是爱德华曲线上的两个点,则$E_{d}^E$上的加法运算$+^E$
+规则如下:
+$$
+(x_1, y_1) +^E (x_2, y_2) = \left( \frac{x_1y_2 + y_1x_2}{1 + dx_1x_2y_1y_2}, \frac{y_1y_2 - x_1x_2}{1-dx_1x_2y_1y_2} \right),
+$$
+其中单位元为$(0,1)$, 点$-(x,y) = (-x,y)$.
+值得注意的是,构建爱德华曲线上的加法点群不需要额外引入无穷远点.
+Weierstrass形式曲线上的加法运算规则与过两个点的直线和椭圆曲线的第三个交点紧密相关,
+但是对爱德华曲线来说,构建的规则更为复杂.
+另外,如果$d$是$\F_p$上的二次非剩余,则上述点加运算规则是完备的(Complete), 无需像$+^W$一样需要特殊
+处理无穷远点,两个点相同,两个互为逆元等情况.
+
+2008年Bernstein等人指出有限域上只有一小部分椭圆曲线能够表示为爱德华曲线,
+并进一步提出了更为广义的扭曲爱德华曲线(Twisted Edwards Curves)\footnote{
+Bernstein, Daniel J., Peter Birkner, Marc Joye, Tanja Lange, and Christiane Peters. 
+Twisted edwards curves. 
+In International Conference on Cryptology in Africa, pp. 389-405. Springer, Berlin, Heidelberg, 2008.
+\url{https://cr.yp.to/newelliptic/twisted-20080313.pdf}}.
+有限域$\F_p,p>2$上的蒙哥马利曲线集合与扭曲爱德华曲线集合相同,
+也即这两类曲线之间是双向有理等价的.
+有限域$\F_p, p>2$上的扭曲爱德华曲线$E_{a,d}^E$的方程为:
+$$
+ax^2 + y^2 = 1 + dx^2y^2, a, d \in \F_p, ad(a-d)\neq 0.
+$$
+扭曲爱德华曲线中的参数$a=1$时即为爱德华曲线.
+如果$(x_1,y_1), (x_2, y_2)$是扭曲爱德华曲线上的两个点,
+则$E_{a,d}^E$上的加法运算$+^E$规则如下:
+$$
+(x_1, y_1) +^E (x_2, y_2) = \left( \frac{x_1y_2 + y_1x_2}{1 + dx_1x_2y_1y_2}, \frac{y_1y_2 - ax_1x_2}{1-dx_1x_2y_1y_2} \right),
+$$
+其中,单位元为$(0,1)$,点$(x,y)$的逆元$-(x,y) = (-x,y)$,与爱德华曲线类似这里无需引入无穷远点
+如果$a$是$\F_p$上的二次剩余而$d$不是,则上述扭曲爱德华曲线上点的加法运算$+^E$是完备的.
+用$E_{a,d}^E(\F_p), +^E$表示基于扭曲爱德华曲线的加法点群,其中
+\begin{equation*}
+\begin{array}{rl}
+E_{a,d}^E(\F_p) = \{(x,y)\in\F_p^2 \ | & ax^2 + y^2 \equiv 1 + dx^2y^2, a, d \in \F_p, ad(a-d)\neq 0\, \\
+& a\ \text{为二次剩余}, d\ \text{为二次非剩余} \}
+\end{array}
+\end{equation*}
 
 
-\section{X25519与Ed25519}
+接下来我们展示扭曲爱德华曲线与蒙哥马利曲线之间的双向有理等价关系.
+首先展示如何通过符号变换与代换将扭曲爱德华曲线映射到蒙哥马利曲线.
+我们沿用之前蒙哥马利曲线表示$E_{A,B}^M(\F_p)$,并首先展示如何
+将$E_{a,d}^E(\F_p)$上的点$(x,y)$映射到$E_{A,B}^M(\F_p)$上的点$(u,v)$.
+首先令$x = u/v, y = (u-1)/(u+1)$并进行符号带换,这种代换会将几个特殊的点
+排除在外,这包括$E_{A,B}^M(\F_p)$中的无穷远点$\mathcal{O}^M$,
+$v\equiv 0 \mod p$的点,以及$u\equiv -1 \mod p$点.
+根据$E_{a,d}^E(\F_p)$的方程, $v\equiv 0 \mod p$意味着:
+$$u(u^2 + Au + 1) = Bv^2 = 0 \implies u = 0\ \text{或者}\ u^2 + Au + 1 = 0. $$
+为了将尽可能多的点纳入映射当中,要求$u^2 + Au + 1 \equiv 0 \mod p$无解.
+这就等价于\blue{要求判别式$A^2-4$是$\F_p$中的二次非剩余}.
+在这个约束条件下,由于$v\equiv 0 \mod p$被排除点仅有$(u,v) = (0,0)$.
+接下来考虑$u\equiv -1 \mod p$的点,根据蒙哥马利曲线方程$B\neq 0\mod p$的前提条件:
+$$Bv^2 = A - 2 \implies v^2 = (A -2)/B,$$
+同样为了减少被排除的点的个数,\blue{要求$(A -2)/B$是$\F_p$中的二次非剩余}.
+在这个条件下,没有点会因为$u\equiv -1 \mod p$被排除.
+在前面的论述中,被排除的仅有$E_{A,B}^M(\F_p)$中的无穷远点$\mathcal{O}^M$和$(0,0)$.
+$E_{A,B}^M(\F_p)$中剩下点都有$u\neq 0 \mod p$, 而$x = u/v$意味着
+也同时排除了$E_{a,d}^E(\F_p)$中$x = 0$的点,这包括$(0,1)$和$(0,-1)$.
 
+排除$E_{A,B}^M(\F_p)$中的$\mathcal{O}^M$, $(0,0)$和
+$E_{a,d}^E(\F_p)$中的$(0,1)$, $(0,-1)$之后, 将上述符号代换带入$E_{a,d}^E(\F_p)$方程:
+\begin{equation*}
+\begin{array}{rl}
+ax^2 + y^2 = 1 + dx^2y^2 & \implies  a\left(\frac{u}{v}\right)^2 + \left(\frac{u-1}{u+1}\right)^2 = 1 + d\left(\frac{u}{v}\right)^2\left(\frac{u-1}{u+1}\right)^2\\
+\end{array}
+\end{equation*}
+由于$v \neq 0 \mod p$并且$u\neq -1 \mod p$,等式两边同时乘以$v^2(u+1)^2$可以得到:
+\begin{equation*}
+\begin{array}{rl}
+au^2(u+1)^2 + v^2(u-1)^2 \equiv v^2(u+1)^2 + du^2(u-1)^2 \mod p\\
+\implies  (a-d)u^4 + (2a-2d)u^3 + (a-d)u^2 - 4v^2u \equiv 0 \mod p
+\end{array}
+\end{equation*}
+由于$u\neq 0\mod p$, 方程两侧同时乘以$u^{-1}$,得到
+\begin{equation*}
+\begin{array}{rl}
+4v^2 \equiv (a-d)u^3 + (2a-2d)u^2 + (a-d)u \mod p
+\end{array}
+\end{equation*}
+注意到$E_{A,B}^M(\F_p)$的方程中$x^3$的系数为1, 上式中为了使$u^3$的系数为1,
+我们\blue{要求$a-d \neq 0\mod p$},则方程两侧同时乘以$(a-d)^{-1}$,得到
+\begin{equation*}
+\begin{array}{rl}
+\left(\frac{4}{a-d}\right)v^2 \equiv u^3 + \left(\frac{2a+2d}{a-d}\right)u^2 + u \mod p
+\end{array}
+\end{equation*}
+令$B = 4/(a-d), A = (2a+2d)/(a-d)$并用$x$代换$u$, $y$代换$v$即可得到蒙哥马利形式曲线方程.
+注意到蒙哥马利形式方程要求$B(A^2-4)\neq 0 \mod p$,
+根据代换$B = 4/(a-d)$以及对$u$的约束条件,显然有$B\neq0\mod p$, 我们\blue{要求
+\begin{equation*}
+\begin{array}{rl}
+A^2-4 \neq 0\mod p & \implies \left(\frac{2a+2d}{a-d}\right)^2 - 4 \neq 0\mod p\\
+& \implies (a+d)^2 \neq (a-d)^2 \mod p \\
+& \implies \blue{ad \neq 0 \mod p}
+\end{array}
+\end{equation*}}
 
+至此完成了从$(x,y) \in E_{a,d}^E(\F_p) \textbackslash \{(0,1), (0,-1)\}$
+到$(u,v) \in E_{A,B}^M(\F_p) \textbackslash \{\mathcal{O}^M, (0,0)\}$映射:
+$$(u,v) = \psi(x,y) = \left( \frac{1+y}{1-y}, \frac{1+y}{x(1-y)} \right).$$
+这个过程中引入了几个限制条件: 
+要求$(A -2)/B$是$\F_p$中的二次非剩余,也即要求
+$$
+\left(\frac{2a+2d}{a-d} - 2\right) / \frac{4}{a-d} = d
+$$
+为$\F_p$上的二次非剩余.
+要求$A^2-4$是$\F_p$中的二次非剩余,也即要求
+$$
+\left(\frac{2a+2d}{a-d}\right)^2 - 4 = \frac{16ad}{(a-d)^2}
+$$
+为$\F_p$上的二次非剩余.由于16和$(a-d)^2$显然是$\F_p$中的二次剩余,
+并且两个二次剩余的乘积仍为二次剩余,而两个二次非剩余的乘积也有可能是二次剩余,
+因此为了确保$(16ad)/(a-d)^2$为二次非剩余,也就意味着$a$和$d$中一个为
+二次剩余,一个为二次非剩余.由于$d$已经被另一个约束条件限定为二次非剩余,
+则要求$a$为二次剩余.
+另外的两个约束条件$a\neq d\mod p$和$ad\neq 0\mod p$可以写为$ad(a-d)\neq 0\mod p$.
+这与$E_{a,d}^E(\F_p)$中关于参数$a$和$d$的约束一致,
+或者说$E_{a,d}^E(\F_p)$关于$a$和$d$的约束保证了我们可以计算映射$\psi$.
+最后$E_{a,d}^E(\F_p)$和$E_{A,B}^M(\F_p)$中都恰好有两个元素没被映射$\psi$处理,
+为$(0,-1), (0,1)$定义特殊的$\psi$映射到$(0,0), \mathcal{O}^M$
+也就完成了从$E_{a,d}^E(\F_p)$到$E_{A,B}^M(\F_p)$的完整映射:
+\begin{equation*}
+\begin{array}{cc}
+& \psi:  E_{a,d}^E(\F_p) \rightarrow E_{A,B}^M(\F_p) \\
+& (x,y) \rightarrow (u,v) \equiv \psi(x,y) = \left(\frac{1+y}{1-y}, \frac{1+y}{x(1-y)}\right), (x,y)\notin \{(0,1),(0,-1)\}\\
+& (0,-1) \rightarrow \psi(0, -1) = (0,0) \\
+& (0, 1) \rightarrow \psi(0,1) = \mathcal{O}^M
+\end{array}
+\end{equation*}
 
+考察逆映射$(u,v) \in E_{A,B}^M(\F_p) \rightarrow  (x,y) \in E_{a,d}^E(\F_p)$,
+下面再次给出$E_{A,B}^M(\F_p),\ E_{a,d}^E(\F_p)$的定义:
+\begin{equation*}
+\begin{split}
+E_{A,B}^M(\F_p) = \{(x,y)\in\F_p^2\  | &\  B y^2 \equiv x^3 + A x^2 + x\mod p, \\
+& p >2, A, B \in \F_p, B(A^2-4)\neq 0 \} \cup \{\mathcal{O}^M\},
+\end{split}
+\end{equation*}
+\begin{equation*}
+\begin{array}{rl}
+E_{a,d}^E(\F_p) = \{(x,y)\in\F_p^2 \ | & ax^2 + y^2 \equiv 1 + dx^2y^2, a, d \in \F_p, ad(a-d)\neq 0,\\
+& a\ \text{为二次剩余}, d\ \text{为二次非剩余} \}.
+\end{array}
+\end{equation*}
+根据上述的映射$\psi$,当$x\neq 0 \mod p, y \neq 1 \mod p$时,
+用$u = \frac{1+y}{1-y}, v =  \frac{1+y}{x(1-y)}$进行代换得到:
+\begin{equation*}
+\begin{array}{rl}
+B\left(\frac{1+y}{x(1-y)}\right)^2 \equiv \left( \frac{1+y}{1-y}\right)^3 + A \left( \frac{1+y}{1-y}\right)^2 + \left( \frac{1+y}{1-y}\right) \mod p,
+\end{array}
+\end{equation*}
+注意$x\neq 0 \mod p$同时剔除了两个点$(0,1), (0,-1)$,而关于$x,y$的约束也同时限定了$u,v\neq0\mod p$.
+$u=0$时, 由于$B\neq 0\mod p$, 根据曲线方程有
+$$Bv^2 = 0\mod p \implies v \equiv 0\mod p,$$
+也即对于$u$的约束剔除了点$(0,0)$. $v = 0 \mod p$时,根据曲线方程有
+$$u(u^2 + Au + 1) \equiv 0 \mod p \implies u \equiv 0 \mod p\ \text{或}\ u^2 + Au + 1 \equiv 0 \mod p,$$
+由于已经假定了$A^2-4$是$\F_p$中的二次非剩余,也即$u^2  + Au + 1$在$\F_p$中没有根,
+则只能是$u \equiv 0 \mod p$.因此关于$v$的约束条件没有剔除额外的点.
+上面代换隐式剔除的另一个点是$E_{A,B}^M(\F_p)$中的无穷远点$\mathcal{O}^M$.
+上述方程简化之后得到:
+\begin{equation*}
+\begin{array}{cc}
+& B(1+y)^2(1-y) = x^2(1+y)\left( (1+y)^2 + A(1+y)(1-y) + (1-y)^2  \right) \\
+& \implies B-By^2 =  (2-A)x^2y^2 + (2+A)x^2 \\
+& \implies (2+A)x^2 + By^2 = B - (2-A)x^2y^2\\
+& \implies \frac{2+A}{B}x^2 + y^2 = 1 - \frac{2-A}{B}x^2y^2
+\end{array}
+\end{equation*}
+用$a = (A+2)/B, d = (A-2)/B$进行代换,可以得到扭曲爱德华曲线形式. 
+由于$A^2-4\neq0\mod p$, 则有
+$$ad = \left(\frac{A+2}{B}\right)\left(\frac{A-2}{B}\right) = \frac{A^2-4}{B^2}\neq 0\mod p.$$
+并且
+$$a-d = \frac{4}{B} \neq 0 \mod p.$$
+由此,得到了以下映射:
+\begin{equation*}
+\begin{array}{cc}
+& \psi^{-1}: E_{A,B}^M(\F_p) \rightarrow   E_{a,d}^E(\F_p)\\
+& (u,v) \rightarrow (x,y) \equiv \psi^{-1}(u, v) = \left( \frac{u}{v}, \frac{u-1}{u+1} \right),\ \text{if}\ (u,v)\neq(0,0)\\
+& (0,0) \rightarrow \psi^{-1}(0,0) = (0, -1) \\
+& \mathcal{O}^M \rightarrow \psi^{-1}(\mathcal{O}^M) = (0,1)
+\end{array}
+\end{equation*}
+
+映射$\psi$和$\psi^{-1}$展示了扭曲爱德华曲线$E_{A,B}^M(\F_p)$
+和蒙哥马利曲线$ E_{a,d}^E(\F_p)$之间的双向有理等价特性.
+
+Twisted-Edwards25519是定义在有限域$\F_p, \ p = 2^{255}-19$上
+选用参数$a=-1$, $d = \frac{121665}{121666}$的扭曲爱德华曲线:
+$$-x^2 + y^2 = 1 - \frac{121665}{121666}x^2y^2.$$
+Ed25519签名机制是定义在Twisted-Edwards25519曲线上的变种Schnorr签名.
 RFC 8032中总结到, EdDSA签名机制的优势在于: 在多种计算平台上都能达到较高的性能;
 签名过程中不需要唯一的随机数,能够避免随机数引发的安全问题; 
 对于侧信道攻击等具有更好的免疫效果; 公钥和签名值都较小(Ed25519公钥为32个字节,签名值为64字节);
 计算公式是完备(Complete),无需对不相信的点执行点的验证操作;
 EdDSA能抵抗碰撞,底层哈希函数的碰撞不会破坏EdDSA签名机制(PureEdDSA).
+下一篇中逐条解释每一项特性.
 
 
 \end{document}
