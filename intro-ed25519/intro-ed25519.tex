@@ -151,31 +151,34 @@ High-speed high-security signatures. Journal of Cryptographic Engineering 2, no.
 EdDSA签名机制是Schnorr签名机制的一个变种,其设计初衷是在不牺牲安全性的前提下提升签名/验签速度,
 并同时解决前述的ECDSA在应用方面存在的一些问题.
 
-目前广泛使用的EdDSA签名机制是基于哈希函数SHA-512和椭圆曲线Curve25519的Ed25519签名机制.
-Ed25519签名机制定义在爱德华曲线Edwards25519上,旨在提供128比特的安全强度(与secp256k1和secp256r1安全强度一致).
+广泛使用的EdDSA签名机制是基于哈希函数SHA-512和椭圆曲线Edwards25519的Ed25519签名机制.
+扭曲爱德华曲线Edwards25519双向有理等价于蒙哥马利曲线Curve25519,
+提供大约128比特的安全强度(与secp256k1和secp256r1安全强度一致).
 Curve25519是Bernstein\footnote{
 Bernstein, Daniel J. Curve25519: new Diffie-Hellman speed records.
 In International Workshop on Public Key Cryptography, pp. 207-228. Springer, Berlin, Heidelberg, 2006.
 \url{https://cr.yp.to/ecdh/curve25519-20060209.pdf}}
-在2005年为了提升ECDH密钥交换协议(Elliptic Curve Diffie-Hellman Key Agreement)效率而构建的椭圆曲线,
+在2005年为了提升ECDH密钥交换协议(Elliptic Curve Diffie-Hellman Key Agreement)效率而提出的蒙哥马利曲线,
 并同时提供了高速软件实现,相关文献和代码实现参见Curve25519的网站\footnote{
 Daniel J. Bernstein. A state-of-the-art Diffie-Hellman function. \url{https://cr.yp.to/ecdh.html}}.
 %\red{实现相关的信息 值得注意的是,C hou在SAC 2017上改进了Curve25519的实现效率}
 值得注意的是,在2005年的论文中Curve25519实际上用来指代ECDH密钥交换协议,
-本文档中遵循Bernstein在邮件中给出的名词约定规范\footnote{
+然而后来多使用Curve25519指代底层的椭圆曲线,造成了讨论时候的困难.
+因此Bernstein在邮件中给出了名词约定规范\footnote{
 Daniel J. Bernstein. [Cfrg] 25519 naming.
 \url{https://mailarchive.ietf.org/arch/msg/cfrg/-9LEdnzVrE5RORux3Oo_oDDRksU}
-},用Curve25519指代底层的椭圆曲线,用X25519指代基于Curve25519的ECDH密钥协议.
+},用Curve25519指代底层的椭圆曲线,用X25519指代基于Curve25519的ECDH密钥协议,
+本文也遵循这种命名规范.
 
 Curve25519是基于素数域$\F_q, \ q = 2^{255}-19$上的蒙哥马利曲线(Montgomery Curve),
 曲线方程为$y^2 = x^3 + 486662x^2 + x$.
-Curve25519曲线双向有理等价(Birational Equivalent)爱德华曲线(Edwards Curves) Edwards25519:
-$x^2 + y^2 = 1 + (121665/121666)x^2y^2$, 而这条爱德华曲线则同构于(Isomorphic)
-扭曲爱德华曲线(Twisted Edwards Curves) twisted-Edwards25519: $-x^2+y^2 = 1 - (121665/121666)x^2y^2$.
-前述的Ed25519签名算法精确来说并不是直接构建在Curve25519曲线上的,
-而是基于扭曲爱德华曲线(Twisted Edwards Curves) twisted-Edwards25519.
-为什么X25519直接构建在Curve25519之上, 而Ed25519构建在Twisted-Edwards25519之上,
-而Curve25519和Twisted-Edwards25519是双向有理等价的.
+Curve25519曲线双向有理等价于(Birational Equivalent)扭曲爱德华曲线(Twisted Edwards Curves) Edwards25519:
+$x^2 + y^2 = 1 + (121665/121666)x^2y^2$, 而这条扭曲爱德华曲线则同构于(Isomorphic)
+爱德华曲线( Edwards Curves) untwisted-Edwards25519: $-x^2+y^2 = 1 - (121665/121666)x^2y^2$.
+%前述的Ed25519签名算法精确来说并不是直接构建在Curve25519曲线上的,
+%而是基于扭曲爱德华曲线(Twisted Edwards Curves) twisted-Edwards25519.
+为什么X25519直接构建在Curve25519之上, 而Ed25519构建在Edwards25519之上,
+并且Curve25519和Twisted-Edwards25519是双向有理等价的.
 这是因为ECDH协议和EdDSA协议计算过程中重度依赖的点群运算不同,
 这是为更好的适配的上层协议而刻意选择的中层的椭圆曲线点的表示的结果.
 在继续深入技术原理之前,我们先看下Ed25519和X25519在工业界的应用情况.
@@ -497,12 +500,12 @@ sage: hex(int(delta))
 \end{lstlisting}
 
 X25519是定义在蒙哥马利曲线Curve25519上的ECDH密钥交换协议,
-其特殊之处在于由于蒙哥马利曲线的采用,点群的加法运算可以进利用点的横坐标构建,
+其特殊之处在于由于蒙哥马利曲线的采用,点群的加法运算可以仅利用点的横坐标构建,
 并可以利用蒙哥马利阶梯算法(Montgomery Ladder)算法加速运算
 并利用蒙哥马利的double-and-add算法实现常量时间运算.
 下一篇中再具体介绍X25519密钥交换协议.
 
-\subsection{扭曲爱德华曲线 Twisted-Edwards25519}
+\subsection{扭曲爱德华曲线 Edwards25519}
 
 爱德华曲线是Harold M. Edwards在2007年提出的椭圆曲线形式\footnote{
 Edwards, Harold. 
@@ -701,10 +704,10 @@ $$a-d = \frac{4}{B} \neq 0 \mod p.$$
 映射$\psi$和$\psi^{-1}$展示了扭曲爱德华曲线$E_{A,B}^M(\F_p)$
 和蒙哥马利曲线$ E_{a,d}^E(\F_p)$之间的双向有理等价特性.
 
-Twisted-Edwards25519是定义在有限域$\F_p, \ p = 2^{255}-19$上
+Edwards25519是定义在有限域$\F_p, \ p = 2^{255}-19$上
 选用参数$a=-1$, $d = \frac{121665}{121666}$的扭曲爱德华曲线:
 $$-x^2 + y^2 = 1 - \frac{121665}{121666}x^2y^2.$$
-Ed25519签名机制是定义在Twisted-Edwards25519曲线上的变种Schnorr签名.
+Ed25519签名机制是定义在Edwards25519曲线上的变种Schnorr签名.
 RFC 8032中总结到, EdDSA签名机制的优势在于: 在多种计算平台上都能达到较高的性能;
 签名过程中不需要唯一的随机数,能够避免随机数引发的安全问题; 
 对于侧信道攻击等具有更好的免疫效果; 公钥和签名值都较小(Ed25519公钥为32个字节,签名值为64字节);
