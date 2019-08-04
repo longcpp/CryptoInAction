@@ -262,8 +262,8 @@ E: y^2 + a_1xy + a_3y = x^3 + a_2x^2 + a_4x + a_6,
 注意所有的有限域都可以写成$\F_p^m$的形式,其中$m$为任意正整数,
 而$p$是有限域$\F_p^m$的特征(Characteristic),记为$char(\F_p^m)=p$.
 当$p\neq 2$并且$p\neq3$时,可以将广义Weierstrass形式简化成为Short Weierstrass形式,
-随着推算的进行,我们会看到排除$p\neq 2$并且$p\neq3$情况的原因.
-本文中,默认都是在有限域$\F$上椭圆曲线,别处不再复述.
+随着推算的进行,我们会看到排除$p\neq 2$以及$p\neq3$情况的原因.
+本文中,默认都是在有限域$\F_p$上的椭圆曲线,别处不再复述.
 
 方程(\ref{eq-gw})等号左边,可以看成关于$y$的一元二次多项式,这意味着总可以找到
 $\lambda$满足
@@ -276,8 +276,8 @@ $$(y+\lambda)^2 - \lambda^2 = y^2 + a_1xy + a_3y,$$
 \begin{equation*}
 \begin{split}
 \gamma^2 & - \frac{a_1x + a_3}{2}^2 =  x^3 + a_2x^2 + a_4x + a_6 \\
-\implies \gamma^2 & = \frac{a_1x}{2}^2 + \frac{a_3}{2}^2 + \frac{a_1a_3x}{2} + x^3 + a_2x^2 + a_4x + a_6\\
-\implies \gamma^2  & = x^3 + (a_2 + \frac{a_1^2}{4})x^2 + (a_4 + \frac{a_1a_3}{2})x + (a_6 + \frac{a_3^2}{4})
+\iff \gamma^2 & = \frac{a_1x}{2}^2 + \frac{a_3}{2}^2 + \frac{a_1a_3x}{2} + x^3 + a_2x^2 + a_4x + a_6\\
+\iff \gamma^2  & = x^3 + (a_2 + \frac{a_1^2}{4})x^2 + (a_4 + \frac{a_1a_3}{2})x + (a_6 + \frac{a_3^2}{4})
 \end{split}
 \end{equation*}
 继续用$a_2' = a_2 + \frac{a_1^2}{4}, a_4' = a_4 + \frac{a_1a_3}{2}, a_6' = a_6 + \frac{a_3^2}{4}$
@@ -291,8 +291,8 @@ $$
 \begin{equation*}
 \begin{split}
 \gamma^2 & = (\chi - \nu)^3 + a_2'(\chi - \nu)^2 + a_4'(\chi - \nu) + a_6' \\
-\implies \gamma^2 & = \chi^3 -3\nu\chi^2 + 3\nu^2\chi - \nu^3 + a_2'\chi^2 -2a_2'\nu\chi + a_2'\nu^2 + a_4'\chi - a_4'\nu + a_6' \\
-\implies \gamma^2 & = \chi^3 + (a_2' - 3\nu)\chi^2 + (3\nu^2 - 2a_2'\nu + a_4')\chi - \nu^3 + a_2'\nu^2 - a_4'\nu + a_6'\\
+\iff \gamma^2 & = \chi^3 -3\nu\chi^2 + 3\nu^2\chi - \nu^3 + a_2'\chi^2 -2a_2'\nu\chi + a_2'\nu^2 + a_4'\chi - a_4'\nu + a_6' \\
+\iff \gamma^2 & = \chi^3 + (a_2' - 3\nu)\chi^2 + (3\nu^2 - 2a_2'\nu + a_4')\chi - \nu^3 + a_2'\nu^2 - a_4'\nu + a_6'\\
 \end{split}
 \end{equation*}
 我们希望消除掉$\chi^2$, 则需要给$\nu$添加约束$a_2'-3\nu = 0$, 意味着需要$\nu = a_2' / 3$.
@@ -300,7 +300,7 @@ $$
 \begin{equation*}
 \begin{split}
 \gamma^2 & = \chi^3 + (a_2' - 3\nu)\chi^2 + (3\nu^2 - 2a_2'\nu + a_4')\chi - \nu^3 + a_2'\nu^2 - a_4'\nu + a_6'\\
-\implies \gamma^2 & = \chi^3 + \left(a_4'-\frac{(a_2')^2}{3}\right)\chi + \left(a_6' + \frac{2(a_2')^3}{27} - \frac{a_2'a_4'}{3}\right)
+\iff \gamma^2 & = \chi^3 + \left(a_4'-\frac{(a_2')^2}{3}\right)\chi + \left(a_6' + \frac{2(a_2')^3}{27} - \frac{a_2'a_4'}{3}\right)
 \end{split}
 \end{equation*}
 用符号$x$代换$\chi$, 用$y$代换$\gamma$, 并记
@@ -316,9 +316,9 @@ $E$上两个点的加法运算规则依赖过两点的直线与曲线的另一�
 椭圆曲线$f(x,y) = 0$上一个点$(x_P,y_P)$是奇点的充分必要条件为在该点的偏导数为0,也即:
 \begin{equation*}
 \begin{split}
-f(x_P, y_P) = 0 & \implies y_P^2 - x_P^3 - ax_P - b = 0, \\
- f_x(x_P, y_P) = 0 & \implies  -3x_P^2 - a = 0, \\
- f_y(x_P, y_P) = 0 & \implies 2y_P  = 0
+f(x_P, y_P) = 0 & \iff y_P^2 - x_P^3 - ax_P - b = 0, \\
+ f_x(x_P, y_P) = 0 & \iff  -3x_P^2 - a = 0, \\
+ f_y(x_P, y_P) = 0 & \iff 2y_P  = 0
 \end{split}
 \end{equation*}
 则有$y_P = 0$, $x_P^3 + ax_P + b = 0$以及$3x_P^2 + a = 0$.
@@ -334,14 +334,14 @@ x^3 + ax + b & = (x-x_P)^2(x-\alpha) = (x^2 -2x_Px + x_P^2)(x-\alpha)\\
 要使等式成立,则有以下条件:
 \begin{equation*}
 \begin{split}
-2x_P + \alpha = 0 & \implies \alpha = -2x_P, \\
-a = x_P^2 + 2x_P\alpha & \implies a = x_P^2 + 2x_P(-2x_P) = -3x_P^2\\
-b = - x_P^2\alpha & \implies b = -x_P^2(-2x_P) = 2x_P^3
+2x_P + \alpha = 0 & \iff \alpha = -2x_P, \\
+a = x_P^2 + 2x_P\alpha & \iff a = x_P^2 + 2x_P(-2x_P) = -3x_P^2\\
+b = - x_P^2\alpha & \iff b = -x_P^2(-2x_P) = 2x_P^3
 \end{split}
 \end{equation*}
 由于$a^3 = -27x_P^6$并且$b^2 = 4x_P^6$,合并两个条件就有
 $$
-a  = -3x_P^2, b = 2x_P^3 \implies  \Delta = 4a^3 + 27b^2 = 0.
+a  = -3x_P^2, b = 2x_P^3 \iff  \Delta = 4a^3 + 27b^2 = 0.
 $$
 则定义在$\F$上的椭圆曲线$E: f(x,y) = y^2 - x^3 - ax - b = 0, a, b \in \F, char(\F)\neq 2, char(\F)\neq 3$
 存在奇点的充分必要条件为$\Delta = 4a^3 + 27b^2 = 0$.
@@ -397,7 +397,7 @@ E_{A,B}^M(\F_p) = \{(x,y)\in\F_p^2\  | &\  B y^2 \equiv x^3 + A x^2 + x\mod p, \
 & p >2, A, B \in \F_p, B(A^2-4)\neq 0 \} \cup \{\mathcal{O}^M\},
 \end{split}
 \end{equation*}
-点加运算$+^M$可以通过经典的chord-and-tangent方式推算出来.
+%点加运算$+^M$可以通过经典的chord-and-tangent方式推算出来.
 接下来展示蒙哥马利形式椭圆曲线点群$(E_{A,B}^M(\F_p), +^M)$
 与Short Weierstrass形式椭圆曲线点群$(E_{a,b}^{W}(\F_p), +^W)$之间的转换.
 \begin{equation*}
@@ -407,16 +407,16 @@ E_{a,b}^{W}(\F_p)= \{(x,y)\in \F_p^2\ | & \ y^2 \equiv x^3 + ax + b \mod p, \\
 \end{split}
 \end{equation*}
 从$E_{A,B}^M(\F_p)$到$E_{a,b}^{W}(\F_p)$的映射
-必须每一个点$(u,v)\in E_{A,B}^M(\F_p)$映射到$E_{a,b}^{W}(\F_p)$中的一个点$(x,y)$.
+必须将每一个点$(u,v)\in E_{A,B}^M(\F_p)$映射到$E_{a,b}^{W}(\F_p)$中的一个点$(x,y)$.
 先考虑非无穷远点的情况.
 进行符号代换$u = xB - \frac{A}{3}, v = yB$
 \begin{equation*}
 \begin{split}
 B\left(y^2B^2\right) & = \left( xB - \frac{A}{3} \right)^3 + 
 A \left( xB - \frac{A}{3} \right)^2 +  \left(xB - \frac{A}{3}\right) \\
-\implies 
+\iff 
 27 y^2 B^3 & = (3xB - A)^3 + 3A(3xB-A)^2 + 9(3xB - A) \\
-\implies 
+\iff 
 27 B^3 y^2 & = 27B^3x^3 - 9A^2Bx + 27Bx + 2A^3 - 9A \\
 \end{split}
 \end{equation*}
@@ -425,7 +425,7 @@ Short Weierstrass形式要求$y^2$的系数为1,则等式两边除以$27B^3$,
 \begin{equation*}
 \begin{split}
 y^2 & = x^3 - \frac{A^2}{3B^2}x + \frac{1}{B^2}x + \frac{2A^3 - 9A}{27B^3} \\
-\implies 
+\iff 
 y^2 & = x^3 + \frac{3-A^2}{3B^2} x + \frac{2A^3 - 9A}{27B^3} \\
 \end{split}
 \end{equation*}
@@ -434,8 +434,8 @@ y^2 & = x^3 + \frac{3-A^2}{3B^2} x + \frac{2A^3 - 9A}{27B^3} \\
 \begin{equation*}
 \begin{split}
 & 4\left(\frac{3-A^2}{3B^2}\right)^3  + 27\left(  \frac{2A^3 - 9A}{27B^3} \right)^2  \neq 0 \\
-\implies 
-& 4\left(3-A^2\right)^3 + \left(  2A^3 - 9A \right)^2 \neq 0 \implies  A^2 \neq 4.
+\iff 
+& 4\left(3-A^2\right)^3 + \left(  2A^3 - 9A \right)^2 \neq 0 \iff  A^2 \neq 4.
 \end{split}
 \end{equation*}
 在上述推算过程中,有两个约束$B\neq 0\mod p$以及$A^2\neq 4\mod p$,
@@ -444,25 +444,25 @@ y^2 & = x^3 + \frac{3-A^2}{3B^2} x + \frac{2A^3 - 9A}{27B^3} \\
 但是没有一个点能够映射到$\mathcal{O}^W$.因此需要引入$\mathcal{O}^M$并将其映射到$\mathcal{O}^W$.
 因此我们有了如下定义的从$E_{A,B}^M(\F_p)$到$E_{a,b}^{W}(\F_p)$的映射$\phi$:
 \begin{equation*}
-\begin{array}{rl}
-\phi: E_{A,B}^M(\F_p) &  \rightarrow E_{a,b}^{W}(\F_p) \\
-\phi(u,v)  & \rightarrow  (x,y) = \left( \frac{3u+A}{3B}, \frac{v}{B} \right),\ \text{if}\  (u,v)\neq \mathcal{O}^M \\
-\phi(\mathcal{O}^M) &\rightarrow \mathcal{O}^W
+\begin{array}{cc}
+& \phi: E_{A,B}^M(\F_p)   \rightarrow E_{a,b}^{W}(\F_p) \\
+& \phi(u,v)   \rightarrow  (x,y) = \left( \frac{3u+A}{3B}, \frac{v}{B} \right),\ \text{if}\  (u,v)\neq \mathcal{O}^M \\
+& \phi(\mathcal{O}^M) \rightarrow \mathcal{O}^W
 \end{array}
 \end{equation*}
 同样的,也可以将short-Weierstrass形式可以转换为蒙哥马利形式:
 \begin{equation*}
-\begin{array}{rl}
-\phi^{-1}: E_{a,b}^{W}(\F_p) &  \rightarrow  E_{A,B}^M(\F_p)\\
-\phi(x, y)  & \rightarrow (u,v) = \left(xB - \frac{A}{3}, yB\right),\ \text{if}\  (x, y)\neq \mathcal{O}^W \\
-\phi(\mathcal{O}^W) &\rightarrow \mathcal{O}^M
+\begin{array}{cc}
+&\phi^{-1}: E_{a,b}^{W}(\F_p)   \rightarrow  E_{A,B}^M(\F_p)\\
+&\phi^{-1}(x, y)   \rightarrow (u,v) = \left(xB - \frac{A}{3}, yB\right),\ \text{if}\  (x, y)\neq \mathcal{O}^W \\
+&\phi^{-1}(\mathcal{O}^W) \rightarrow \mathcal{O}^M
 \end{array}
 \end{equation*}
-另外可以注意到,除了对两个无穷远点的处理, $\phi$和$\phi^{-1}$都是$\F_p$上的有理映射(Rational Map),
+另外可以注意到,除了需要对无穷远点进行特殊处理之外, $\phi$和$\phi^{-1}$都是$\F_p$上的有理映射(Rational Map),
 Short-Weierstrass形式和蒙哥马利形式之间的这种双射关系称为双向有理等价(Birational Equivalence).
 
 
-取$A = 486662, B = 1, p = 2^{255}-19$就得到了蒙哥马利形式的Curve25519曲线:
+取$A = 486662, B = 1, p = 2^{255}-19$就得到了蒙哥马利曲线Curve25519:
 $$
 y^2 = x^3 + 486662x^2 + x,\  B(A^2-4)\neq 0 \mod (2^{255}-19).
 $$
@@ -500,9 +500,9 @@ sage: hex(int(delta))
 \end{lstlisting}
 
 X25519是定义在蒙哥马利曲线Curve25519上的ECDH密钥交换协议,
-其特殊之处在于由于蒙哥马利曲线的采用,点群的加法运算可以仅利用点的横坐标构建,
-并可以利用蒙哥马利阶梯算法(Montgomery Ladder)算法加速运算
-并利用蒙哥马利的double-and-add算法实现常量时间运算.
+其特殊之处是由于蒙哥马利曲线的采用,点群的加法运算可以仅利用点的横坐标构建.
+利用蒙哥马利阶梯算法(Montgomery Ladder)算法可以加速运算,而利用蒙哥马利的
+double-and-add算法可以更容易实现常量时间运算.
 下一篇中再具体介绍X25519密钥交换协议.
 
 \subsection{扭曲爱德华曲线 Edwards25519}
@@ -512,20 +512,20 @@ Edwards, Harold.
 A normal form for elliptic curves. 
 Bulletin of the American mathematical society 44, no. 3 (2007): 393-422.
 \url{https://www.ams.org/journals/bull/2007-44-03/S0273-0979-07-01153-6/S0273-0979-07-01153-6.pdf}},
-定义在有限域$\F_p, p>2$上的爱德华曲线$E_{d}^E$方程为:
+定义在有限域$\F_p, p>2$上的爱德华曲线$E_{d}^{E'}$方程为:
 $$
 x^2+y^2 = 1 + dx^2y^2, d \in \F_p, d \notin \{0,1\}
 $$
-如果$(x_1,y_1), (x_2, y_2)$是爱德华曲线上的两个点,则$E_{d}^E$上的加法运算$+^E$
+如果$(x_1,y_1), (x_2, y_2)$是爱德华曲线上的两个点,则$E_{d}^{E'}$上的加法运算$+^{E'}$
 规则如下:
 $$
-(x_1, y_1) +^E (x_2, y_2) = \left( \frac{x_1y_2 + y_1x_2}{1 + dx_1x_2y_1y_2}, \frac{y_1y_2 - x_1x_2}{1-dx_1x_2y_1y_2} \right),
+(x_1, y_1) +^{E'} (x_2, y_2) = \left( \frac{x_1y_2 + y_1x_2}{1 + dx_1x_2y_1y_2}, \frac{y_1y_2 - x_1x_2}{1-dx_1x_2y_1y_2} \right),
 $$
-其中单位元为$(0,1)$, 点$-(x,y) = (-x,y)$.
-值得注意的是,构建爱德华曲线上的加法点群不需要额外引入无穷远点.
+其中单位元为$(0,1)$, 点$(x,y)$的逆元$-(x,y) = (-x,y)$.
+值得注意的是,构建爱德华曲线上的加法点群无需引入无穷远点.
 Weierstrass形式曲线上的加法运算规则与过两个点的直线和椭圆曲线的第三个交点紧密相关,
 但是对爱德华曲线来说,构建的规则更为复杂.
-另外,如果$d$是$\F_p$上的二次非剩余,则上述点加运算规则是完备的(Complete), 无需像$+^W$一样需要特殊
+另外,\blue{如果$d$是$\F_p$上的二次非剩余,则上述点加运算规则是完备的(Complete)}, 无需像$+^W$一样需要特殊
 处理无穷远点,两个点相同,两个互为逆元等情况.
 
 2008年Bernstein等人指出有限域上只有一小部分椭圆曲线能够表示为爱德华曲线,
@@ -546,9 +546,9 @@ $$
 $$
 (x_1, y_1) +^E (x_2, y_2) = \left( \frac{x_1y_2 + y_1x_2}{1 + dx_1x_2y_1y_2}, \frac{y_1y_2 - ax_1x_2}{1-dx_1x_2y_1y_2} \right),
 $$
-其中,单位元为$(0,1)$,点$(x,y)$的逆元$-(x,y) = (-x,y)$,与爱德华曲线类似这里无需引入无穷远点
-如果$a$是$\F_p$上的二次剩余而$d$不是,则上述扭曲爱德华曲线上点的加法运算$+^E$是完备的.
-用$E_{a,d}^E(\F_p), +^E$表示基于扭曲爱德华曲线的加法点群,其中
+其中,单位元为$(0,1)$,点$(x,y)$的逆元$-(x,y) = (-x,y)$,与爱德华曲线类似这里无需引入无穷远点.
+\blue{如果$a$是$\F_p$上的二次剩余而$d$不是,则上述扭曲爱德华曲线上点的加法运算$+^E$是完备的.}
+用$(E_{a,d}^E(\F_p), +^E)$表示基于扭曲爱德华曲线的加法点群,其中
 \begin{equation*}
 \begin{array}{rl}
 E_{a,d}^E(\F_p) = \{(x,y)\in\F_p^2 \ | & ax^2 + y^2 \equiv 1 + dx^2y^2, a, d \in \F_p, ad(a-d)\neq 0\, \\
@@ -565,12 +565,12 @@ E_{a,d}^E(\F_p) = \{(x,y)\in\F_p^2 \ | & ax^2 + y^2 \equiv 1 + dx^2y^2, a, d \in
 排除在外,这包括$E_{A,B}^M(\F_p)$中的无穷远点$\mathcal{O}^M$,
 $v\equiv 0 \mod p$的点,以及$u\equiv -1 \mod p$点.
 根据$E_{a,d}^E(\F_p)$的方程, $v\equiv 0 \mod p$意味着:
-$$u(u^2 + Au + 1) = Bv^2 = 0 \implies u = 0\ \text{或者}\ u^2 + Au + 1 = 0. $$
+$$u(u^2 + Au + 1) = Bv^2 = 0 \iff u = 0\ \text{或者}\ u^2 + Au + 1 = 0. $$
 为了将尽可能多的点纳入映射当中,要求$u^2 + Au + 1 \equiv 0 \mod p$无解.
 这就等价于\blue{要求判别式$A^2-4$是$\F_p$中的二次非剩余}.
 在这个约束条件下,由于$v\equiv 0 \mod p$被排除点仅有$(u,v) = (0,0)$.
 接下来考虑$u\equiv -1 \mod p$的点,根据蒙哥马利曲线方程$B\neq 0\mod p$的前提条件:
-$$Bv^2 = A - 2 \implies v^2 = (A -2)/B,$$
+$$Bv^2 = A - 2 \iff v^2 = (A -2)/B,$$
 同样为了减少被排除的点的个数,\blue{要求$(A -2)/B$是$\F_p$中的二次非剩余}.
 在这个条件下,没有点会因为$u\equiv -1 \mod p$被排除.
 在前面的论述中,被排除的仅有$E_{A,B}^M(\F_p)$中的无穷远点$\mathcal{O}^M$和$(0,0)$.
@@ -581,14 +581,14 @@ $E_{A,B}^M(\F_p)$中剩下点都有$u\neq 0 \mod p$, 而$x = u/v$意味着
 $E_{a,d}^E(\F_p)$中的$(0,1)$, $(0,-1)$之后, 将上述符号代换带入$E_{a,d}^E(\F_p)$方程:
 \begin{equation*}
 \begin{array}{rl}
-ax^2 + y^2 = 1 + dx^2y^2 & \implies  a\left(\frac{u}{v}\right)^2 + \left(\frac{u-1}{u+1}\right)^2 = 1 + d\left(\frac{u}{v}\right)^2\left(\frac{u-1}{u+1}\right)^2\\
+ax^2 + y^2 = 1 + dx^2y^2 & \iff  a\left(\frac{u}{v}\right)^2 + \left(\frac{u-1}{u+1}\right)^2 = 1 + d\left(\frac{u}{v}\right)^2\left(\frac{u-1}{u+1}\right)^2\\
 \end{array}
 \end{equation*}
 由于$v \neq 0 \mod p$并且$u\neq -1 \mod p$,等式两边同时乘以$v^2(u+1)^2$可以得到:
 \begin{equation*}
 \begin{array}{rl}
 au^2(u+1)^2 + v^2(u-1)^2 \equiv v^2(u+1)^2 + du^2(u-1)^2 \mod p\\
-\implies  (a-d)u^4 + (2a-2d)u^3 + (a-d)u^2 - 4v^2u \equiv 0 \mod p
+\iff  (a-d)u^4 + (2a-2d)u^3 + (a-d)u^2 - 4v^2u \equiv 0 \mod p
 \end{array}
 \end{equation*}
 由于$u\neq 0\mod p$, 方程两侧同时乘以$u^{-1}$,得到
@@ -605,13 +605,14 @@ au^2(u+1)^2 + v^2(u-1)^2 \equiv v^2(u+1)^2 + du^2(u-1)^2 \mod p\\
 \end{array}
 \end{equation*}
 令$B = 4/(a-d), A = (2a+2d)/(a-d)$并用$x$代换$u$, $y$代换$v$即可得到蒙哥马利形式曲线方程.
-注意到蒙哥马利形式方程要求$B(A^2-4)\neq 0 \mod p$,
-根据代换$B = 4/(a-d)$以及对$u$的约束条件,显然有$B\neq0\mod p$, 我们\blue{要求
+注意到蒙哥马利形式方程要求$B(A^2-4)\neq 0 \mod p$.
+由于$B = 4/(a-d)$,显然有$B\neq0\mod p$.
+从而仅需要\blue{
 \begin{equation*}
 \begin{array}{rl}
-A^2-4 \neq 0\mod p & \implies \left(\frac{2a+2d}{a-d}\right)^2 - 4 \neq 0\mod p\\
-& \implies (a+d)^2 \neq (a-d)^2 \mod p \\
-& \implies \blue{ad \neq 0 \mod p}
+A^2-4 \neq 0\mod p & \iff \left(\frac{2a+2d}{a-d}\right)^2 - 4 \neq 0\mod p\\
+& \iff (a+d)^2 \neq (a-d)^2 \mod p \\
+& \iff \blue{ad \neq 0 \mod p}
 \end{array}
 \end{equation*}}
 
@@ -619,20 +620,19 @@ A^2-4 \neq 0\mod p & \implies \left(\frac{2a+2d}{a-d}\right)^2 - 4 \neq 0\mod p\
 到$(u,v) \in E_{A,B}^M(\F_p) \textbackslash \{\mathcal{O}^M, (0,0)\}$映射:
 $$(u,v) = \psi(x,y) = \left( \frac{1+y}{1-y}, \frac{1+y}{x(1-y)} \right).$$
 这个过程中引入了几个限制条件: 
-要求$(A -2)/B$是$\F_p$中的二次非剩余,也即要求
+要求$(A -2)/B$是$\F_p$中的二次非剩余等价于要求
 $$
 \left(\frac{2a+2d}{a-d} - 2\right) / \frac{4}{a-d} = d
 $$
 为$\F_p$上的二次非剩余.
-要求$A^2-4$是$\F_p$中的二次非剩余,也即要求
+要求$A^2-4$是$\F_p$中的二次非剩余等价于要求
 $$
 \left(\frac{2a+2d}{a-d}\right)^2 - 4 = \frac{16ad}{(a-d)^2}
 $$
 为$\F_p$上的二次非剩余.由于16和$(a-d)^2$显然是$\F_p$中的二次剩余,
 并且两个二次剩余的乘积仍为二次剩余,而两个二次非剩余的乘积也有可能是二次剩余,
-因此为了确保$(16ad)/(a-d)^2$为二次非剩余,也就意味着$a$和$d$中一个为
-二次剩余,一个为二次非剩余.由于$d$已经被另一个约束条件限定为二次非剩余,
-则要求$a$为二次剩余.
+因此为了确保$(16ad)/(a-d)^2$为二次非剩余,要求$a$和$d$中一个为
+二次剩余,一个为二次非剩余.由于$d$已经被限定为二次非剩余,则只能要求$a$为二次剩余.
 另外的两个约束条件$a\neq d\mod p$和$ad\neq 0\mod p$可以写为$ad(a-d)\neq 0\mod p$.
 这与$E_{a,d}^E(\F_p)$中关于参数$a$和$d$的约束一致,
 或者说$E_{a,d}^E(\F_p)$关于$a$和$d$的约束保证了我们可以计算映射$\psi$.
@@ -669,21 +669,33 @@ E_{a,d}^E(\F_p) = \{(x,y)\in\F_p^2 \ | & ax^2 + y^2 \equiv 1 + dx^2y^2, a, d \in
 B\left(\frac{1+y}{x(1-y)}\right)^2 \equiv \left( \frac{1+y}{1-y}\right)^3 + A \left( \frac{1+y}{1-y}\right)^2 + \left( \frac{1+y}{1-y}\right) \mod p,
 \end{array}
 \end{equation*}
-注意$x\neq 0 \mod p$同时剔除了两个点$(0,1), (0,-1)$,而关于$x,y$的约束也同时限定了$u,v\neq0\mod p$.
+注意$x \equiv 0 \mod p$, 有$y^2 \equiv 1 \mod p$, 
+这同时剔除了$E_{a,d}^E(\F_p)$中的两个点$(0,1), (0,-1)$.
+当$y =\pm 1\mod p$时, 有$ax^2 \equiv dx^2 \mod p$, 只要$\blue{a\neq d}$,就不会剔除外的点.
+根据$x,y$取值的约束,则有
+$$u = \frac{1+y}{1-y} = -1-\frac{2}{y-1}, v =  \frac{1+y}{x(1-y)}, x\neq 0, y\neq\pm1 \implies u \neq 0, u\neq -1, v\neq 0 $$
+%则$u\neq0, u\neq -1, v\neq 0$.
+%将$y=-1$带入$E_{a,d}^E(\F_p)$的方程可以得到$ax^2 = dx^2$, 由于$a\neq d$, 因此无解.
+%另外由于$u$仅与$y$的值相关,则$u\neq -1 \mod p$, 这是因为不可能有$(1+y)/(1-y) = -1 \iff y +1 = y - 1$.
+%而关于$x,y$的约束也同时限定了$u,v\neq0\mod p$.
 $u=0$时, 由于$B\neq 0\mod p$, 根据曲线方程有
-$$Bv^2 = 0\mod p \implies v \equiv 0\mod p,$$
-也即对于$u$的约束剔除了点$(0,0)$. $v = 0 \mod p$时,根据曲线方程有
-$$u(u^2 + Au + 1) \equiv 0 \mod p \implies u \equiv 0 \mod p\ \text{或}\ u^2 + Au + 1 \equiv 0 \mod p,$$
-由于已经假定了$A^2-4$是$\F_p$中的二次非剩余,也即$u^2  + Au + 1$在$\F_p$中没有根,
-则只能是$u \equiv 0 \mod p$.因此关于$v$的约束条件没有剔除额外的点.
+$$Bv^2 = 0\mod p \iff v \equiv 0\mod p,$$
+也即对于$u$的约束剔除了$E_{A,B}^M(\F_p)$中的点$(0,0)$. 
+$u=-1$时,根据曲线方程有
+$$By^2 = A-2 \iff y^2  = \frac{A-2}{B},$$
+\blue{要求$(A-2)/B$为二次非剩余},则上述方程无解,也即$u\neq -1$的条件没有剔除额外的点.
+$v = 0 \mod p$时,根据曲线方程有
+$$u(u^2 + Au + 1) \equiv 0 \mod p \iff u \equiv 0 \mod p\ \text{或}\ u^2 + Au + 1 \equiv 0 \mod p,$$
+为了尽可能少的剔除点,\blue{要求$A^2-4$是$\F_p$中的二次非剩余},也即$u^2  + Au + 1$在$\F_p$中没有根,
+则上述情形中只能是$u \equiv 0 \mod p$, 则关于$v$的约束条件没有剔除额外的点.
 上面代换隐式剔除的另一个点是$E_{A,B}^M(\F_p)$中的无穷远点$\mathcal{O}^M$.
 上述方程简化之后得到:
 \begin{equation*}
 \begin{array}{cc}
 & B(1+y)^2(1-y) = x^2(1+y)\left( (1+y)^2 + A(1+y)(1-y) + (1-y)^2  \right) \\
-& \implies B-By^2 =  (2-A)x^2y^2 + (2+A)x^2 \\
-& \implies (2+A)x^2 + By^2 = B - (2-A)x^2y^2\\
-& \implies \frac{2+A}{B}x^2 + y^2 = 1 - \frac{2-A}{B}x^2y^2
+& \iff B-By^2 =  (2-A)x^2y^2 + (2+A)x^2 \\
+& \iff (2+A)x^2 + By^2 = B - (2-A)x^2y^2\\
+& \iff \frac{2+A}{B}x^2 + y^2 = 1 - \frac{2-A}{B}x^2y^2
 \end{array}
 \end{equation*}
 用$a = (A+2)/B, d = (A-2)/B$进行代换,可以得到扭曲爱德华曲线形式. 
@@ -691,6 +703,10 @@ $$u(u^2 + Au + 1) \equiv 0 \mod p \implies u \equiv 0 \mod p\ \text{或}\ u^2 + 
 $$ad = \left(\frac{A+2}{B}\right)\left(\frac{A-2}{B}\right) = \frac{A^2-4}{B^2}\neq 0\mod p.$$
 并且
 $$a-d = \frac{4}{B} \neq 0 \mod p.$$
+因此, $E_{a,d}^E(\F_p)$中的条件$ad(a-d)\neq 0$得到满足.
+接下来考察 $E_{a,d}^E(\F_p)$对于$a$为二次剩余和$d$为二次非剩余的约束.
+根据之前的讨论,可知两个约束条件$(A-2)/B$为二次非剩余和$A^2-4$是的二次非剩余,
+转换成$a,d$的约束记为要求$a$为二次剩余,$d$为二次非剩余,与$ E_{a,d}^E(\F_p)$中的要求一致.
 由此,得到了以下映射:
 \begin{equation*}
 \begin{array}{cc}
@@ -700,13 +716,12 @@ $$a-d = \frac{4}{B} \neq 0 \mod p.$$
 & \mathcal{O}^M \rightarrow \psi^{-1}(\mathcal{O}^M) = (0,1)
 \end{array}
 \end{equation*}
-
-映射$\psi$和$\psi^{-1}$展示了扭曲爱德华曲线$E_{A,B}^M(\F_p)$
-和蒙哥马利曲线$ E_{a,d}^E(\F_p)$之间的双向有理等价特性.
+%由于映射$\psi$和$\psi^{-1}$的存在,扭曲爱德华曲线$E_{A,B}^M(\F_p)$
+%和蒙哥马利曲线$ E_{a,d}^E(\F_p)$之间双向有理等价特性.
 
 Edwards25519是定义在有限域$\F_p, \ p = 2^{255}-19$上
 选用参数$a=-1$, $d = \frac{121665}{121666}$的扭曲爱德华曲线:
-$$-x^2 + y^2 = 1 - \frac{121665}{121666}x^2y^2.$$
+$-x^2 + y^2 \equiv 1 - (121665/121666) x^2y^2 \mod p$.
 Ed25519签名机制是定义在Edwards25519曲线上的变种Schnorr签名.
 RFC 8032中总结到, EdDSA签名机制的优势在于: 在多种计算平台上都能达到较高的性能;
 签名过程中不需要唯一的随机数,能够避免随机数引发的安全问题; 
