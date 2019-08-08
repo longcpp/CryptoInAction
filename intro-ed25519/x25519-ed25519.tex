@@ -1,1 +1,25 @@
 \section{X25519与Ed25519}
+
+RFC 7748中给出了两条蒙哥马利形式的椭圆曲线Curve25519和Curve448,
+其中Curve448是Mike Hamburg在2015年设计的新曲线,旨在提供224比特的安全性\footnote{
+Hamburg, Mike. Ed448-Goldilocks, a new elliptic curve. IACR Cryptology ePrint Archive 2015 (2015): 625.
+\url{https://eprint.iacr.org/2015/625.pdf}}.
+本文仅关注Curve25519及定义在其上的ECDH密钥交换协议X25519.
+Curve25519是定义在有限域$\F_p, p = 2^{255}-19$的蒙哥马利形式椭圆曲线$y^2 = x^3 + 486662x^2 + x$,
+Curve25519的余因子为8,而X25519实际上定义在Curve25519上的子群,阶为\\
+\centerline{\texttt{0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed},}
+RFC 7748中一开始给出的X25519依赖的点群的基点$G$为\\
+\centerline{(\texttt{0x9, 0x20ae19a1b8a086b4e01edd2c7748d14c923d4d7e6d7c61b229e9c5a27eced3d9}).}\\
+然而在随后的RFC 7748的勘误\footnote{
+RFC 7748 Errata. \url{https://www.rfc-editor.org/errata/rfc7748}}
+中将基点$G$修正为\\
+\centerline{(\texttt{0x9, 0x5f51e65e475f794b1fe122d388b72eb36dc2b28192839e4dd6163a5d81312c14}).}\\
+这是因为, X25519所依赖的椭圆曲线点群运算只涉及点的横坐标,所以X25519涉及的运算只关心横坐标.
+然而由于Curve25519与Edwards25519双向有理等价,而Ed25519所依赖的点群运算同时需要横纵坐标,
+并且已经有广泛使用的基点的值.
+RFC 7748中给出的基点的值,会映射到Edwards25519时会映射成Edwards2519曲线基点的负值,
+因此有了上述修正,以便在双向有理映射的条件下保持Edwards25519和Curve25519的基点保持一致.
+
+Curve25519上的两个不同点的加法运算规则$(x_3, y_3)
+
+记Curve25519上的两个点$(x_1,y_1), (x_2, y_2)$相加之后得到的点为$(x_3,y_3)$,则
