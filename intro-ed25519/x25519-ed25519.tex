@@ -1,5 +1,7 @@
 \section{X25519与Ed25519}
 
+\subsection{X25519}
+
 RFC 7748中给出了两条蒙哥马利形式的椭圆曲线Curve25519和Curve448,
 其中Curve448是Mike Hamburg在2015年设计的新曲线,旨在提供224比特的安全性\footnote{
 Hamburg, Mike. Ed448-Goldilocks, a new elliptic curve. IACR Cryptology ePrint Archive 2015 (2015): 625.
@@ -12,7 +14,7 @@ RFC 7748中一开始给出的X25519依赖的点群的基点$G$为\\
 \centerline{(\texttt{0x9, 0x20ae19a1b8a086b4e01edd2c7748d14c923d4d7e6d7c61b229e9c5a27eced3d9}).}\\
 然而在随后的RFC 7748的勘误\footnote{
 RFC 7748 Errata. \url{https://www.rfc-editor.org/errata/rfc7748}}
-中将基点$G$修正为\\
+中将基点$G$的具体值修正为\\
 \centerline{(\texttt{0x9, 0x5f51e65e475f794b1fe122d388b72eb36dc2b28192839e4dd6163a5d81312c14}).}\\
 这是因为, X25519所依赖的椭圆曲线点群运算只涉及点的横坐标,所以X25519涉及的运算只关心横坐标.
 然而由于Curve25519与Edwards25519双向有理等价,而Ed25519所依赖的点群运算同时需要横纵坐标,
@@ -20,6 +22,82 @@ RFC 7748 Errata. \url{https://www.rfc-editor.org/errata/rfc7748}}
 RFC 7748中给出的基点的值,会映射到Edwards25519时会映射成Edwards2519曲线基点的负值,
 因此有了上述修正,以便在双向有理映射的条件下保持Edwards25519和Curve25519的基点保持一致.
 
-Curve25519上的两个不同点的加法运算规则$(x_3, y_3)
+\begin{figure}[h]
+\centering
+\includegraphics[width=.8\textwidth]{x25519.png}
+\caption{X25519密钥交换协议}\label{fig-x25519}
+\end{figure}
+
+Alice和Bob之间的ECDH密钥交换协议X25519的执行流程参见Figure~\ref{fig-x25519},
+其中'Public string \underline{9}'表示X25519的公共参数基点横坐标的字节数组.
+注意这里的点群运算只需要横坐标$x$,用$k$表示标量的话, $x(P)$表示取点$P$的横坐标,
+则点的倍乘运算可以表示为$k\cdot x(P)$.
+值得提及的是,在X25519和Ed25519的设计文档中,也同时给出了对元素进行编解码的规定.
+定义在$\F_p$上的坐标,以小端法编码为字节数组,
+也即坐标值$x\in\F_p$与$x[0] + 256  *x[1] + \ldots + 256^{n-1} * x[n-1]$模$p$同余.
+从32个字节的数组解码坐标值时,对于X25519协议需要首先将最后一个字节的最高比特位清零,
+参见Listing~\ref{lst-x25519-decode}~中第7行,
+其中输入参数~\code{bits}~的值为255(对应Curve25519)或者448(对应Curve448).
+这个操作的目的是尽可能与基于该曲线的其他协议保持兼容性,因为该比特位通常保留作为标记位.
+另外RFC 7748中也明确指出, X25519的协议的实现必须接受非规范(Non-Canonical)的值,
+对于X25519而言,非规范的值包括$2^{255}-19$到$2^{255}-1$的所有值.
+注意到函数~\code{decodeLittleEndian}~没有对输入参数~\code{u}~做任何限制,
+也即32字节的任意值都可以作为Curve25519的公钥$\{\underline{u}, u\in \{0,1,\ldots,2^{256}-1\}\}$.
+
+\begin{lstlisting}[language=python, caption=X25519和X448的编解码, label=lst-x25519-decode]
+def decodeLittleEndian(b, bits):
+    return sum([ b[i] << 8*i for i in range((bits+7)//8) ])
+
+def decodeUCoordinate(u, bits):
+    u_list = [b for b in u]
+    # Ignore any unused bits.
+    if bits % 8:
+        u_list[-1] &= (1 << (bits % 8)) - 1
+    return decodeLittleEndian(u_list, bits)
+
+def encodeUCoordinate(u, bits):
+    return bytearray([ (u >> 8*i) & 0xff for i in range((bits+7)//8) ])
+
+def decodeScalar25519(k):
+    k_list = [b for b in k]
+    k_list[0] &= 248  # 1111 1000
+    k_list[31] &= 127 # 0111 1111
+    k_list[31] |= 64  # 0100 0000
+    return decodeLittleEndian(k_list, 255)
+
+def decodeScalar448(k):
+    k_list = [b for b in k]
+    k_list[0] &= 252
+    k_list[55] |= 128
+    return decodeLittleEndian(k_list, 448)
+\end{lstlisting}
+
+考虑$k\cdot x(P)$中的标量$k$的解析,参见Listing~\ref{lst-x25519-decode}~中的函数~\code{decodeScalar25519}.
+与解码坐标值时类似,解码$k$时将32个字节的数组看成是小端法表示的$k$,
+但是按照小端法将字节数组转换成标量$k$之前,
+需要将最低3比特清零(第16行), 将最高位清零(第17行), 并将紧邻最高位的比特设置为1 (第19行).
+也即Curve25519的私钥取值空间为$\{\underline{k}: k\in 2^{254} + 8\cdot\{0,1,\ldots,2^{251}-1\}\}$.
+将最低3比特清零可以保证私钥值是8的倍数,考虑到Curve25519曲线的余因子为8,
+这样可以避免small-subgroup一类的攻击.
+将最高位清零,猜测是为了与公钥的处理方式保持一致.
+将紧邻最高位的比特设置为1,有利于常量时间的蒙哥马利阶梯算法实现\footnote{
+StackExchange: When using Curve25519, why does the private key always have a fixed bit at 2\^{}254?\\
+\url{https://crypto.stackexchange.com/questions/11810/when-using-curve25519-why-does-the-private-\\
+key-always-have-a-fixed-bit-at-2254/11818\#11818}}.
+与secp256k1或者secp256r1等曲线的私钥可以在某个区间内连续取值(整数值)不同,
+Curve25519私钥并不是某个区间内的连续取值.
+%另外点的倍乘$k\cdot x(P)$可以看做是两个集合到一个集合的映射(非满射):
+%$$\{\underline{k}: k\in 2^{254} + 8\cdot\{0,\ldots,2^{251}-1\}\} \times \{\underline{u}, u\in \{0,\ldots,2^{256}-1\}\} \rightarrow \{\underline{u}, u\in \{0,\ldots,2^{256}-1\}\}.$$
+%\red{todo: 论证该映射存在的合理性}
+
+接下来讨论X25519密钥交换协议中最核心的运算标量点乘.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=.8\textwidth]{x-coordiniate-add.png}
+\caption{X25519密钥交换依赖的点运算}\label{fig-xadd}
+\end{figure}
+
+Curve25519上的两个不同点的加法运算规则$(x_3, y_3)$
 
 记Curve25519上的两个点$(x_1,y_1), (x_2, y_2)$相加之后得到的点为$(x_3,y_3)$,则
