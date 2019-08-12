@@ -15,7 +15,7 @@
             anchorcolor=blue,
             citecolor=green
             ]{hyperref}
-
+\usepackage{graphicx}
 \usepackage{listings}
 \usepackage{fontspec}
 \newfontfamily\monaco{Monaco}
@@ -66,6 +66,26 @@
 %%%%%%%处理下划线：_%%%%%%%%%
 
 \setlength{\parindent}{2.1em}
+
+%%%设置页眉和页码格式
+\usepackage{fancyhdr}
+\newcommand{\makeheadrule}{%
+\rule[0.85\baselineskip]{\headwidth}{0.5pt}\vskip-.8\baselineskip}%1.5 0.4->0.5
+\makeatletter
+\renewcommand{\headrule}{%
+{\if@fancyplain\let\headrulewidth\plainheadrulewidth\fi
+\makeheadrule}}
+\makeatother
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[r]{\textit{Crypto In Action}}
+\fancyfoot[C]{--{~\thepage~}--}
+%%%设置页眉和页码格式结束
+
+\usepackage{color}
+\newcommand{\red}{\textcolor{red}}
+\newcommand{\blue}{\textcolor{blue}}
+
 
 \begin{document}
 
