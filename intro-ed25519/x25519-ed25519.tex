@@ -103,15 +103,13 @@ $$\mathbf{x}(P) = \mathbf{x}(Q) \iff P = Q\ \text{or}\ P = \ominus(Q), P, Q \in 
 直观上理解, 拥有相同横坐标的点$P, -P$在商群$\xi$中坍缩成同一个元素$\mathbf{x}(P)=\mathbf{x}(-P)$.
 并且点$P, -P$的$k$倍乘运算在商群$\xi$中也坍缩成同一个元素.
 $$k(-P) = -kP \implies \mathbf{x}(k(-P)) = \mathbf{x}(-kP)= \mathbf{x}(kP).$$
-由此, 虽然$\xi$并没有直接从$E$中继承运算,但是签署两个点共享同一个横坐标的问题得到解决,
+由此, 虽然$\xi$并没有直接从$E$中继承运算,但是前述两个点共享同一个横坐标的问题得到解决,
 则$\xi$中可以定义仅依赖于横坐标的运算,并且根据$\xi$和$E$之间的关系,
 该运算规则可以根据$E$中的点的加法运算进行推导.
 而为了支持高速的ECDH密钥协商,要求能够在$\xi$中根据$\mathbf{x}(P)$和标量$k$快速计算$\mathbf{x}(kP)$.
-接下来的问题,就变成了如何构建具有这种形式的椭圆曲线?
-
-蒙哥马利曲线的提出为这一个问题提供了答案,
-其中蒙哥马利阶梯(Montgomery Ladder)算法可以根据$\mathbf{x}(P)$和标量$k$快速计算$\mathbf{x}(kP)$,
+蒙哥马利阶梯(Montgomery Ladder)算法可以根据$\mathbf{x}(P)$和标量$k$快速计算$\mathbf{x}(kP)$,
 而蒙哥马利曲线的选择可以保证蒙哥马利阶梯算法中的每一步都可以高效执行.
+
 
 \begin{figure}[h]
 \centering
@@ -209,7 +207,3 @@ def x448(k: bytes, u: bytes):
     return encodeUCoordinate(int(res), bits)
 \end{lstlisting}
 
-
-Curve25519上的两个不同点的加法运算规则$(x_3, y_3)$
-
-记Curve25519上的两个点$(x_1,y_1), (x_2, y_2)$相加之后得到的点为$(x_3,y_3)$,则

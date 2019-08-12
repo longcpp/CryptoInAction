@@ -166,7 +166,31 @@ E_{A,B}^M(\F_p) = \{(x,y)\in\F_p^2\  | &\  B y^2 \equiv x^3 + A x^2 + x\mod p, \
 & p >2, A, B \in \F_p, B(A^2-4)\neq 0 \} \cup \{\mathcal{O}^M\},
 \end{split}
 \end{equation*}
-%点加运算$+^M$可以通过经典的chord-and-tangent方式推算出来.
+点加运算$+^M$可以通过经典的chord-and-tangent方式推算出来.
+蒙哥马利曲线上的点加运算也可以按照经典的割线/切线与曲线的交点的方式定义.
+假设蒙哥马利曲线上的点$(x_3, y_3) = (x_1, y_1) +^M (x_2,y_2), P = (x_1, y_1), Q = (x_2, y_2)$, 则有
+
+\begin{equation*}
+\left\{
+\begin{array}{ll}
+x_3 & = B\lambda^2 - (x_1 + x_2) - A\\
+y_3 & = (2x_1 + x_2 + A)\lambda - B\lambda^3 - y_1 = \lambda(x_1 - x_2) - y_1\\
+\end{array},
+\right.
+\end{equation*}
+其中,
+\begin{equation*}
+\lambda = 
+\left\{
+\begin{array}{ll}
+(y_2-y_1) / (x_2-x_1),\ \text{if}\ P\neq Q, P \neq -Q,\\
+(3x_1^2 + 2Ax_1 + 1) / (2By_1),\ \text{if}\ P = Q,
+\end{array}
+\right.
+\end{equation*}
+如果$P=-Q$, 则$P +^M Q = \mathcal{O}$, 
+可以注意到$\lambda$是过点$P$和点$Q$的割线(当$P=Q$为切线)的斜率.
+
 接下来展示蒙哥马利形式椭圆曲线点群$(E_{A,B}^M(\F_p), +^M)$
 与Short Weierstrass形式椭圆曲线点群$(E_{a,b}^{W}(\F_p), +^W)$之间的转换.
 \begin{equation*}
@@ -229,7 +253,10 @@ y^2 & = x^3 + \frac{3-A^2}{3B^2} x + \frac{2A^3 - 9A}{27B^3} \\
 \end{equation*}
 另外可以注意到,除了需要对无穷远点进行特殊处理之外, $\phi$和$\phi^{-1}$都是$\F_p$上的有理映射(Rational Map),
 Short-Weierstrass形式和蒙哥马利形式之间的这种双射关系称为双向有理等价(Birational Equivalence).
-
+注意虽然蒙哥马利形式曲线的都可以转换成short-Weierstrass形式,但反之不然.
+只有满足特定条件的 short-Weierstrass 才能转换成蒙哥马利形式\footnote{
+Wikipedia. Montgomery curve.
+\url{https://en.wikipedia.org/wiki/Montgomery_curve\#Equivalence_with_Weierstrass_curves}}.
 
 取$A = 486662, B = 1, p = 2^{255}-19$就得到了蒙哥马利曲线Curve25519:
 $$
