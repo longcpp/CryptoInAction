@@ -2,15 +2,156 @@
 
 \subsection{X25519}
 
-RFC 7748中给出了两条蒙哥马利形式的椭圆曲线Curve25519和Curve448,
+Curve25519是Bernstein在2006年构建的蒙哥马利曲线,其中25519表示曲线基于的素数域的特征为$2^{255}-19$.
+并在该曲线上构建了仅基于$x$坐标的ECDH密钥协议X25519.
+仅利用椭圆曲线点的$x$坐标构建ECDH的想法最初来自于
+Victor Miller在1985年发表的奠基性文章"Use of elliptic curves in cryptography"\footnote{
+Miller, Victor S. "Use of elliptic curves in cryptography." In Conference on the theory and application of cryptographic techniques, pp. 417-426. Springer, Berlin, Heidelberg, 1985.
+\url{https://link.springer.com/content/pdf/10.1007/3-540-39799-X_31.pdf}}.
+在仅依赖$x$坐标的ECDH协议中, Alice计算$(a, \mathbf{x}(P))\rightarrow\mathbf{x}(aP)$之后,
+将$\mathbf{x}(aP)$传递给Bob, Bob计算$(b, \mathbf{x}(P))\rightarrow \mathbf{x}(bP)$, 
+$\mathbf{x}(bP)$传递给Alice, 其中$a$和$b$是Alice和Bob各自生成的临时私钥, $P$为曲线上的一个点.
+Alice收到的Bob的消息之后计算$(a, \mathbf{x}(bP)) \rightarrow \mathbf{x}(abP)$,
+同样Bob在收到Alice的消息之后,计算$(b, \mathbf{x}(aP))\rightarrow \mathbf{x}(baP)$.
+这也是Bernstein的基于Curve25519曲线的X25519的密钥交换协议的基础.
+初次接触仅基于$x$坐标系的协议总会感觉有些诡异, 然而考虑到根据$x$坐标和曲线方程,
+\textit{基本上}可以完全确定出一个点,例外在于点$P=(x,y)$和$-P=(x,-y)$会有相同的$x$坐标.
+通过构建椭圆曲线点群关于逆映射的商群(Quotient Group)$E/\langle - \rangle$,
+则在商群的视角下,点的$x$坐标可以唯一表示商群中的元素,
+直观上理解,点$P$和点$-P$在商群中塌缩成同一个元素: $\mathbf{x}(P)=\mathbf{x}(-P)$.
+另外点$P, -P$的$k$倍乘运算的结果$kP, k(-P)$在商群$E/\langle - \rangle$中也坍缩成同一个元素: 
+$$k(-P) = -kP \implies \mathbf{x}(k(-P)) = \mathbf{x}(-kP)= \mathbf{x}(kP).$$
+至此可以理解仅基于$x$坐标可以构建ECDH协议,因为其中仅涉及到群中的倍乘运算.
+
+然而在给定$\mathbf{x}(P)$和$k$的条件下,如何高效计算$\mathbf{x}(kP)$并不显然.
+在各种形式表示的椭圆曲线的点群上都可以构建仅基于$x$坐标的运算,但是利用蒙哥马利曲线
+上的点群的结构(具体来说是点群中4阶点的存在)配合蒙哥马利阶梯算法更容易完成高效的常量时间实现.
+\blue{为何在蒙哥马利曲线上的点群中4阶点的存在可以实现高效计算还不理解,暂且当成结论记下,
+另摘录Bernstein等人在文章"Montgomery curves and the Montgomery ladder"\footnote{
+Bernstein, Daniel J., and Tanja Lange. "Montgomery curves and the Montgomery ladder." 
+IACR Cryptology ePrint Archive 2017 (2017): 293.
+\url{https://eprint.iacr.org/2017/293.pdf}}的表述:
+\textit{The Montgomery ladder is much simpler and almost three times faster. The structure of Montgomery curves is important for this simplicity and speed: from the modern Edwards perspective, Montgomery takes advantage of having a point of order 4 on the curve or its twist.}}
+这也是Bernstein选择蒙哥马利形式曲线的原因.
+在这些原因之外, X25519的设计也考虑到了ECDH的实际部署中的可能遇到的问题
+并基于对蒙哥马利曲线的观察进行了巧妙的规避,并同时简化了X25519的实现和应用.
+
+ECDH的实际部署中需要着重考虑的是对接收到的消息的检查.
+在不是仅基于$x$坐标的ECDH协议中,参与协议的双方都会收到对方发来的临时公钥点,
+为了保证安全(例如确保自己的私钥信息不会泄露),需要首先检查收到的点的合法性,
+因为如果收到的点是对方刻意构造的点,则对方有可能通过ECDH协议的交互过程窃取私钥信息.
+对点的检查通常要验证收到的点不是无穷远点,点的坐标是底层素数域的中的元素并且
+确实是椭圆曲线方程上的点.如果没有确认收到的点不是无穷远点,会引发small subgroup攻击;
+如果不确认收到的点确实在椭圆曲线上,则会招致invalid-curve攻击,参见
+"Guide to elliptic curve cryptography"\footnote{
+Hankerson, Darrel, Alfred J. Menezes, and Scott Vanstone. "Guide to elliptic curve cryptography." 
+Computing Reviews 46, no. 1 (2005): 13.}中4.3小节.
+类似的问题也存在与仅基于$x$坐标的ECDH密钥交换协议当中.
+另外仅利用$x$坐标的另一问题在于验证"点在椭圆曲线上"会更困难一些.
+检查完整的点只需要把横纵坐标带入方程然后验证返程是否成立即可.
+在仅基于$x$坐标的ECDH协议中,
+要判定给定的$x$值是否合法等价于判定$x^3+Ax^2+x$是否是二次剩余.
+由于域上的平方运算是2-to-1的映射, $x$的所有可能取值大概只有一半的$x$是合法的.
+这也是X25519的另一个创新之处,将二次扩域上的椭圆曲线$E(\F_{p^2}), 
+\F_{p^2} = \Z_{2^{255}-19}[\sqrt{2}]$的点群纳入考量.
+同时考虑两个点群$E(\F_{p})$和$E(\F_{p^2})$,则任意的$x\in\F_p$都可以对应到某个点群上的点,
+则前述的需要判定二次剩余来判定$x$是否是合法值的步骤可以省略,
+另外由于X25519仅依赖$x$坐标,所以虽然引入了$E(\F_{p^2})$,但X25519所有的运算仍是在域$\F_p$上完成的.
+这也是除了仅依赖$x$坐标之外, X25519相比其他的ECDH过程,个人认为最迥异的地方:
+为了使所有的$x\in\F_p$都是合法的公钥从而省去繁重的公钥合法性验证,引入了扩域上的椭圆曲线点群.
+只要在两个点群上的离散对数问题都是困难的, X25519密钥交换协议就是安全的.
+
+蒙哥马利形式的椭圆曲线Curve25519和Curve448被收录在RFC 7748中,
 其中Curve448是Mike Hamburg在2015年设计的新曲线,旨在提供224比特的安全性\footnote{
 Hamburg, Mike. Ed448-Goldilocks, a new elliptic curve. IACR Cryptology ePrint Archive 2015 (2015): 625.
 \url{https://eprint.iacr.org/2015/625.pdf}}.
-本文仅关注Curve25519及定义在其上的ECDH密钥交换协议X25519.
+RFC 7748也同时给出了基于两条椭圆曲线的仅依赖$x$坐标的ECDH密钥交换协议X25519和X448.
+本文重点关注Curve25519及定义在其上的ECDH密钥交换协议X25519.
 Curve25519是定义在有限域$\F_p, p = 2^{255}-19$的蒙哥马利形式椭圆曲线$y^2 = x^3 + 486662x^2 + x$,
-Curve25519的余因子为8,而X25519实际上定义在Curve25519上的子群,阶为\\
-\centerline{\texttt{0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed},}
-RFC 7748中一开始给出的X25519依赖的点群的基点$G$为\\
+其中曲线上点的个数$\#E(\F_p) = 8 \cdot n_1$,也即余因子为8, 并且有\\
+\centerline{$n_1=\texttt{0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed}$,}
+
+\begin{lstlisting}[language=python, caption=Curve25519的Sage示例, label=lst-curve255619-sage]
+sage: fp25519 = FiniteField(2^255-19)
+sage: A = fp25519(486662)
+sage: B = fp25519(1)
+sage: curve25519 = EllipticCurve(fp25519, [0, A, 0, B, 0])
+sage: card = curve25519.cardinality()
+sage: hex(int(card))
+'0x80000000000000000000000000000000a6f7cef517bce6b2c09318d2e7ae9f68L'
+sage: n1 = int(card / 8)
+sage: hex(n1)
+'0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3edL'
+sage: curve25519.abelian_group()
+Additive abelian group isomorphic to 
+Z/57896044618658097711785492504343953926856930875039260848015607506283634007912 
+embedded in Abelian group of points on Elliptic Curve defined by 
+y^2 = x^3 + 486662*x^2 + x over Finite Field of size 
+57896044618658097711785492504343953926634992332820282019728792003956564819949
+sage: def print_point(p):
+....:     if p.order() == 1:
+....:         print "point at infinity"
+....:     else:
+....:         x, y = p.xy()
+....:         print "(%064x,\n %064x)" % (x, y)
+....:
+sage: G = curve25519.lift_x(9)
+sage: print_point(G)
+(0000000000000000000000000000000000000000000000000000000000000009,
+ 5f51e65e475f794b1fe122d388b72eb36dc2b28192839e4dd6163a5d81312c14)
+sage: print_point(-G)
+(0000000000000000000000000000000000000000000000000000000000000009,
+ 20ae19a1b8a086b4e01edd2c7748d14c923d4d7e6d7c61b229e9c5a27eced3d9)
+sage: P = curve25519.random_point()
+sage: while true:
+....:     P = n1 * P
+....:     if P.order() == 8:
+....:         break
+....:     P = curve25519.random_point()
+....:
+sage: print_point(P)
+(57119fd0dd4e22d8868e1c58c45c44045bef839c55b1d0b1248c50a3bc959c5f,
+ 173a6c76c2ba719bce3935ffba04afeadf5bbcb971559722f0efc7bdfb7f9a36)
+sage: for i in range(1,9):
+....:     p = i * P
+....:     print "order = %d" % p.order()
+....:     print_point(p)
+....:
+order = 8
+(57119fd0dd4e22d8868e1c58c45c44045bef839c55b1d0b1248c50a3bc959c5f,
+ 173a6c76c2ba719bce3935ffba04afeadf5bbcb971559722f0efc7bdfb7f9a36)
+order = 4
+(0000000000000000000000000000000000000000000000000000000000000001,
+ 141b0b6806563d503de05885280b59109ca5ee38d7b56c9c165db7106377bbd8)
+order = 8
+(00b8495f16056286fdb1329ceb8d09da6ac49ff1fae35616aeb8413b7c7aebe0,
+ 46ce3ed6a9617c5ad6b7d3eb19d74ba86cc403d6127fe4b29778eb7c6daf84d3)
+order = 2
+(0000000000000000000000000000000000000000000000000000000000000000,
+ 0000000000000000000000000000000000000000000000000000000000000000)
+order = 8
+(00b8495f16056286fdb1329ceb8d09da6ac49ff1fae35616aeb8413b7c7aebe0,
+ 3931c129569e83a529482c14e628b457933bfc29ed801b4d6887148392507b1a)
+order = 4
+(0000000000000000000000000000000000000000000000000000000000000001,
+ 6be4f497f9a9c2afc21fa77ad7f4a6ef635a11c7284a9363e9a248ef9c884415)
+order = 8
+(57119fd0dd4e22d8868e1c58c45c44045bef839c55b1d0b1248c50a3bc959c5f,
+ 68c593893d458e6431c6ca0045fb501520a443468eaa68dd0f103842048065b7)
+order = 1
+point at infinity
+\end{lstlisting}
+
+根据上述Sage示例代码,可以对定义在$\F_p$上的Curve25519椭圆曲线点集有更好的理解.
+\code{curve25519.abelian_group()}~的执行结果显示,该点集同构于$\Z_{8n_1}$,
+意味着$E(\F_p)$中存在阶为2, 4, 8点.阶为2的点根据曲线方程显然为$(0,0)$.
+随后的代码通过随机选取椭圆曲线上的点$P$,并判定$n_1P$的阶是否为8来寻找阶为8的点,
+由于点集$E(\F_p)$同构于$\Z_{8n_1}$, 则会有一个8阶的子群,一个$n_1$阶的子群,
+8阶子群中有1个1阶点(也即无穷远点), 1个2阶点(也即点$(0,0)$), 2个4阶点,4个8阶点.
+每次从点集$E(\F_p)$随机取点$P$,则点$n_1P$的阶为8的概率为1/2,
+也即Listing~\ref{lst-curve255619-sage}~中第32至第37行的代码在几次尝试之后即可完成.
+有了8阶点之后, Listing~\ref{lst-curve255619-sage}~中第41至45行输出8阶子群中所有点和点的阶.
+关于基点$G$, RFC 7748中一开始给出的X25519采用的基点$G$为\\
 \centerline{(\texttt{0x9, 0x20ae19a1b8a086b4e01edd2c7748d14c923d4d7e6d7c61b229e9c5a27eced3d9}).}\\
 然而在随后的RFC 7748的勘误\footnote{
 RFC 7748 Errata. \url{https://www.rfc-editor.org/errata/rfc7748}}
@@ -20,7 +161,43 @@ RFC 7748 Errata. \url{https://www.rfc-editor.org/errata/rfc7748}}
 然而由于Curve25519与Edwards25519双向有理等价,而Ed25519所依赖的点群运算同时需要横纵坐标,
 并且已经有广泛使用的基点的值.
 RFC 7748中给出的基点的值,会映射到Edwards25519时会映射成Edwards2519曲线基点的负值,
-因此有了上述修正,以便在双向有理映射的条件下保持Edwards25519和Curve25519的基点保持一致.
+因此有了上述修正,以便在双向有理映射的条件下保持Edwards25519和Curve25519的基点保持一致,
+参见Listing~\ref{lst-curve255619-sage}~中第24至第30行.
+
+X25519的设计中为了使得所有的$x\in\F_p$都是合法公钥值引入了二次扩域上的椭圆曲线点群$E(\F_{p^2})$:
+$$E(\F_{p^2}) = \{ \mathcal{O} \}  \cup \{ (x,y): y^2 = x^3 + Ax^2 + x,  x, y \in \F_{p^2}, \F_{p^2} = \Z_{2^{255}-19}[\sqrt{2}] \}.$$
+定义$E(\F_{p^2})$上的取反操作$-$为: $-\mathcal{O} = \mathcal{O}, -(x,y) = (x,-y)$.
+$E(\F_{p^2})$上加法操作$+$定义如下:
+\begin{itemize}
+\item $\mathcal{O} + \mathcal{O} = \mathcal{O}, \mathcal{O} + (x,y) = (x,y), 
+(x,y) + \mathcal{O} = (x,y), (x,y) + (x,-y) = \mathcal{O}$
+\item $(x_1, y_1) + (x_2, y_2) = (x_3, y_3)$,
+\begin{equation*}
+\left\{
+\begin{array}{ll}
+x_3 & = \lambda^2 - (x_1 + x_2) - A\\
+y_3 & = (2x_1 + x_2 + A)\lambda - \lambda^3 - y_1 = \lambda(x_1 - x_3) - y_1\\
+\end{array},
+\right.
+\end{equation*}
+其中,
+\begin{equation*}
+\lambda = 
+\left\{
+\begin{array}{ll}
+(y_2-y_1) / (x_2-x_1),\ \text{if}\ x_1 \neq x_2,\\
+(3x_1^2 + 2Ax_1 + 1) / (2y_1),\ \text{if}\ (x_1,y_1) =(x_2,y_2),
+\end{array}
+\right.
+\end{equation*}
+\end{itemize}
+$E(\F_{p})$显然是$E(\F_{p^2})$中的子群(Subgroup):
+$$E(\F_{p}) = \{ \mathcal{O} \} \cup \{ E(\F_{p^2}) \cap \F_p \times \F_p\},$$
+根据前述的加法运算规则可知,当$(x_1, y_1), (x_2, y_2) \in  \F_p \times \sqrt{2}\F_{p}$ 时,
+$\lambda \in \sqrt{2}\F_p$, 根据运算规则有$(x_3, y_3) \in  \F_p \times \sqrt{2}\F_{p}$.
+同时考虑$E(\F_{p})$和$E(\F_{p^2})$,则任意的$x\in\F_p, x \neq 0$都对应两个点,
+则有$(x_3, y_3) \in  \F_p \times \sqrt{2}\F_{p}$,所以
+$E(\F_{p^2})$中的另一个子群为$ \{ \mathcal{O} \} \cup \{ E(\F_{p^2}) \cap \F_p \times \sqrt{2}\F_{p}\}$.
 
 \begin{figure}[h]
 \centering
@@ -90,19 +267,6 @@ Curve25519私钥并不是某个区间内的连续取值.
 %$$\{\underline{k}: k\in 2^{254} + 8\cdot\{0,\ldots,2^{251}-1\}\} \times \{\underline{u}, u\in \{0,\ldots,2^{256}-1\}\} \rightarrow \{\underline{u}, u\in \{0,\ldots,2^{256}-1\}\}.$$
 %\red{todo: 论证该映射存在的合理性}
 
-前面已经提过到Curve25519上的点群中的加法运算可以仅基于横坐标构建,
-第一次见到仅依赖横坐标的点群运算,感觉上非常诡异.
-考虑椭圆曲线上点的横坐标与点的关系,可以帮助消除诡异的感觉.
-点$P=(x,y)$\textit{基本上}可以仅根据横坐标$x$和曲线方程计算出来,
-然而这种计算会得到两个结果$P=(x,y)$以及$-P = (x, -y)$.
-由于点和横坐标不是一一对应的,无法通过直接从基于$(x,y)$的点群运算中推导出仅基于横坐标$x$的点群运算.
-用$\ominus$表示椭圆曲线$E$上的点的逆映射($\ominus(P) = -P$),定义如下映射$\mathbf{x}$和商群(Quotient Group) $\xi$:
-$$\mathbf{x}: E \rightarrow\xi \cong E/\langle\ominus\rangle$$
-映射$\mathbf{x}$将$E$中的点送入关于映射$\ominus$的商群$\xi$中:
-$$\mathbf{x}(P) = \mathbf{x}(Q) \iff P = Q\ \text{or}\ P = \ominus(Q), P, Q \in E, \mathbf{x}(P), \mathbf{x}(Q) \in \xi.$$
-直观上理解, 拥有相同横坐标的点$P, -P$在商群$\xi$中坍缩成同一个元素$\mathbf{x}(P)=\mathbf{x}(-P)$.
-并且点$P, -P$的$k$倍乘运算在商群$\xi$中也坍缩成同一个元素.
-$$k(-P) = -kP \implies \mathbf{x}(k(-P)) = \mathbf{x}(-kP)= \mathbf{x}(kP).$$
 由此, 虽然$\xi$并没有直接从$E$中继承运算,但是前述两个点共享同一个横坐标的问题得到解决,
 则$\xi$中可以定义仅依赖于横坐标的运算,并且根据$\xi$和$E$之间的关系,
 该运算规则可以根据$E$中的点的加法运算进行推导.
