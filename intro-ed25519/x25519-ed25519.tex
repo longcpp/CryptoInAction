@@ -453,9 +453,9 @@ Algorithm~\ref{algo-mont-binary}~可以看做是借助$R_1$完成的Double-and-A
 Algorithm~\ref{algo-mont-binary}~实质上借助$R_1$完成了对$R_0$的Double-and-Add操作.
 这也引出了Algorithm~\ref{algo-mont-binary}~中的第二个不变量, 在第$i$次迭代中($i$从$\ell-2$
 逐次递减到0)有$R_0 = \lfloor k/2^i \rfloor P, R_1 = R_0 + P$, 则当$i = 0$时, 就有$R_0 = kP$,
-因此Algorithm~\ref{algo-mont-binary}争取计算了点的倍乘$kP$.
+因此Algorithm~\ref{algo-mont-binary}~正确计算了点的倍乘$kP$.
 
-\begin{algorithm}[H]
+\begin{algorithm}[h]
 \caption{Montgomery's Binary Algorithm}%算法名字
 \label{algo-mont-binary}
 \LinesNumbered %要求显示行号
@@ -472,12 +472,72 @@ $(R_0, R_1)  \leftarrow (P, 2P)$\; %\;用于换行
 \Return $R_0$
 \end{algorithm}
 
+基于Algorithm~\ref{algo-mont-binary}~可以发展出计算$\mathbf{x}(kP)$的蒙哥马利阶梯算法(Montgomery Ladder).
+用\textsf{xADD}和\textsf{xDBL}替换Algorithm~\ref{algo-mont-binary}~中的点加和点倍乘运算,
+同时考虑射影坐标系的表示方法$(X_P:Z_P) = \mathbf{x}(P)$, 可以得到Algorithm~\ref{algo-mont-ladder}.
+需要指出的是, 根据方程(\ref{eq-xadd2})计算两个点的$\textsf{xADD}$时,除了这两个点之外,
+还需要这两点的差值. 根据循环不变量,一直有$\textsf{x}_1 - \textsf{x}_0 = (X_P, Z_P)$, 
+因此在第4行和第6行, $\textsf{xADD}$的输入参数为$(\textsf{x}_0, \textsf{x}_1, (X_P, Z_P))$.
+
+\begin{algorithm}[h]
+\caption{Montgomery's Ladder Algorithm}%算法名字
+\label{algo-mont-ladder}
+\LinesNumbered %要求显示行号
+\KwIn{$k = \sum_{i=0}^{\ell-1}k_i2^i, k_{\ell - 1} = 1, (X_P : Z_P) = \mathbf{x}(P)$}%输入参数
+\KwOut{$(X_k, Z_k) = \mathbf{x}(kP),\ \text{if}\ P\notin \{\mathcal{O}, (0,0)\} \ \text{otherwise}\ Z_k = 0$}%输出
+$(\textsf{x}_0, \textsf{x}_1)  \leftarrow ((X_P, Z_P), \textsf{xDBL}(X_P, Z_P))$ \; %\;用于换行
+\For{$i = \ell - 2$ down to 0}{
+	\eIf{$k_i = 0$}{
+		$(\textsf{x}_0, \textsf{x}_1) \leftarrow (\textsf{xDBL}(\textsf{x}_0), \textsf{xADD}(\textsf{x}_0, \textsf{x}_1, (X_P, Z_P))$\
+　　	}{
+		$(\textsf{x}_0, \textsf{x}_1) \leftarrow (\textsf{xADD}(\textsf{x}_0, \textsf{x}_1, (X_P, Z_P)), \textsf{xDBL}(\textsf{x}_1))$\
+	}
+}
+\Return $\textsf{x}_0$
+\end{algorithm}
+
+在Algorithm~\ref{algo-mont-binary}~和Algorithm~\ref{algo-mont-ladder}~中, $k_i$的值会影响程序的执行流程.
+在ECDH协议中, $k$的值通常为协议参与方的私钥, 涉及密钥信息的操作通常希望是常量时间的实现,
+也即密钥的取值不应该影响具体的执行流程,否则会泄露关于密钥的信息,从而招致侧信道攻击.
+实践中惯用的手法是用加法乘法等运算实现条件交换(Conditional Swap)替换条件判断, 
+参见Listing~\ref{lst-curve25519mul}~中函数~\code{cswap}.
+Algorithm~\ref{algo-mont-ladder}~用条件交换改进之后,得到Algorithm~\ref{algo-mont-ladder-const}.
+另一处在Algorithm~\ref{algo-mont-ladder}~和Algorithm~\ref{algo-mont-ladder-const}~中展示的尚未解释的
+常量时间实现的技术细节也与参数$k$相关.在两个算法输入参数中,都指定了$k_{\ell-1} = 1$,
+这是为了使得两个算法中的循环次数与$k$的具体取值无关. 
+由于Curve25519定义在255比特的素数域上,因此最高位一直为零,
+为了便于常量时间实现, 遵循了同样的常量时间技巧:
+通过将次高位比特设置为1,使得迭代次数一直为常数, 
+这也是Listing~\ref{lst-x25519-decode}~中执行第18行操作的原因.
+
+\begin{algorithm}[h]
+\caption{Constant-Time Montgomery's Ladder Algorithm}%算法名字
+\label{algo-mont-ladder-const}
+\LinesNumbered %要求显示行号
+\KwIn{$k = \sum_{i=0}^{\ell-1}k_i2^i, k_{\ell - 1} = 1, (X_P : Z_P) = \mathbf{x}(P)$}%输入参数
+\KwOut{$(X_k, Z_k) = \mathbf{x}(kP),\ \text{if}\ P\notin \{\mathcal{O}, (0,0)\} \ \text{otherwise}\ Z_k = 0$}%输出
+$(\textsf{x}_0, \textsf{x}_1)  \leftarrow (\textsf{xDBL}(X_P, Z_P), (X_P, Z_P))$ \; %\;用于换行
+\For{$i = \ell - 2$ down to 0}{
+	$(\textsf{x}_0, \textsf{x}_1) \leftarrow \textsf{SWAP}(k_{i+1} \oplus k_{i}, (\textsf{x}_0, \textsf{x}_1))$\;
+	$(\textsf{x}_0, \textsf{x}_1) \leftarrow (\textsf{xDBL}(\textsf{x}_0), \textsf{xADD}(\textsf{x}_0, \textsf{x}_1, (X_P, Z_P)))$\;
+}
+$(\textsf{x}_0, \textsf{x}_1) \leftarrow \textsf{SWAP}(k_0, (\textsf{x}_0, \textsf{x}_1))$\;
+\Return $\textsf{x}_0$
+\end{algorithm}
+
 
 \begin{figure}[h]
 \centering
 \includegraphics[width=.8\textwidth]{x-coordiniate-add.png}
 \caption{X25519密钥交换依赖的点运算}\label{fig-xadd}
 \end{figure}
+
+根据方程(\ref{eq-xadd2})和方程(\ref{eq-xdbl2})中展示的$\textsf{xADD}$和$\textsf{xDBL}$中展示的计算过程
+以及Algorithm~\ref{algo-mont-ladder-const}~展示的蒙哥马利阶梯算法,可以实现$\mathbf{x}(kP)$, 
+参见Listing~\ref{lst-curve25519mul}~中的函数~\code{mul}.
+函数~\code{mul}~并不是Algorithm~\ref{algo-mont-ladder-const}~的直接翻译,
+而是根据方程(\ref{eq-xadd2})和方程(\ref{eq-xdbl2})中展示的计算过程,
+将$\textsf{xADD}$和$\textsf{xDBL}$中的共同操作抽取出来之后的计算过程, 参见Figure~\ref{fig-xadd}.
 
 \begin{lstlisting}[language=python, caption = Curve25519和Curve448上的乘法运算, label=lst-curve25519mul]
 # Finite field with p
@@ -545,6 +605,9 @@ def mul(k: int, u: int, bits: int, p: int, a24: int):
     res = x_2 * (z_2**(p - 2))
     return res
 \end{lstlisting}
+
+有了$\mathbf{x}(kP)$的计算方法,则可以实现X25519密钥交换协议, 
+参见Listing~\ref{lst-x25519x448}~中的函数~\code{x25519}.
 
 \begin{lstlisting}[language=python, caption = X25519与X448的Python示例, label=lst-x25519x448]
 def x25519(k: bytes, u: bytes):
