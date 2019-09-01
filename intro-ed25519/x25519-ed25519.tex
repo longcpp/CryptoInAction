@@ -661,14 +661,45 @@ def x448(k: bytes, u: bytes):
     return encodeUCoordinate(int(res), bits)
 \end{lstlisting}
 
+至此已经讲述了关于Curve25519和X25519的设计理念, 算法规范以及背后的数学原理,
+现在可以尝试理解Bernstein在X25519的设计文档中总结的关于X25519协议的各项特点.
+\begin{itemize}
+\item \textbf{Short secret keys}: X25519协议对应的私钥是32字节,这一点并没有特殊之处,
+基于椭圆曲线的旨在提供128比特安全性的ECDH协议通常都是32字节的私钥.
+\item \textbf{Short public keys}: X25519协议对应的公钥是32字节, 相比其他的ECDH协议, 这点可算作优势.
+因为基于256比特素数域的ECDH的压缩公钥表示通常需要33字节,而压缩和解压缩需要耗费的时间通常在
+ECDH的速度测试中没有被纳入考量,尤其是解压缩操作. X25519由于只需要$x$坐标,所以无需压缩就是32个字节.
+\item \textbf{No time variability}: 这是X25519协议的一个显著优势. 椭圆曲线点群运算的常量时间是非常困难的,
+而且对特定实现添加侧信道防护通常会显著降低代码的执行速度. 利用蒙哥马利阶梯算法以及仅依赖$x$坐标的
+倍乘运算, 以及在X25519的实现中可以避免由于私钥信息不同而导致的分支操作,对常量时间实现非常友好.
+\item \textbf{Free key validation}: 这是X25519协议的一个显著优势. 通过引入二次扩域上的椭圆曲线点群,
+使得所有的$x\in\F_p$都是合法的公钥, 更进一步在模运算的视角下, 所有的32字节的数组都可以作为合法的公钥值,
+这就避免了在ECDH协议执行过程中检查公钥点这一比较耗费资源的操作.
+\item \textbf{Extremely high speed}: 通过精心选择的对64位寄存器友好的大素数以及蒙哥马利阶梯算法的利用,
+能够显著提升仅依赖$x$坐标的倍乘运算, 而公钥合法性验证的可省略也进一步提升了X25519的效率.
+\item \textbf{Short Code}: X25519协议用很少的代码量即可实现, 提出X25519协议的论文中, Bernstein提及他的
+实现仅有16KB的大小. 一个有意思的事情是, Wesley Janssen在其硕士论文中用18条twitter实现了Curve25519
+\footnote{
+Janssen, Wesley. "Curve25519 in 18 tweets." PhD diss., Bachelor’s thesis, Radboud University Nijmegen, 2014.
+\url{https://www.cs.ru.nl/bachelors-theses/2014/Wesley_Janssen___4037332___Curve25519_in_18_tweets.pdf}}
+\end{itemize}
+
 \subsection{Tendermint中的X25519}
 
-点对点(Peer-to-Peer)通信是区块链技术的典型特征,
+点对点(Peer-to-Peer)通信协议是区块链技术的典型特征,
 以Bitcoin, Ethereum为代表的主流公链中的点对点通信都是明文通信,
 交易的全网广播过程会因为明文通信的原因被观测到,
 由此可以定位交易的发起方,导致交易隐私的泄露.
 也因此改进点对点通信的安全性也是区块链技术演进中的一个技术方向.
-典型的改进策略包括调整交易广播过程的??协议,也包括将P2P的明文通信升级为加密通信.
+典型的改进策略包括调整交易广播过程的Dandelion++协议\footnote{
+Fanti, Giulia, Shaileshh Bojja Venkatakrishnan, Surya Bakshi, Bradley Denby, Shruti Bhargava, Andrew Miller, and Pramod Viswanath. "Dandelion++: Lightweight cryptocurrency networking with formal anonymity guarantees." Proceedings of the ACM on Measurement and Analysis of Computing Systems 2, no. 2 (2018): 29.
+\url{https://arxiv.org/pdf/1805.11060.pdf}}(已经在Zcash, Grin等区块链项目中部署)
+也包括将P2P的明文通信升级为加密通信,例如Tendermint Core项目中采用的基于Station-to-Station
+协议的密文通信协议\footnote{
+Secure P2P. \url{https://tendermint.com/docs/tendermint-core/secure-p2p.html\#caveat}},
+Libra项目中采用的Noise协议\footnote{
+Trevor Perrin. The Noise Protocol Framework. Revision 34.
+\url{https://noiseprotocol.org/noise.pdf}}.
 
 一个区块链项目从架构层面可以分为3个功能层,最底层的是P2P网络通信,
 中间的共识协议层以及上层的与具体业务逻辑相关的应用层.
@@ -678,18 +709,123 @@ def x448(k: bytes, u: bytes):
 其中Tendermint Core项目致力于成为构建区块链项目的基础平台,其中实现了Tendermint共识协议以及
 完成共识协议所需要的P2P网络通信功能, 而Cosmos SDK项目则为上层应用的开发提供了
 一些通用的模块,例如账户模型所需的账户模块, PoS机制所需要的质押等模块.
-本文关注Tendermint Core项目中的P2P网络通信层.
-Tendermint Core项目中实现了加密通信的P2P协议,
-根据白皮书描述该加密通信协议是基于Station-to-Station协议构建的,
-具体的密钥协商过程参见Figure~\ref{fig-tendermint-handshake},
-图片截取自Cas Cremers和Dennis Jackson的论文\footnote{
-}. 虽然X25519和Curve25519在设计时已经尽可能多的考虑应用时的安全陷阱,
-然而Cremers和Jackson指出了Tendermint Core中密钥协商过程中存在的安全隐患.
-值得注意的是另外一组研究人员也独立发现了Tendermint Core项目中握手协议存在的安全问题\footnote{
-}.
 
 \begin{figure}[h]
 \centering
 \includegraphics[width=.6\textwidth]{tendermint-handshake.png}
 \caption{Tendermint Core中的密钥协商\label{fig-tendermint-handshake}}
 \end{figure}
+
+本文关注Tendermint Core项目中的P2P网络通信协议中加密通道建立过程.
+Tendermint Core项目中实现了基于Station-to-Station的可认证加密机制(Authenticated Encryption Scheme)的P2P协议.
+具体的密钥协商过程参见Figure~\ref{fig-tendermint-handshake},
+图片截取自Cas Cremers和Dennis Jackson的论文\footnote{
+Cremers, Cas, and Dennis Jackson. 
+"Prime, Order Please! Revisiting Small Subgroup and Invalid Curve Attacks on Protocols using Diffie-Hellman." 
+IEEE CSF 19 (2019).
+\url{https://eprint.iacr.org/2019/526.pdf}}.
+每个节点都会生成一个Ed25519密钥来作为自己身份ID, 
+例如Figure~\ref{fig-tendermint-handshake}~中Initiator的私钥$i$和Responder的私钥$r$.
+当两个节点之间想要建立TCP连接时,首先利用X25519密钥交换协议来协商密钥,
+通过\textsf{HKDF_SHA256}派生出真正对流量加密的对称密钥,
+然后用AEAD算法\textsf{chacha20poly1305}加密流量.
+为了防止消息重放攻击, 每个节点都维持一个接受消息计数器和发送消息计数器,两个计数器初始值都为0.
+相应的计数器也用来作为\textsf{chacha20poly1305}算法的nonce值.
+密钥协商之后通信双方需要进行身份认证并可以同时确认双方通过密钥协商派生的密钥值是一致的,
+也即Figure~\ref{fig-tendermint-handshake}~中双方交换的消息
+$\textsf{senc}_{g^{xy}}(g^i, \textsf{sign}_i(\textsf{H}(g^{xy})))$
+和$\textsf{senc}_{g^{xy}}(g^r, \textsf{sign}_r(\textsf{H}(g^{xy})))$, 
+其中$\textsf{senc}_{g^{xy}}$表示利用$g^{xy}$派生而来的密钥对通信载荷进行加密.
+对Initiator而言,通信载荷为代表自己身份的公钥$g^i$, 以及用自己的私钥$i$
+对$\textsf{H}(g^{xy})$进行签名的签名值$\textsf{sign}_i(\textsf{H}(g^{xy}))$.
+对Responder而言,通信载荷为代表自己分的公钥$g^r$, 以及用自己的私钥$r$
+对$\textsf{H}(g^{xy})$进行签名的签名值$\textsf{sign}_r(\textsf{H}(g^{xy}))$.
+通过验证签名值,可以验证对方节点并确保两者通过密钥协商得到了相同的流量加密密钥.
+
+虽然X25519和Curve25519在设计时已经尽可能多的考虑应用时的安全陷阱,
+然而Cremers和Jackson指出了Tendermint Core中密钥协商过程中存在的安全隐患.
+值得注意的是另外一组研究人员也独立发现了Tendermint Core项目中握手协议存在的安全问题\footnote{
+p2p/conn/secret_connection.go allows MITM \#3010
+\url{https://github.com/tendermint/tendermint/issues/3010}}.
+这个攻击与Curve25519的余因子不为1并且在接受私钥时会将私钥的最低3位清零有关,
+参见Listing~\ref{lst-x25519-decode}~中第16行的函数~\code{decodeScalar25519}~中的操作.
+前面有提及过,将最低3位清零是为了保证点的倍乘运算是在大素数子群上.
+也正因为这种提前预防的措施,会导致如果Tendermint Core的密钥协商中有一方发送的公钥
+隶属于8阶或者4阶小子群时, 则X25519密钥协商得到的值$g^{xy}$会是全零的值.
+参考前述的Tendermint Core项目中安全信道的建立方式, 不失一般性, 假设Initiator发送的临时公钥隶属于小子群,
+则在交互的最后Initiator会获得Responder的签名值
+$\textsf{senc}_{g^{xy}}(g^r, \textsf{sign}_r(\textsf{H}(g^{xy})))$.
+这允许Initiator在后续与别的节点建立安全信道时利用$g^r, \textsf{sign}_r(\textsf{H}(g^{xy}))$
+冒充Responder的身份(只要Initiator向对方发送低阶临时公钥,就可以保证$g^{xy}$的值仍为零).
+这也允许中间人攻击(Man-In-The-Middle),在安全信道建立过程中,中间人注入低阶临时公钥,
+并通过前述方式进行身份冒充即可. 这两种情形表明如果不对接收到的临时公钥进行检查,
+则Tendermint Core项目期望通过这种方式建立的保密带认证的安全信道信道的目标无法达成.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{bernstein-validate-curve25519-pubkey.png}
+\caption{Bernstein关于是否需要验证X25519公钥的论述\label{fig-validate-pubkey}}
+\end{figure}
+
+最简单的应对措施是对收到的临时公钥点进行检查并拒绝低阶临时公钥.
+然而Bernstein在网页``A state-of-the-art Diffie-Hellman function"\footnote{
+A state-of-the-art Diffie-Hellman function. \url{https://cr.yp.to/ecdh.html}}明确指出,
+在Diffie-Hellman协议中应用Curve25519时,不需要检查临时公钥点,参见Figure~\ref{fig-validate-pubkey}. 
+首先分析下, Figure~\ref{fig-validate-pubkey}~中列出的具体的值.
+记$x_1 = \textsf{32560}\cdots\textsf{233504}$, $x_2 = \textsf{39382}\cdots\textsf{705823}$.
+则Figure~\ref{fig-validate-pubkey}~中Bernstein列出的需要拒绝的值中
+\textsf{0}, \textsf{1}, $x_1$和$x_2$对应Listing~\ref{lst-curve255619-sage}~中列出的8阶子群中的点的横坐标.
+考虑到底层素数域的特征为$2^{255}-19$, 而公钥的是用32字节表示,则同时需要拒绝的值有
+(与0, 1, $x_1$, $x_2$模$2^{255}-19$同余并且不超过32字节整数的表示范围):
+$2^{255} - 19$,
+$2^{255} - 19 + 1$,
+$2^{255} - 19 + x_1$,
+$2^{255} - 19 + x_2$,
+$2(2^{255} - 19)$, 
+$2(2^{255} - 19) + 1$.
+Figure~\ref{fig-validate-pubkey}~中另外两个模$2^{255}-19$同余的值是
+$2^{255} - 19 - 1$, $2(2^{255} - 19) - 1$.
+$2^{255} - 19 - 1$是$\F_p$上的二次非剩余, 
+也即这是二次扩域上的椭圆曲线中的点:
+$E'(\F_{p}) = \{ \mathcal{O} \} \cup \{ E(\F_{p^2}) \cap \F_p \times \sqrt{2}\F_{p}\}.$
+根据前述的信息$E'(\F_{p})$的余因子为4, 也即存在阶为4的子群, 
+该子群中除了1阶点$\mathcal{O}$和2阶点$(0,0)$,
+还存在2个4阶点,这2个4阶点具有相同的横坐标$2^{255} - 19 - 1$.
+也即通过排除Figure~\ref{fig-validate-pubkey}~中展示的临时公钥点,可以排除所有的低阶公钥.
+
+通过前面的描述可以发现,虽然排除低阶点是一个简单直接的方法,
+但是Bernstein明确指出在Diffie-Hellman协议中无需做临时公钥的合法验证.
+而遵循了这一原则的Tendermint Core项目中安全信道的建立却因为没有验证临时公钥而出现了安全隐患.
+所以到底是哪里出了问题? 值得注意的是TLS 1.3和Noise协议中也同样支持X25519密钥交换协议,
+同样不对临时公钥进行检查却没有发生类似Tendermint Core项目中的问题.
+Noise协议的规范\footnote{
+Trevor Perrin. The Noise Protocol Framework.
+\url{https://noiseprotocol.org/noise.html\#the-25519-dh-functions}}
+中特意说明了这一点\footnote{\textit{Invalid public key values will produce an output of all zeros.
+Alternatively, implementations are allowed to detect inputs that produce an all-zeros output and signal an error instead. This behavior is discouraged because it adds complexity and implementation variance, and does not improve security. This behavior is allowed because it might match the behavior of some software.}}.
+虽然非法的公钥值会产生全零的输出,但是仍不推荐对公钥进行合法性验证,因为这会增加协议复杂度
+与实现的变种,并且并没有增强安全性.允许做公钥合法性验证的原因只是因为这样能够跟部分软件行为相匹配.
+可以看到,不做公钥合法性验证并不一定会导致前述的Tendermint Core项目中存在的安全问题.
+Tony Arcieri指出\footnote{
+p2p/conn/secret_connection.go allows MITM \#3010
+\url{https://github.com/tendermint/tendermint/issues/3010}}, 
+Tendermint Core项目中存在上述安全的问题的根源并不在于没有检查公钥的合法性,
+问题的根源在于建立安全信道过程中握手过程的可锻造性(Handshake Malleability).
+而TLS 1.3和Noise协议中,用脚本哈希(Script Hashing)解决了这一问题:
+参与通信的双方对握手过程中发送和接收到的全部信息计算摘要,
+如果双方得到的摘要值不同,则当前握手协议必须终中断(原理类似于用MAC来保证完整性).
+Tony Arcieri同时建议使用类似于Noise协议做法来改良Tendermint Core项目中握手协议的安全性.
+值得提及的是,是否要排除Bernstein列出的所有的低阶点一直是个有争议的话题.
+虽然在Diffie-Hellman协议中,不检查公钥的合法性的做法对于正确设计的协议而言不会引入安全隐患,
+但是Daniel Genkin, Luke Valenta和Yuval Yarom指出\footnote{
+Genkin, Daniel, Luke Valenta, and Yuval Yarom. "May the fourth be with you: A microarchitectural side channel attack on several real-world applications of curve25519." In Proceedings of the 2017 ACM SIGSAC Conference on Computer and Communications Security, pp. 845-858. ACM, 2017.
+\url{https://eprint.iacr.org/2017/806.pdf}}, 
+拒绝这些低阶的公钥对于增强相应实现的抗侧信道攻击能力有益处.
+另外的可参考文章是``Why not validate Curve25519 public keys could be harmful"\footnote{
+Why not validate Curve25519 public keys could be harmful 
+\url{https://vnhacker.blogspot.com/2015/09/why-not-validating-curve25519-public.html}
+}.
+虽然X25519协议的设计与Curve25519曲线参数的选取已经充分考虑了常量时间实现的因素,
+但是针对Curve25519或者X25519实现的侧信道攻击仍是可能的, 参见\footnote{
+Kaufmann, Thierry, Hervé Pelletier, Serge Vaudenay, and Karine Villegas. "When constant-time source yields variable-time binary: Exploiting curve25519-donna built with MSVC 2015." In International Conference on Cryptology and Network Security, pp. 573-582. Springer, Cham, 2016.
+\url{https://infoscience.epfl.ch/record/223794/files/32_1.pdf}}.
