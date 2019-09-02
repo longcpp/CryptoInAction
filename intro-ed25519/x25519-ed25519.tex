@@ -821,10 +821,12 @@ Tony Arcieri同时建议使用类似于Noise协议做法来改良Tendermint Core
 Genkin, Daniel, Luke Valenta, and Yuval Yarom. "May the fourth be with you: A microarchitectural side channel attack on several real-world applications of curve25519." In Proceedings of the 2017 ACM SIGSAC Conference on Computer and Communications Security, pp. 845-858. ACM, 2017.
 \url{https://eprint.iacr.org/2017/806.pdf}}, 
 拒绝这些低阶的公钥对于增强相应实现的抗侧信道攻击能力有益处.
-另外的可参考文章是``Why not validate Curve25519 public keys could be harmful"\footnote{
+另外的可参考文章有``Why not validate Curve25519 public keys could be harmful"\footnote{
 Why not validate Curve25519 public keys could be harmful 
-\url{https://vnhacker.blogspot.com/2015/09/why-not-validating-curve25519-public.html}
-}.
+\url{https://vnhacker.blogspot.com/2015/09/why-not-validating-curve25519-public.html}}
+和``Should Curve25519 keys be validated?"\footnote{
+SHOULD CURVE25519 KEYS BE VALIDATED?
+\url{https://research.kudelskisecurity.com/2017/04/25/should-ecdh-keys-be-validated/}}.
 虽然X25519协议的设计与Curve25519曲线参数的选取已经充分考虑了常量时间实现的因素,
 但是针对Curve25519或者X25519实现的侧信道攻击仍是可能的, 参见\footnote{
 Kaufmann, Thierry, Hervé Pelletier, Serge Vaudenay, and Karine Villegas. "When constant-time source yields variable-time binary: Exploiting curve25519-donna built with MSVC 2015." In International Conference on Cryptology and Network Security, pp. 573-582. Springer, Cham, 2016.
