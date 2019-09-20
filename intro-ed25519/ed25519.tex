@@ -1,0 +1,35 @@
+\section{深入理解Ed25519}
+
+\subsection{Ed25519概述}
+
+Edwards-curve Digital Signature Algorithm (EdDSA)是定义在
+(扭曲)爱德华曲线上Schnorr签名的变种签名机制.
+Ed25519是Bernstein等人2011年在扭曲爱德华椭圆曲线Edwards25519 
+(与蒙哥马利曲线Curve25519双向有理等价)上构建的签名机制\footnote{
+Bernstein, Daniel J., Niels Duif, Tanja Lange, Peter Schwabe, and Bo-Yin Yang. 
+"High-speed high-security signatures." 
+In International Workshop on Cryptographic Hardware and Embedded Systems, 
+pp. 124-142. Springer, Berlin, Heidelberg, 2011.
+\url{https://link.springer.com/content/pdf/10.1007/978-3-642-23951-9_9.pdf}
+},显著特点是高效安全,在保证128比特的安全强度的前提下
+在2.4GHz的Intel Westmere (Xeon E5620) CPU上可以达到10万/秒的签名速度和7万/秒的验签速度.
+RFC 8032\footnote{
+RFC 8032. Edwards-Curve Digital Signature Algorithm (EdDSA).
+\url{https://tools.ietf.org/html/rfc8032}}中给出了EdDSA签名的具体规范,
+并且给出了基于两条具体曲线Edwards25519和Edwards448的签名机制Ed25519和Ed448测试向量.
+其中Edwards448是Mike Humberg构建的椭圆曲线,旨在提供224比特的安全强度.
+本文中,我们重点关注Ed25519以及RFC 8032中定义的关于Ed25519的几个变种形式.
+值得注意的是, 2015年Bernstein对EdDSA签名机制进行了推广\footnote{
+Bernstein, Daniel J., Simon Josefsson, Tanja Lange, Peter Schwabe, and Bo-Yin Yang. 
+"EdDSA for more curves." Cryptology ePrint Archive 2015 (2015).
+\url{https://eprint.iacr.org/2015/677.pdf}
+}以使EdDSA签名机制可以适用于更多的椭圆曲线.
+
+EdDSA签名机制具有诸多良好的特性: 
+1) 在各种平台上都可以高速实现; 2) 签名过程不需要外部随机数; 3) 能够有效抵抗侧信道攻击;
+4) 公钥和签名值都较小,对于Ed25519而言公钥为32个字节签名值为64个字节;
+5) 曲线上的点群运算是完备(Complete)的, 也即对于所有的点群中元素都成立, 计算时无需做额外的判断, 
+意味着运算时不需要对不受信的外部值做昂贵的点的验证; 
+6) EdDSA签名机制本身安全性不受哈希碰撞的影响.
+
+\subsection{}
