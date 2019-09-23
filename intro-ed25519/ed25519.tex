@@ -10,26 +10,63 @@ Bernstein, Daniel J., Niels Duif, Tanja Lange, Peter Schwabe, and Bo-Yin Yang.
 "High-speed high-security signatures." 
 In International Workshop on Cryptographic Hardware and Embedded Systems, 
 pp. 124-142. Springer, Berlin, Heidelberg, 2011.
-\url{https://link.springer.com/content/pdf/10.1007/978-3-642-23951-9_9.pdf}
-},显著特点是高效安全,在保证128比特的安全强度的前提下
+\url{https://link.springer.com/content/pdf/10.1007/978-3-642-23951-9_9.pdf}},
+显著特点是高效安全,在保证128比特的安全强度的前提下
 在2.4GHz的Intel Westmere (Xeon E5620) CPU上可以达到10万/秒的签名速度和7万/秒的验签速度.
 RFC 8032\footnote{
 RFC 8032. Edwards-Curve Digital Signature Algorithm (EdDSA).
-\url{https://tools.ietf.org/html/rfc8032}}中给出了EdDSA签名的具体规范,
+\url{https://tools.ietf.org/html/rfc8032}}
+中给出了EdDSA签名的具体规范,
 并且给出了基于两条具体曲线Edwards25519和Edwards448的签名机制Ed25519和Ed448测试向量.
 其中Edwards448是Mike Humberg构建的椭圆曲线,旨在提供224比特的安全强度.
-本文中,我们重点关注Ed25519以及RFC 8032中定义的关于Ed25519的几个变种形式.
 值得注意的是, 2015年Bernstein对EdDSA签名机制进行了推广\footnote{
 Bernstein, Daniel J., Simon Josefsson, Tanja Lange, Peter Schwabe, and Bo-Yin Yang. 
 "EdDSA for more curves." Cryptology ePrint Archive 2015 (2015).
-\url{https://eprint.iacr.org/2015/677.pdf}
-}以使EdDSA签名机制可以适用于更多的椭圆曲线.
+\url{https://eprint.iacr.org/2015/677.pdf}}
+以使EdDSA签名机制可以适用于更多的椭圆曲线.
+本文中,我们重点关注Ed25519以及EdDSA的变种形式PureEdDSA和HashEdDSA.
+为了统一两个变种的定义,引入了预哈希函数(Prehash) \textsf{PH}的参数.
+HashEdDSA是经典的先计算哈希值然后对哈希值计算签名的模式,也即对于任意长度的消息$m$,
+\textsf{PH}都会输出固定长度的哈希值,例如\textsf{PH}可以定义为\textsf{SHA-512}: 
+$\textsf{PH}(m) = \textsf{SHA-512}(m)$. PureEdDSA则直接对消息本身进行签名,
+此时\textsf{PH}为恒等函数(Identity Function), 也即$\textsf{PH}(m) = m$.
+
 
 EdDSA签名机制具有诸多良好的特性: 
 1) 在各种平台上都可以高速实现; 2) 签名过程不需要外部随机数; 3) 能够有效抵抗侧信道攻击;
 4) 公钥和签名值都较小,对于Ed25519而言公钥为32个字节签名值为64个字节;
 5) 曲线上的点群运算是完备(Complete)的, 也即对于所有的点群中元素都成立, 计算时无需做额外的判断, 
 意味着运算时不需要对不受信的外部值做昂贵的点的验证; 
-6) EdDSA签名机制本身安全性不受哈希碰撞的影响.
+6) EdDSA签名机制本身安全性不受哈希碰撞的影响,而ECDSA在出现哈希碰撞时会出现安全问题.
 
-\subsection{}
+\subsection{EdDSA签名机制}
+
+根据Bernstein等人在2015年对EdDSA签名机制的推广和RFC 8032中的规范, EdDSA签名机制有11个参数:
+\begin{enumerate}
+\item 
+奇素数$p$: EdDSA所依赖的椭圆曲线构建在有限域$\F_p$上.
+\item 
+整数$b$满足$2^{b-1} > p$: EdDSA公钥为$b$比特,签名值为$2b$比特,$b$应为8的整数倍.
+\item
+有限域$\F_p$中元素的$b-1$比特的编码.
+\item
+可以产生$2b$比特输出的具有密码学安全强度的哈希函数\textsf{H}.
+\item
+$\F_p$中的二次非剩余$d$, $d$是椭圆曲线方程的参数,推荐选择尽可能接近零的值.
+\item
+$\F_p$中非零元素$a$, $a$是曲线方程参数, 推荐$p \mod 4=1$取$a=-1$, 否则取$a=1$.
+\item 
+基点$B \neq (0, 1)$并且$B \in E = \{(x,y) \in \F_p \times \F_p\ s.t.\ ax^2 + y^2 = 1 + dx^2y^2\}$.
+\item
+整数$c = 2$或$c = 3$, $2^c$是椭圆曲线的余因子(cofactor), EdDSA私钥为$2^c$的倍数.
+\item
+整数$n$满足$c \leq n < b$, EdDSA私钥为$n+1$比特,最高位为1,最低$c$位置零.
+\item
+奇素数$\ell$满足$\ell B = (0,1)$并且$2^c \times \ell = \# E$, 即$\ell$为椭圆曲线点群的阶(Order).
+\item
+预哈希函数\textsf{PH}, PureEdDSA和HashEdDSA对\textsf{PH}的定义不同.
+\end{enumerate}
+点群中的单位元为$(0,1)$,并且点群上的加法运算是完备的(Complete), 
+也即对于任意的点$(x_1,y_1), (x_2, y_2)$都有
+$$(x_1, y_1) + (x_2, y_2) = \left( \frac{x_1y_2 + x_2y_1}{1 + dx_1x_2y_1y_2}, 
+\frac{y_1y_2 - ax_1x_2}{1-dx_1x_2y_1y_2}\right).$$ 
