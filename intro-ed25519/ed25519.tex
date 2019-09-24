@@ -24,13 +24,13 @@ Bernstein, Daniel J., Simon Josefsson, Tanja Lange, Peter Schwabe, and Bo-Yin Ya
 "EdDSA for more curves." Cryptology ePrint Archive 2015 (2015).
 \url{https://eprint.iacr.org/2015/677.pdf}}
 以使EdDSA签名机制可以适用于更多的椭圆曲线.
-本文中,我们重点关注Ed25519以及EdDSA的变种形式PureEdDSA和HashEdDSA.
-为了统一两个变种的定义,引入了预哈希函数(Prehash) \textsf{PH}的参数.
+本文中,我们重点关注基于Edwards25519曲线的EdDSA的变种形式
+\textsf{PureEdDSA}和\textsf{HashEdDSA}的签名机制:\textsf{Ed25519}和\textsf{Ed25519ph}.
+RFC 8032中为了统一两个变种的定义,引入了预哈希函数(Prehash) \textsf{PH}的参数.
 HashEdDSA是经典的先计算哈希值然后对哈希值计算签名的模式,也即对于任意长度的消息$m$,
 \textsf{PH}都会输出固定长度的哈希值,例如\textsf{PH}可以定义为\textsf{SHA-512}: 
 $\textsf{PH}(m) = \textsf{SHA-512}(m)$. PureEdDSA则直接对消息本身进行签名,
 此时\textsf{PH}为恒等函数(Identity Function), 也即$\textsf{PH}(m) = m$.
-
 
 EdDSA签名机制具有诸多良好的特性: 
 1) 在各种平台上都可以高速实现; 2) 签名过程不需要外部随机数; 3) 能够有效抵抗侧信道攻击;
@@ -46,7 +46,7 @@ EdDSA签名机制具有诸多良好的特性:
 \item 
 奇素数$p$: EdDSA所依赖的椭圆曲线构建在有限域$\F_p$上.
 \item 
-整数$b$满足$2^{b-1} > p$: EdDSA公钥为$b$比特,签名值为$2b$比特,$b$应为8的整数倍.
+整数$b$满足$2^{b-1} > p$: EdDSA公钥为$b$比特,签名值为$2b$比特, $b$应为8的整数倍.
 \item
 有限域$\F_p$中元素的$b-1$比特的编码.
 \item
@@ -60,13 +60,73 @@ $\F_p$中非零元素$a$, $a$是曲线方程参数, 推荐$p \mod 4=1$取$a=-1$,
 \item
 整数$c = 2$或$c = 3$, $2^c$是椭圆曲线的余因子(cofactor), EdDSA私钥为$2^c$的倍数.
 \item
-整数$n$满足$c \leq n < b$, EdDSA私钥为$n+1$比特,最高位为1,最低$c$位置零.
+整数$n$满足$c \leq n < b$, 私钥为$n+1$比特,最高位为1 ($2^n$位),最低$c$位置零.
 \item
 奇素数$\ell$满足$\ell B = (0,1)$并且$2^c \times \ell = \# E$, 即$\ell$为椭圆曲线点群的阶(Order).
 \item
-预哈希函数\textsf{PH}, PureEdDSA和HashEdDSA对\textsf{PH}的定义不同.
+预哈希函数\textsf{PH}, \textsf{PureEdDSA}和\textsf{HashEdDSA}对\textsf{PH}的定义不同.
 \end{enumerate}
 点群中的单位元为$(0,1)$,并且点群上的加法运算是完备的(Complete), 
 也即对于任意的点$(x_1,y_1), (x_2, y_2)$都有
 $$(x_1, y_1) + (x_2, y_2) = \left( \frac{x_1y_2 + x_2y_1}{1 + dx_1x_2y_1y_2}, 
-\frac{y_1y_2 - ax_1x_2}{1-dx_1x_2y_1y_2}\right).$$ 
+\frac{y_1y_2 - ax_1x_2}{1-dx_1x_2y_1y_2}\right)$$
+
+整数$s: 0 < s < \ell - 1$用小端法编码为$b$比特的字符串的过程记为$\textsf{Encode}(s)$.
+而$(x,y)\in E$被编码为$b$比特的字符串,记为$\textsf{Encode}(x,y)$, $b$比特的编码
+包含$y$的$b-1$比特的编码和1比特的符号位:如果$x$是负数, 则符号位为1, 否则为0.
+根据这种编码方式可以立即确定$y$的值, $x$的值则需要通过方程
+$x = \pm\sqrt{(y^2-1)/(dy^2-a)}$和符号位进行确定.
+$x, y \in \F_p$, EdDSA签名体制中对有限域$\F_p$中的负数的定义为:
+如果$x$的$b-1$比特的编码字符串比$-x$的$b-1$比特的编码字符串字典序更大
+(Lexicographically Larger),则$x\in\F_p$是负数.
+对于$p$是大的奇素数并且采用小端法编码的情形, $\F_p$中负数是所有的奇数$\{1, 3, 5, \ldots, q-2\}$.
+
+EdDSA签名机制的私钥是$b$比特的值$k$, 记$\textsf{H}(k) = (h_0, h_1, \ldots, h_{2b-1})$.
+$h_0, h_1, \ldots, h_{b-1}$确定了一个整数值$s$:
+$$s =  2^n + \sum_{c \leq i < n}2^i h_i$$
+整数值$s$决定公钥$\textsf{Encode}(A)$, 其中$A = sB$.
+$h_b, h_{b+1}, \ldots, h_{2b-1}$用在签名值的计算过程中.
+前面有提到, RFC 8032中根据预哈希函数\textsf{PH}的定义了给出了EdDSA的两个变种:
+\textsf{PureEdDSA}和\textsf{HashEdDSA}, 由于两者的差异仅在于用\textsf{PH}处理
+待签名消息$m$的结果不同,因此EdDSA可描述为:用\textsf{PureEdDSA}对$\textsf{PH}(m)$进行签名.
+
+\textsf{PureEdDSA}对消息$m$计算签名值的结果$2b$比特的值
+$\textsf{Encode}(R) || \textsf{Encode}(S)$: 
+$$R = rB, S = \left(r + \textsf{H}\left(\textsf{Encode}(R) || 
+\textsf{Encode}(A) || \textsf{PH}(m)\right)\cdot s \right) \mod \ell$$
+其中$r = \textsf{H}(h_b || \ldots || h_{2b-1} || m)$并且被解释为小端法表示的$2b$比特的整数值.
+用公钥值$\textsf{Encode}(A)$验证关于消息$m$的签名值$\textsf{Encode}(R) || \textsf{Encode}(S)$时,
+首先需要从中解析出$A, R, S$的值,
+并判定$A$和$R$是$E$中的元素并且$S$是集合$\{0, 1, \ldots, \ell-1\}$中的值,
+然后判断如下等式是否成立
+$$
+(2^c \cdot S) B = 2^c  R + (2^c \cdot h) A,
+\ \text{其中}\ h = \textsf{H}(\textsf{Encode}(R) || \textsf{Encode}(A) || \textsf{PH}(m))
+$$
+如果解析失败或者上述等式不成立,则判定为非法的签名值,否则判定为合法的签名值.
+对消息$m$的EdDSA签名值的验证过程也即用\textsf{PureEdDSA}对$\textsf{PH}(m)$的签名值的验证过程.
+
+\textsf{Ed25519}/\textsf{Ed25519ph}是基于扭曲爱德华曲线Edwards25519实例化的EdDSA签名机制, 
+对应前述的EdDSA签名机制的11个参数分别为: 
+\begin{enumerate}
+\item 有限域$\F_p$的奇素数$p = 2^{255} - 19$.
+\item 整数$b  = 256$, 也即\textsf{Ed25519}的公钥为256比特,签名值为512比特,注意到$2^{255} > p$.
+\item $\F_p$中元素$\{0, 1, \ldots, p-1\}$的255比特的小端法编码.
+\item 
+基于\textsf{SHA-512}\footnote{
+RFC 6234: US Secure Hash Algorithms (SHA and SHA-based HMAC and HKDF).
+\url{https://tools.ietf.org/pdf/rfc6234.pdf}}
+的生成512比特输出的哈希函数$\textsf{SHA-512}(\textsf{dom2}(phflag, context) || x)$.
+对于\textsf{Ed25519}而言, $\textsf{dom2}(f, c)$是空字符串, 也因此$phflag$的值无关紧要,
+而$context$的值也必须为空,这样可以保证RFC 8032中定义的$\textsf{Ed25519}$与已有的
+$\textsf{Ed25519}$实现之间保持兼容. 
+对于\textsf{Ed25519ph}而言, 则有$phflag = 1$. 
+另外RFC 8032中还定义了\textsf{Ed25519ctx}, 对应的$phflag = 0$并且$context$不应为空.
+$context$的值由签名者和验证者设置,
+默认值是空字符串(\textsf{Ed25519}不能有这个$context$参数),最多可以有255个字节.
+\item $\F_p$中的二次非剩余$d = -121665/121666$.
+\item 由于$2^{255}-19 \mod 4 = 1$, 因此$\F_p$中的非零元素$a = -1$.
+\item 基点$B$的横坐标值为\\\textsf{0x216936d3cd6e53fec0a4e231fdd6dc5c692cc7609525a7b2c9562d608f25d51a},\\
+纵坐标值为\\
+\textsf{0x6666666666666666666666666666666666666666666666666666666666666658}.
+\end{enumerate}
