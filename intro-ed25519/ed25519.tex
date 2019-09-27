@@ -163,12 +163,12 @@ $$
 x^2 \equiv 2^{4k+2}(u/v)^{2k+2} \equiv 2^{\frac{p-1}{2}}(u/v)^{\frac{p+3}{4}} \equiv
  2^{\frac{p-1}{2}} (u/v)^{\frac{p-1}{4}}\cdot (u/v) \equiv -1 \cdot -1 \cdot (u/v) \mod p
 $$
-上式的推算过程中利用了2是$\F_p$中的二次非剩余这一事实以及欧拉准则.
+上式成立的原因在于2是$\F_p$中的二次非剩余以及欧拉准则$2^{(p-1)/2}\equiv -1 \mod p$.
 
 根据上述过程,继续描述从32字节的编码中解码出点坐标值的过程,从$y$的值可以计算出$u, v$的值.
 当$u/v$是$\F_p$中的二次剩余时,计算$x \equiv (u/v)^{(p+3)/8}\mod p$,
 如果$x^2 \equiv (u/v) \mod p$, 则$x$是平方根,
-如果$x^2 \equiv -(u/v)\mod p$, 则$2^{(p-1)/4} \cdot x$是平方根,
+如果$x^2 \equiv -(u/v)\mod p$, 则$2^{(p-1)/4} \cdot x$ (也即$\sqrt{-1}\cdot (u/v)^{(p+3)/8}$)是平方根,
 否则$u/v$不是$\F_p$中的二次剩余,意味着解码失败.
 下一步则根据$x_0$的值选取正确的平方根,如果$x = 0$而$x_0 = 1$, 则解码失败.
 如果$x_0 \neq x \mod 2$, 则$x = p-x$, 解码得到的点即为$(x,y)$.
@@ -183,11 +183,40 @@ $$
 而判断$x^2\equiv (u/v) \mod p$和$x^2 \equiv -(u/v) \mod p$可以等价变换为
 $v \cdot x^2 \equiv u \mod p$和$v \cdot x^2 \equiv -u \mod p$.
 
-\begin{figure}[h]
-\centering
-\includegraphics[width=.7\textwidth]{ed25519.png}
-\caption{Ed25519签名过程}\label{fig-ed25519}
-\end{figure}
+与secp256k1或者secp256r1等曲线的实现时常采用的Jacobi坐标系$(X, Y, Z), x = X/Z, y = Y/Z$等不同, 
+Hisil等人指出\footnote{
+Hisil, Huseyin, Kenneth Koon-Ho Wong, Gary Carter, and Ed Dawson. 
+"Twisted Edwards curves revisited." 
+In International Conference on the Theory and Application of Cryptology and Information Security, 
+pp. 326-343. Springer, Berlin, Heidelberg, 2008.
+\url{https://eprint.iacr.org/2008/522.pdf}}对于扭曲爱德华曲线Edwards25519,
+采用扩展的扭曲爱德华坐标系(Extended Twisted Edwards Coordinates)表示
+$(x,y) \rightarrow (X : Y : Z : T), x = X/Z, y = Y/Z, T = XY/Z, Z \neq 0$更有利于点运算的高效实现.
+在扩展的扭曲爱德华坐标系下, 单位元为$(0 : 1 : 1 : 0)$, $(X : Y : Z : T)$的逆元为$(-X : Y : Z : -T)$.
+判断两个点$(X_1, Y_1, Z_1, T_1), (X_2, Y_2, Z_2, T_2)$相等等价于判断
+$X_1/Z_1 = X_2/Z_2\ \&\ Y_1/Z_1 = Y_2/Z_2$, 由于素数域上的求逆运算需要较多的计算量,
+为了避免求逆运算并且注意到$Z_1 \neq 0, Z_2 \neq 0$, 前述判断可以等价变换为
+$X_1 \cdot Z_2 = X_2 \cdot Z_1\ \& \ Y_1 \cdot Z_2 = Y_2 \cdot Z_1$.
+而两个点的加法运算$(X_1, Y_1, Z_1, T_1) +  (X_2, Y_2, Z_2, T_2) = (X_3, Y_3, Z_3, T_3)$,
+可以按照如下步骤进行, 值得注意的是如下计算步骤对于两个点相同的情况同样适用.
+
+\begin{equation*}
+\begin{array}{c}
+A \leftarrow (Y_1 - X_1) \cdot (Y_2 - X_2), B \leftarrow (Y_1 + X_1) \cdot (Y_2 + X_2) \\
+C \leftarrow 2\cdot T_1 \cdot T_2, D \leftarrow 2 \cdot Z_1 \cdot Z_2 \\
+E \leftarrow B - A, F \leftarrow D - C, G \leftarrow D + C, H \leftarrow B + A \\
+X_3 \leftarrow E \cdot F, Y_3 \leftarrow G\cdot H, T_3 \leftarrow E \cdot H, Z_3 \leftarrow F \cdot G
+\end{array}
+\end{equation*}
+
+Listing~\ref{lst-ed25519point}~中, 展示了基于扩展的扭曲爱德华坐标系实现的点的加法, 加倍以及倍乘运算
+,参见函数~\code{point_add}, \code{point_double}~以及~\code{point_mul}.
+同时展示了前述的点的编解码过程(参见函数~\code{point_compress}~和~\code{point_decompress})
+以及判断两个点是否相同的函数~\code{point_equal}.
+\code{point_decompress}~过程中所需的恢复横坐标的运算,在函数~\code{recover_x}~中实现.
+
+\lstinputlisting[firstline=1, lastline=95, language=python, 
+caption=\texttt{Edwards25519点运算与编解码}, label=lst-ed25519point]{ed25519.py}
 
 与ECDSA签名机制中直接用私钥和基点进行点倍乘运算得到公钥值不同,
 EdDSA签名机制中私钥和公钥之间的关系更为复杂,按照以下步骤进行,参见Figure~\ref{fig-ed25519}.
@@ -196,4 +225,79 @@ EdDSA签名机制中私钥和公钥之间的关系更为复杂,按照以下步�
 3) 将设置之后的32字节的看做是小端法表示的整数,记为$s$, 计算$A = sB$;
 4) $A$的编码$\textsf{Encode}(A)$是最终的公钥.
 
+\begin{figure}[h]
+\centering
+\includegraphics[width=.7\textwidth]{ed25519.png}
+\caption{Ed25519签名过程}\label{fig-ed25519}
+\end{figure}
 
+签名过程先利用\textsf{SHA-512}对私钥进行哈希运算,得到64字节的输出,
+记为$h = (h[0], h[1], \ldots, h[63])$, 其中$h[i], i \in \{0, 1, \ldots, 63\}$表示第$i$个字节.
+如前所述$(h[0], \ldots, h[31])$用于生成公钥值, 记$prefix = h[32] || h[33] || \ldots || h[63]$, 
+$prefix$在后续的EdDSA签名过程中扮演了随机数的角色.
+计算
+$$\textsf{SHA-512}(\textsf{dom2}(F, C) || prefix || \textsf{PH}(m)),$$
+其中根据\textsf{Ed25519}, \textsf{Ed25519ctx}, \textsf{Ed25519ph}的不同,
+$\textsf{dom2}(F,C)$和$\textsf{PH}(m)$的定义有所不同,
+得到的64字节的哈希值解释为小端法表示的整数$r$并计算
+$$R = rB.$$
+计算
+$$\textsf{SHA-512}\left(\textsf{dom2}(F,C) || \textsf{Encode}(R) || \textsf{Encode}(A) || \textsf{PH}(m)\right).$$
+将得到的64字节的哈希值解释为小端法表示的整数$k$并计算
+$$ S = (r + k * s) \mod \ell.$$
+最终的签名值为32字节的$\textsf{Encode}(R)$以及32字节的$\textsf{Encode}(S)$,总计为64字节.
+
+签名验证时从签名值$\textsf{Encode}(R)||\textsf{Encode}(S)$解码得到点$R$和整数$S$,
+解码$\textsf{Encode}(A)$得到公钥点$A$.
+如果签名值或者公钥值解码失败或者$S$的值不在合理的范围内,则判定为非法的签名值.
+计算
+$$\textsf{SHA-512}\left(\textsf{dom2}(F,C) || \textsf{Encode}(R) || \textsf{Encode}(A) || \textsf{PH}(m)\right).$$
+将得到的64字节的哈希值解释为小端法表示的整数$k$并检查下面的等式是否成立:
+$$(8S)B = 8R + (8k)A.$$
+若等式成立,则判定为合法的签名值; 否则判定为非法的签名值.
+\textsf{Ed25519}签名验签的Python示例代码参见Listing~\ref{lst-ed25519},
+函数~\code{secret_to_pubkey}~实现从私钥生成公钥的过程,
+函数~\code{ed25519_sign}~和~\code{ed25519_verify}~则分别实现了Ed25519的签名和验签.
+
+\lstinputlisting[firstline=97, lastline=142, language=python, 
+caption=\texttt{Ed25519签名机制}, label=lst-ed25519]{ed25519.py}
+
+根据Listing~\ref{lst-ed25519point}~和Listing~\ref{lst-ed25519}中的Python示例代码,
+配合RFC 8032中给出的测试向量,可以验证PoC代码的正确性,参见Listing~\ref{lst-ed25519check}.
+
+\begin{lstlisting}[language=python, caption=测试向量验证Ed25519实现正确性, label=lst-ed25519check]
+>>> import ed25519
+>>> import base64
+>>>
+>>> secret_str = (
+... '9d61b19deffd5a60ba844af492ec2cc4'
+... '4449c5697b326919703bac031cae7f60')
+>>>
+>>> pubkey_str = (
+... 'd75a980182b10ab7d54bfed3c964073a'
+... '0ee172f3daa62325af021a68f707511a')
+>>>
+>>> msg_str = ""
+>>> sig_str = (
+... 'e5564300c360ac729086e2cc806e828a'
+... '84877f1eb8e5d974d873e06522490155'
+... '5fb8821590a33bacc61e39701cf9b46b'
+... 'd25bf5f0595bbe24655141438e7a100b')
+>>>
+>>> secret = base64.b16decode(secret_str, True)
+>>> pubkey = base64.b16decode(pubkey_str, True)
+>>>
+>>> msg    = base64.b16decode(msg_str, True)
+>>> sig    = base64.b16decode(sig_str, True)
+>>> 
+>>> pubkey == ed25519.secret_to_pubkey(secret)
+True
+>>> base64.b16encode(ed25519.ed25519_sign(secret, msg)).lower()
+b'e5564300c360ac729086e2cc806e828a84877f1eb8e5d974d873e0652249015
+58d87fc207b0549fb6bc61bf6b550c7875e5f2a43320abd01ee6f2ef6965e5829'
+>>>
+>>> ed25519.ed25519_verify(pubkey, msg, sig)
+True
+\end{lstlisting}
+
+\subsection{}
