@@ -178,7 +178,7 @@ $$
 (u/v)^{(p+3)/8} = u^{\frac{p+3}{8}} v^{-\frac{p+3}{8}}
 = u^{\frac{p+3}{8}} v^{(p-1)-\frac{p+3}{8}}
 = u^{\frac{p+3}{8}} v^{\frac{7p-11}{8}}
-= uv^3(uv^7)^{(q-5)/8} 
+= uv^3(uv^7)^{(p-5)/8} 
 $$
 而判断$x^2\equiv (u/v) \mod p$和$x^2 \equiv -(u/v) \mod p$可以等价变换为
 $v \cdot x^2 \equiv u \mod p$和$v \cdot x^2 \equiv -u \mod p$.
@@ -199,7 +199,6 @@ $X_1/Z_1 = X_2/Z_2\ \&\ Y_1/Z_1 = Y_2/Z_2$, 由于素数域上的求逆运算需
 $X_1 \cdot Z_2 = X_2 \cdot Z_1\ \& \ Y_1 \cdot Z_2 = Y_2 \cdot Z_1$.
 而两个点的加法运算$(X_1, Y_1, Z_1, T_1) +  (X_2, Y_2, Z_2, T_2) = (X_3, Y_3, Z_3, T_3)$,
 可以按照如下步骤进行, 值得注意的是如下计算步骤对于两个点相同的情况同样适用.
-
 \begin{equation*}
 \begin{array}{c}
 A \leftarrow (Y_1 - X_1) \cdot (Y_2 - X_2), B \leftarrow (Y_1 + X_1) \cdot (Y_2 + X_2) \\
@@ -209,17 +208,18 @@ X_3 \leftarrow E \cdot F, Y_3 \leftarrow G\cdot H, T_3 \leftarrow E \cdot H, Z_3
 \end{array}
 \end{equation*}
 
-Listing~\ref{lst-ed25519point}~中, 展示了基于扩展的扭曲爱德华坐标系实现的点的加法, 加倍以及倍乘运算
+Listing~\ref{lst-ed25519point}~中展示了基于扩展的扭曲爱德华坐标系实现的点的加法, 加倍以及倍乘运算
 ,参见函数~\code{point_add}, \code{point_double}~以及~\code{point_mul}.
 同时展示了前述的点的编解码过程(参见函数~\code{point_compress}~和~\code{point_decompress})
 以及判断两个点是否相同的函数~\code{point_equal}.
 \code{point_decompress}~过程中所需的恢复横坐标的运算,在函数~\code{recover_x}~中实现.
+函数~\code{point_mul}~内部实现点的倍乘运算时,采用了经典的double-and-add方法.
 
 \lstinputlisting[firstline=1, lastline=95, language=python, 
 caption=\texttt{Edwards25519点运算与编解码}, label=lst-ed25519point]{ed25519.py}
 
 与ECDSA签名机制中直接用私钥和基点进行点倍乘运算得到公钥值不同,
-EdDSA签名机制中私钥和公钥之间的关系更为复杂,按照以下步骤进行,参见Figure~\ref{fig-ed25519}.
+EdDSA签名机制中私钥和公钥之间的关系更为复杂,按照以下步骤进行(参见Figure~\ref{fig-ed25519}):
 1) 用\textsf{SHA-512}计算32字节的私钥的512比特(64个字节)的哈希值,低32字节用于生成公钥;
 2) 将32字节中第一个字节的最低3比特清零,最后一个字节的最高位清零,将最后一个字节的第二最高位置1;
 3) 将设置之后的32字节的看做是小端法表示的整数,记为$s$, 计算$A = sB$;
@@ -256,27 +256,25 @@ $$\textsf{SHA-512}\left(\textsf{dom2}(F,C) || \textsf{Encode}(R) || \textsf{Enco
 $$(8S)B = 8R + (8k)A.$$
 若等式成立,则判定为合法的签名值; 否则判定为非法的签名值.
 \textsf{Ed25519}签名验签的Python示例代码参见Listing~\ref{lst-ed25519},
-函数~\code{secret_to_pubkey}~实现从私钥生成公钥的过程,
+其中函数~\code{secret_to_pubkey}~实现从私钥生成公钥的过程,
 函数~\code{ed25519_sign}~和~\code{ed25519_verify}~则分别实现了Ed25519的签名和验签.
 
 \lstinputlisting[firstline=97, lastline=142, language=python, 
 caption=\texttt{Ed25519签名机制}, label=lst-ed25519]{ed25519.py}
 
-根据Listing~\ref{lst-ed25519point}~和Listing~\ref{lst-ed25519}中的Python示例代码,
+根据Listing~\ref{lst-ed25519point}~和Listing~\ref{lst-ed25519}~中的Python示例代码,
 配合RFC 8032中给出的测试向量,可以验证PoC代码的正确性,参见Listing~\ref{lst-ed25519check}.
 
-\begin{lstlisting}[language=python, caption=测试向量验证Ed25519实现正确性, label=lst-ed25519check]
+\begin{lstlisting}[language=python, caption=验证Ed25519实现正确性, label=lst-ed25519check]
 >>> import ed25519
 >>> import base64
 >>>
 >>> secret_str = (
 ... '9d61b19deffd5a60ba844af492ec2cc4'
 ... '4449c5697b326919703bac031cae7f60')
->>>
 >>> pubkey_str = (
 ... 'd75a980182b10ab7d54bfed3c964073a'
 ... '0ee172f3daa62325af021a68f707511a')
->>>
 >>> msg_str = ""
 >>> sig_str = (
 ... 'e5564300c360ac729086e2cc806e828a'
@@ -300,4 +298,101 @@ b'e5564300c360ac729086e2cc806e828a84877f1eb8e5d974d873e0652249015
 True
 \end{lstlisting}
 
-\subsection{}
+\subsection{几种签名机制的关系}
+
+EdDSA签名机制中的验签中判断的核心等式是$(2^c\cdot S)B = 2^c R + (2^c\cdot h)A$,
+其中每个点倍乘的标量都乘以$2^c$的原因是为了应对余因子不为1可能带来的安全隐患.
+如果不考虑标量中的$2^c$, 则这个等式与Schnorr签名机制中验签判定的核心等式基本一致.
+关于这点Bernstein等人在提出EdDSA签名机制的论文中就ElGamal,  (EC-)Schnorr, 
+(EC-)DSA以及EdDSA签名机制之间的联系有着精彩的论述.
+
+ElGamal签名机制是在椭圆曲线密码学诞生之前提出的,工作在大素数乘法群$\Z^*_p$上,
+阶为$\ell = p-1$, 本原元记为$B$, 私钥记为$a$, 公钥记为$A \equiv B^a \mod p$, 
+则对消息$m$的在随机数$k \in\Z^*_{\ell}$下的签名值为$(R, S)$, 其中
+$$R \equiv B^k \mod p, \ S \equiv k^{-1} \cdot (\textsf{H}(m) - Ra) \mod \ell.$$
+签名验证涉及到的核心的判断是
+$$B^{\textsf{H}(m)} \equiv A^R \cdot R^S \mod p.$$
+对于正确的签名值有$A^R \cdot R^S \equiv B^{aR} B^{kS} \equiv B^{aR + kS} \mod p$,
+又由于
+$$S \equiv k^{-1} \cdot (\textsf{H}(m) - Ra) \mod \ell \implies aR + kS \equiv \textsf{H}(m) \mod \ell,$$
+因此对于正确的签名值有$B^{\textsf{H}(m)} \equiv A^R \cdot R^S \mod p$成立.
+
+为了满足安全性,现在通常推荐素数$p$需要为2048比特,则对应的ElGamal签名值为4096比特,
+签名值较大. 1989年Schnorr提出了可以看做是ElGamal签名机制变种的Schonrr签名机制,
+能够大大缩短签名值的长度. 而数字签名算法DSA是吸收了Schnorr签名设计思想的另一种ElGamal
+签名机制的变种签名机制. DSA在1994年被采纳为FIPS标准: FIPS-186.
+基于椭圆曲线的DSA方案即为熟知的ECDSA.
+
+根据拉格朗日定理可知,大素数乘法群$\Z^*_p$存在阶为$q,\ q | (p-1)$的乘法子群.
+对于$p\approx2^{1024}$的情况,一般取$q \approx2^{160}$.
+Schnorr签名机制对ElGamal签名机制进行了改动,使得最终的签名值只有$2\log_2(q)$比特
+而非$2\log_2(p)$. Schnorr签名工作在$\Z^*_p$中的$q$阶子群,
+方案的安全性基于这样的事实: 在特定的$\Z^*_p$子群上求解离散对数问题是困难的.
+
+ElGamal的签名验证过程中$R$扮演了两种角色: $\Z^*_p$中的元素以及$A$的指数.
+由于群的元素不一定可以直接作为指数(标量),因此更广义的群结构通常需要一个将群中元素
+映射成为标量的映射$\mathbf{x}$.例如ECDSA签名机制依赖的群结构是大素数域$\F_p$上的
+椭圆曲线加法点群中阶为$\ell$的子群, 而映射$\mathbf{x}(R)$定义为点$R$的$x$坐标.
+对比ElGamal签名机制, ECDSA签名机制中还用$-A$替换了$A$,则签名过程中的减法相应
+变换为加法, 对于基点$B$, 私钥$a$, 公钥$A = aB$, 
+消息$m$在随机数$k$下的签名值为$(\mathbf{x}(R),S)$, 其中:
+$$R = kB, \ S = k^{-1}(\textsf{H}(m) + \mathbf{x}(R)a) \mod \ell.$$
+并且签名验证中判断的主要方程变为: 
+$$\textsf{H}(m)B + \mathbf{x}(R)A = SR.$$
+通过添加约束要求$S$模$\ell$可逆($\ell$为素数时,非零$S$模$\ell$都可逆),则前述方程变换为
+$$S^{-1}\left(\textsf{H}(m)B + \mathbf{x}(R)A\right) = R,$$
+对比之下,可以发现验证所需的计算从原先的3次点倍乘运算减少为2次点倍乘运算.
+
+%为了便于对比,基于映射$\mathbf{x}$重新表示加法形式的ElGamal签名机制,
+%例如基于椭圆曲线加法点群的阶为$\ell$的加法子群构建的EC-ElGamal签名机制.
+%$B$表示基点,私钥为$a$, 公钥为$A=aB$,用随机数$k$
+%对消息$m$签名使用的随机数为$k$, 则EC-ElGamal签名机制的签名值为$(R,S)$, 其中
+%$$R = kB, \ S = k^{-1} (\textsf{H}(m) - aR)
+%接下来展示如何通过逐步改进ElGamal签名机制得到Schnorr签名机制.
+\textcolor{blue}{
+对于映射$\mathbf{x}$, Schnorr签名则采用了密码学安全的哈希函数,
+借助于哈希函数的高效率,用最少的计算代价消除了可能隐藏在简单$\mathbf{x}$映射中的数学结构.
+与前述的ECDSA签名类似, Schnorr签名的签名值为$(\mathbf{x}(R), S)$而非$(R,S)$.
+给定签名值$(\mathbf{x}(R), S)$, 验证者验证下面的等式是否成立:
+$$\mathbf{x}(R') = \mathbf{x}(R),\ \text{其中}\ R' = S^{-1}(\textsf{H}(m)B + \mathbf{x}(R)A) .$$
+Schnorr同时合并了对$R$和消息$m$的哈希计算$\textsf{H}(R||m)$, Bernstein等人指出
+合并$R$和消息$m$的哈希计算可以理解成用$\mathbf{x}(R)S$替换$S$.
+对于合法的Schnorr签名值,有等式$SR = \textsf{H}(m)B + \mathbf{x}(R)A$成立.
+用$\mathbf{x}(R)S$替换$S$并假设$\mathbf{x}(R)\neq0$则有:
+$$\mathbf{x}(R)SR = \textsf{H}(m)B + \mathbf{x}(R)A \implies 
+SR = \mathbf{x}(R)^{-1}\textsf{H}(m)B + A.$$
+注意到这里$\mathbf{x}(R)^{-1}\textsf{H}(m)$只是将两个哈希值做了乘法,
+考虑$\textsf{H}(R||m)$时, $\mathbf{x}(R)^{-1}\textsf{H}(m)$是多余的,
+则上式,也即签名验证的方程,可简化为$SR = \textsf{H}(R||m)B + A$.
+签名过程中$S$的计算方式也调整成$S \equiv k^{-1}(\textsf{H}(R||m) + a) \mod \ell$,
+仍然需要在签名时计算素数域上元素的逆.
+Schnorr签名中真正利用的验证等式实际为$SB = R+ \textsf{H}(R||m)A$,
+通过调整为该等式,签名中$S = r + \textsf{H}(R||m) a$, 则签名和验签中都不需要计算素数域的逆运算,
+对于减少实现的代码体积和运行时运算都有益处.
+}
+
+值得指出的是,在哈希函数输入中包含$R$,使得签名机制在面对哈希碰撞的情况下也能保持安全性.
+Schnorr签名的实际部署受到了相关专利的掣肘,但是其构造方式被理论专家熟知,
+因为在哈希函数输入中包含$R$的做法使得各种安全证明成为可能.
+EdDSA签名机制的签名验证方程与Schnorr签名的签名验证方程一致(不考虑余因子的影响).
+另外在哈希函数的输入中还包括了公钥$A$, 
+对于提升EdDSA签名机制在multi-user场景下的安全性有益处\footnote{
+Bernstein, Daniel J. "Multi-user Schnorr security, revisited." 
+IACR Cryptology ePrint Archive 2015 (2015): 996.
+\url{https://ed25519.cr.yp.to/multischnorr-20151012.pdf}}.
+而签名值的表示中,由于对底层素数域的特征的巧妙选取,用较少的空间即可完整编码点.
+例如利用32字节即可编码Edwards25519上的点,因此无需使用哈希函数对$R$进行压缩,
+不使用哈希函数对$R$进行压缩也带来了可以批量验证签名的益处.
+在BTC/BCH网络中升级计划中的Schnorr签名机制也采用了不压缩$R$的Schnorr签名形式,
+以利用批量验证特性来加速区块验证\footnote{
+Pieter Wuille. "Schnorr Signatures for secp256k1."
+\url{https://github.com/sipa/bips/blob/bip-schnorr/bip-schnorr.mediawiki}}.
+
+\subsection{EdDSA批量验签与速度实测}
+
+区块链场景中,一个区块中通常包含大量的签名并且网络上的每个节点都要对所有的签名值进行校验.
+也因此,签名验证的速度对于区块的传播速度有影响. 虽然也可以通过在内存池中对每笔交易的
+签名值验证进行进行缓存来加速区块验证速度,但改进验签操作本身的效率对于效率的整体提升有益处.
+如前所述, EdDSA签名机制的设计允许EdDSA签名机制的实现利用批量验证来加速多个签名的验证过程.
+
+假设我们有一组签名值$(m_i, A_i, R_i, S_i)$,其中$(R_i, S_i)$是关于消息$m_i$的对应公钥$A_i$的签名值.
