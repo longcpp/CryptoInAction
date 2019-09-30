@@ -298,10 +298,43 @@ b'e5564300c360ac729086e2cc806e828a84877f1eb8e5d974d873e0652249015
 True
 \end{lstlisting}
 
+预哈希函数$\textsf{PH}$定义的不同导致了两个变体\textsf{Ed25519}和\textsf{Ed25519ph}的存在.
+为什么需要两种形式? RFC 8032中解释到应该根据具体的应用需求来选用.
+具体来说如果应用需要签名机制能够抗哈希碰撞,也即签名机制即使在哈希碰撞的情形下仍然保持安全,
+则应该选用\textsf{Ed25519};如果应用要求生成签名的接口是single-pass的,
+也即创建只需要遍历一次输入的消息,则选用\textsf{Ed25519ph}, 这是因为\textsf{Ed25519}
+在签名过程中需要对输入消息$m$执行两个哈希运算,参见Listing~\ref{lst-ed25519}~中函数的
+\code{ed25519_sign} (第18行和第20行).
+
+$\textsf{dom2}(F,C)$的值在\textsf{Ed25519}版本的签名计算和验签时要求为空,否则为字节数组: \\
+\centerline{\texttt{"SigEd25519 no Ed25519 collisions" || octet(F) || octet(OLEN(C)) || C},}
+其中$F$是单字节取值为0$\sim$255,而$C$表示上下文环境$context$并且最多可以为255字节.
+也因此参数$C$的存在定义了带上下文环境实例化的扩展Ed25519签名机制.
+在实际应用中, 上下文环境参数$C$可以用来为不同的协议之间或者在同一个协议内部对不同用途的
+Ed25519签名机制进行区分(没有该参数的话类似的功能比较难以实现).
+值得提及的是, 32字节的\texttt{"SigEd25519 no Ed25519 collisions"}不会被解码为曲线上的点.
+这样的考虑是因为Ed25519签名机制的内部哈希函数总是以一个点的编码开始,
+这样能够将\textsf{Ed25519}与\textsf{Ed25519ph}, \textsf{Ed25519ctx}区分开, 
+而\textsf{Ed25519ph}, \textsf{Ed25519ctx}可以通过$\textsf{dom2}(F,C)$中参数$F$的不同区分开.
+因此不会出现一种Ed25519签名机制生成的签名值可以
+在另一种Ed25519签名机制下验证通过的情况,也因此一个密钥对可以同时用于
+\textsf{Ed25519}, \textsf{Ed25519ph}以及\textsf{Ed25519ctx}.
+
+根据RFC 8032最后提供的\textsf{Ed25519}, \textsf{Ed25519ph}以及\textsf{Ed25519ctx}
+三种签名机制的示例代码,可以认为\textsf{Ed25519ctx}是带上下文环境的\textsf{Ed25519},
+也即这两个变种的预哈希函数都是恒等函数,而\textsf{Ed25519ph}是采用\textsf{SHA-512}
+作为预哈希函数的变种,也可以带上下文环境参数.
+
 \subsection{几种签名机制的关系}
 
 EdDSA签名机制中的验签中判断的核心等式是$(2^c\cdot S)B = 2^c R + (2^c\cdot h)A$,
-其中每个点倍乘的标量都乘以$2^c$的原因是为了应对余因子不为1可能带来的安全隐患.
+其中每个点倍乘的标量都乘以$2^c$的原因是在RFC 8032中有相应的解释:
+\textcolor{blue}{
+\textit{The given verification formulas for both Ed25519 and Ed448 multiply points by the cofactor. 
+While this is not strictly necessary for security (in fact, 
+any signature that meets the non-multiplied equation will satisfy the multiplied one), 
+in some applications it is undesirable for implementations to disagree about 
+the exact set of valid signatures. Such disagreements could open up, e.g., fingerprinting attacks.}}
 如果不考虑标量中的$2^c$, 则这个等式与Schnorr签名机制中验签判定的核心等式基本一致.
 关于这点Bernstein等人在提出EdDSA签名机制的论文中就ElGamal,  (EC-)Schnorr, 
 (EC-)DSA以及EdDSA签名机制之间的联系有着精彩的论述.
@@ -489,7 +522,7 @@ ok      github.com/tendermint/tendermint/crypto/ed25519 4.903s
 libsodium中Ed25519的签名和验签的实测速度大约为46500 sign/s和15300 verify/s, 虽然签名速度相比
 libsecp256k1中的ECDSA实现确实有较大的改进,但是区块链场景下更关切的验签的速度
 相比libsecp256k1中开启优化选项~\code{--enable-endomorphism}~和
-\code{--with-bignum=gmp}之后ECDSA在同样的CPU下可以达到的速度
+\code{--with-bignum=gmp}~之后ECDSA在同样的CPU下可以达到的速度
 19800 verify/s相比并没有什么优势. Bernstein等人在提出Ed25519的论文中,提及Ed25519
 在Intel Westmere (Xeon E5620) CPU @ 2.4GH下可以达到71000 verify/s,
 推测应该是libsodium中的Ed25519的实现也没有优化到极致.
@@ -573,3 +606,41 @@ batch verification/256 & 6419.80 & 39900 & 3952.00 & 64800\\\hline
 可以发现Table~\ref{tbl-ed25519-dalek}~中关于签名有两个数据, 一个是sign, 
 一个是sign with extended secret key.两者的速度也有些许差异:
 考虑开启AVX2选项的场景, 签名速度分别为46900 sign/s, 48100 sign/s.
+参考文件~\code{ed25519_benchmarks.rs}~和文件~\code{ed25519.rs}~中的代码,
+参见Listing~\ref{lst-ed25519dalek2sign}, 参考前述的Ed25519签名机制计算过程,
+可以看清两者之间的差异: Ed25519机制中的私钥没有直接用于生成公钥,
+而是取\textsf{SHA-512}对私钥的计算结果的一部分作为私钥值, 
+函数~\code{sign}~的速度测试中包含了\textsf{SHA-512}的哈希计算,
+而~\code{fn sign_expanded_key}~中不包含这部分计算, 参见函数
+\code{pub fn sign(&self, message: &[u8]) -> Signature}.
+
+\begin{lstlisting}[caption = sign \& sign with expanded secret key in ed25519-dalek, label=lst-ed25519dalek2sign]
+// file ed25519_benchmarks.rs
+fn sign(c: &mut Criterion) {
+    let mut csprng: ThreadRng = thread_rng();
+    let keypair: Keypair = Keypair::generate(&mut csprng);
+    let msg: &[u8] = b"";
+
+    c.bench_function("Ed25519 signing", move |b| {
+                     b.iter(| | keypair.sign(msg))
+    });
+}
+
+fn sign_expanded_key(c: &mut Criterion) {
+    let mut csprng: ThreadRng = thread_rng();
+    let keypair: Keypair = Keypair::generate(&mut csprng);
+    let expanded: ExpandedSecretKey = (&keypair.secret).into();
+    let msg: &[u8] = b"";
+    
+    c.bench_function("Ed25519 signing with an expanded secret key", move |b| {
+                     b.iter(| | expanded.sign(msg, &keypair.public))
+    });
+}
+// file ed25519.rs
+/// Sign a message with this keypair's secret key.
+pub fn sign(&self, message: &[u8]) -> Signature {
+    let expanded: ExpandedSecretKey = (&self.secret).into();
+
+    expanded.sign(&message, &self.public)
+}
+\end{lstlisting}
