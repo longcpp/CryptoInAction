@@ -396,3 +396,180 @@ Pieter Wuille. "Schnorr Signatures for secp256k1."
 如前所述, EdDSA签名机制的设计允许EdDSA签名机制的实现利用批量验证来加速多个签名的验证过程.
 
 假设我们有一组签名值$(m_i, A_i, R_i, S_i)$,其中$(R_i, S_i)$是关于消息$m_i$的对应公钥$A_i$的签名值.
+为了进行批量验证,随机选择128比特的随机数$z_i$,其中每个$z_i$值相互独立,
+然后计算$H_i = \textsf{H}(\textsf{Encode}(R_i) || \textsf{Encode}(A_i) ||m_i)$,
+并用多标量乘法验证如下方程是否成立:
+$$
+\left(-\sum_i z_iS_i \mod \ell\right)B + \sum_i z_i R_i + \sum_i(z_iH_i \mod \ell)A_i = 0
+$$
+关于多标量乘法可以用Pippenger的方法\footnote{
+Pippenger, Nicholas. "On the evaluation of powers and related problems." 
+In 17th Annual Symposium on Foundations of Computer Science (sfcs 1976), 
+pp. 258-263. IEEE, 1976.},
+也可以用Bos-Coster方法\footnote{
+De Rooij, Peter. "Efficient exponentiation using precomputation and vector addition chains." 
+In Workshop on the Theory and Application of of Cryptographic Techniques, 
+pp. 389-399. Springer, Berlin, Heidelberg, 1994.
+\url{https://link.springer.com/content/pdf/10.1007/BFb0053453.pdf}}.
+Bernstein等人推荐使用Bos-Coster方法.
+
+如果上式验证通过,则认为$8S_iB = 8R_i + 8H_iA_i$对每个$i$都成立,也即每个签名值都合法.
+原因在于, $P_i = 8R_i + 8H_iA_i - 8S_iB$是阶为$\ell$的循环子群中的一个元素,
+并且经由上式验证满足$\sum_i z_iP_i = 0$, 除非所有的$P_i = 0$, 
+否则对于随机选择的相互独立的$z_i$的值$\sum_i z_iP_i = 0$成立的概率不超过$2^{-128}$.
+例如,假设$P_4$非零, 则$z_1, z_2, z_3, , z_5, z_6, \ldots$的值选定之后, 仅有一个$z_4$的值能够使得
+$\sum_i z_iP_i = 0$成立, 随机选择的$z_4$恰好等于该值的概率为$2^{-128}$.
+
+如果上式验证失败,则认为$(m_i, A_i, R_i, S_i)$集合中,至少有一次非法的签名值,此时重新开始逐个
+验证签名值. 如果签名值集合中仅有一小部分签名值非法,则存在一些技术可以批量鉴别这些签名值.
+但是所有现存的批量鉴别技术都会随着非法签名值的增多而越来越慢. 另外考虑到可能存在的DoS攻击,
+逐个验证签名值是较好的策略.
+
+libsodium\footnote{libsodium: A modern, portable, easy to use crypto library.
+\url{https://github.com/jedisct1/libsodium}}
+中实现了Ed25519的签名机制,利用在Listing~\ref{lst-ed25519sodium}~中
+展示的代码测试libsodium 1.0.18版本中Ed25519签名和验签的速度.
+在Intel(R) Core(TM) i7-6700HQ CPU @ 2.60GHz上执行得到的结果展示在
+Listing~\ref{lst-ed25519sodium-results}~中, 也即46500 sign/s以及15300 verify/s.
+
+\lstinputlisting[language=c++, caption=Ed25519 Speed in Libsodium, 
+label=lst-ed25519sodium]{libsodium-ed25519-bench.cpp}
+
+\begin{lstlisting}[caption=Ed25519 Speed in libsodium, label=lst-ed25519sodium-results]
+long@LMBP $ ./libsodium-ed25519-bench.exe
+avg time of per ed25519_sign: 21.50 us, about 46511.63 sign/s
+avg time of per ed25519_verify: 65.40 us, about 15290.52 verify/s
+\end{lstlisting}
+
+OpenSSL自1.1.1版本中也增加了对Ed25519签名机制的支持,利用OpenSSL自带的速度测试工具在
+Intel(R) Core(TM) i7-6700HQ CPU @ 2.60GHz上执行得到的结果展示在
+Listing~\ref{lst-ed25519openssl}~中,也即26900 sign/s和7200 verify/s.
+相比libosdium 1.0.18版本中的Ed25519实现, OpenSSL中的Ed25519在签名和验签速度方面都较慢.
+
+\begin{lstlisting}[caption=Ed25519 Speed in OpenSSL, label=lst-ed25519openssl]
+long@LMBP $ openssl speed eddsa
+Doing 253 bits sign Ed25519's for 10s: 268115 253 bits Ed25519 signs in 9.97s
+Doing 253 bits verify Ed25519's for 10s: 79327 253 bits Ed25519 verify in 9.98s
+Doing 456 bits sign Ed448's for 10s: 71858 456 bits Ed448 signs in 9.97s
+Doing 456 bits verify Ed448's for 10s: 19427 456 bits Ed448 verify in 9.98s
+version: 3.0.0-dev
+built on: built on: Sun Sep 29 11:12:41 2019 UTC
+options:bn(64,64) rc4(16x,int) des(int) aes(partial) idea(int) blowfish(ptr)
+compiler: cc -fPIC -arch x86_64 -O3 -Wall -DL_ENDIAN -DOPENSSL_PIC -D_REENTRANT -DNDEBUG
+CPUINFO: OPENSSL_ia32cap=0x7ffaf3bfffebffff:0x29c6fbf
+                              sign    verify    sign/s verify/s
+ 253 bits EdDSA (Ed25519)   0.0000s   0.0001s  26892.2   7948.6
+ 456 bits EdDSA (Ed448)   0.0001s   0.0005s   7207.4   1946.6
+\end{lstlisting}
+
+Tendermint Core项目\footnote{
+Tendermint Core (BFT Consensus) in Go.
+\url{https://github.com/tendermint/tendermint}}
+的共识投票算法选用了Ed25519签名机制,
+项目中的Ed25519签名机制实现采用了Go语言标准库的实现,
+Listing~\ref{lst-ed25519tendermint}~中给出了在同样的CPU上执行速度测试的结果.
+62133 ns/sign等价于16000 sign/s, 而158603 ns/verify等价于6300 verify/s.
+
+\begin{lstlisting}[caption=Ed25519 Speed in Tendermint, label=lst-ed25519tendermint]
+ long@LMBP $ pwd
+/Users/long/Go/src/github.com/tendermint/tendermint/crypto/ed25519
+ long@LMBP $  go test -bench .
+goos: darwin
+goarch: amd64
+pkg: github.com/tendermint/tendermint/crypto/ed25519
+BenchmarkKeyGeneration-8           19882             61446 ns/op
+BenchmarkSigning-8                 18825             62133 ns/op
+BenchmarkVerification-8             7472            158603 ns/op
+PASS
+ok      github.com/tendermint/tendermint/crypto/ed25519 4.903s
+\end{lstlisting}
+
+至此,已经讨论了Ed25519签名机制在libsodium, OpenSSL以及Go语言密码学库中的实现,
+由于OpenSSL和Go语言库中的实现显然是未经优化的,仅考虑libsodium中的实现.
+libsodium中Ed25519的签名和验签的实测速度大约为46500 sign/s和15300 verify/s, 虽然签名速度相比
+libsecp256k1中的ECDSA实现确实有较大的改进,但是区块链场景下更关切的验签的速度
+相比libsecp256k1中开启优化选项~\code{--enable-endomorphism}~和
+\code{--with-bignum=gmp}之后ECDSA在同样的CPU下可以达到的速度
+19800 verify/s相比并没有什么优势. Bernstein等人在提出Ed25519的论文中,提及Ed25519
+在Intel Westmere (Xeon E5620) CPU @ 2.4GH下可以达到71000 verify/s,
+推测应该是libsodium中的Ed25519的实现也没有优化到极致.
+幸运的是Rust语言实现的项目ed25519-dalek\footnote{
+Fast and efficient ed25519 signing and verification in Rust.
+\url{https://github.com/dalek-cryptography/ed25519-dalek}}
+对Ed25519的实现做了深度优化并且实现了批量验证的接口.
+Listing~\ref{lst-ed25519dalekresults}~中展示了利用项目自带的速度测试程序
+在同样的CPU上运行得到的结果(为了方便展示,输出做了精简).
+Listing~\ref{lst-ed25519dalekresults}~中还展示了开启CPU支持的AVX2指令集之后的速度测试结果,
+可以注意到的验签的速度相比没有开启之前有了大幅提升.
+值得注意的是,做批量验证的时候展示的时间是完成一批签名验证所需的时间.
+例如开启AVX2选项之后, 4个签名的一次批量验证耗时的平均时间为103.67us.
+
+\begin{lstlisting}[caption=Ed25519 Speed in ed25519-dalek, label=lst-ed25519dalekresults]
+long@LMBP $ pwd
+/Users/long/Git/ed25519-dalek
+long@LMBP $ cargo bench
+    Finished release [optimized] target(s) in 0.06s
+
+... signing         					time:   [23.215 us 23.275 us 23.336 us]
+...  signing with  expanded secret key	time:   [22.693 us 22.773 us 22.854 us]                        
+... signature verification 				time:   [66.835 us 67.371 us 67.987 us]
+... batch signature verification/4 		time:   [172.20 us 173.04 us 173.90 us]
+... batch signature verification/8 		time:   [279.77 us 280.84 us 281.90 us]
+... batch signature verification/16 	time:   [527.72 us 529.46 us 531.20 us]
+... batch signature verification/32 	time:   [1.0178 ms 1.0298 ms 1.0457 ms]
+... batch signature verification/64 	time:   [1.9155 ms 1.9243 ms 1.9334 ms]
+... batch signature verification/96 	time:   [2.8346 ms 2.8556 ms 2.8811 ms]
+... batch signature verification/128 	time:   [3.5081 ms 3.5272 ms 3.5518 ms]
+... batch signature verification/256 	time:   [6.3983 ms 6.4198 ms 6.4399 ms]
+ 
+long@LMBP $ export RUSTFLAGS=-Ctarget_cpu=native
+long@LMBP $ cargo bench --features=avx2_backend
+    Finished release [optimized] target(s) in 0.41s
+    
+...  signing         					time:   [21.195 us 21.309 us 21.417 us]
+...  signing with  expanded secret key 	time:   [20.705 us 20.808 us 20.918 us]
+...  signature verification 			time:   [36.696 us 36.793 us 36.920 us]
+...  batch signature verification/4 	time:   [103.40 us 103.67 us 103.98 us]
+...  batch signature verification/8 	time:   [175.04 us 175.71 us 176.54 us]
+...  batch signature verification/16 	time:   [338.26 us 342.17 us 346.44 us]
+...  batch signature verification/32 	time:   [616.49 us 617.83 us 619.39 us]
+...  batch signature verification/64 	time:   [1.2003 ms 1.2029 ms 1.2056 ms]
+...  batch signature verification/96 	time:   [1.7099 ms 1.7137 ms 1.7180 ms]
+...  batch signature verification/128 	time:   [2.1540 ms 2.1576 ms 2.1616 ms]
+...  batch signature verification/256 	time:   [3.9470 ms 3.9520 ms 3.9571 ms]
+\end{lstlisting}
+
+为了方便比较,将Listing~\ref{lst-ed25519dalekresults}~中的us/op或者ms/op都换算成op/s,
+并且将批量验证时的测试结果也换算成做利用批量验证每秒可以验证多少个签名值,
+转换后的结果参见Table~\ref{tbl-ed25519-dalek}. 从中可以看到, 不用批量验证并且开启
+AVX2选项之后, 签名和验签速度分别可以达到47000$\sim$48000 sign/s和27200 verify/s,
+相比libsodium的速度,在验签速度有了明显的提升,也比开启优化选项之后的libsecp256k1
+中的ECDSA验签速度更快. 当利用批量验证时, 随着并行度的提升, 换算得到的验签速度也越来越快,
+在一次批量验证256个签名时,换算之后的验签速度大约为64800 verify/s, 已经是优化选项全开之后
+libsecp256k1中ECDSA验签速度的3倍之多.
+
+\begin{table}[h]
+\centering
+\caption{Ed25519 Speed in ed25519-dalek}\label{tbl-ed25519-dalek}
+\begin{tabular}{|c|c|c|c|c|}
+\hline
+                                    &       us/op   &  op/s      &     us/op        & op/s \\ 
+                             	  &                  &               &   with avx2 & with avx2 \\\hline
+sign				  &  23.27 & 43000 & 21.31 & 46900\\\hline
+sign with extended secret key &  22.77 & 43900 & 20.81 & 48100\\ \hline
+verification                  & 67.37 & 14800 & 36.79 & 27200\\ \hline
+batch verification/4     & 173.04 & 23100 & 103.67 & 38600\\\hline
+batch verification/8     & 280.84 & 28500 & 175.71 & 45500\\\hline
+batch verification/16   & 529.46 & 30200 & 342.17 & 46800\\\hline
+batch verification/32   & 1029.80 & 31100 & 617.83 & 51800\\\hline
+batch verification/64   & 1924.30 & 33300 & 1202.90 & 53200\\\hline
+batch verification/96   & 2881.10 & 33300 & 1713.70 & 56000\\\hline
+batch verification/128 & 3551.80 & 36000 & 2157.60 & 59300\\\hline
+batch verification/256 & 6419.80 & 39900 & 3952.00 & 64800\\\hline
+
+\end{tabular}
+\end{table}
+
+可以发现Table~\ref{tbl-ed25519-dalek}~中关于签名有两个数据, 一个是sign, 
+一个是sign with extended secret key.两者的速度也有些许差异:
+考虑开启AVX2选项的场景, 签名速度分别为46900 sign/s, 48100 sign/s.
