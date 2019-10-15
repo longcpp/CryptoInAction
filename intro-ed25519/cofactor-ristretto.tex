@@ -1,0 +1,165 @@
+\documentclass{article}
+\usepackage[UTF8, heading = false, scheme = plain]{ctex}
+
+\usepackage{geometry}
+\geometry{b5paper,left=2cm,right=2cm,top=2cm,bottom=2cm}
+
+\usepackage{color}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+
+\linespread{1.5}
+
+\usepackage[colorlinks,
+            linkcolor=red,
+            anchorcolor=blue,
+            citecolor=green
+            ]{hyperref}
+
+\usepackage{listings}
+\usepackage{fontspec}
+\usepackage{graphicx}
+\usepackage{algorithmic}
+\newfontfamily\monaco{Monaco}
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+\lstset{ %
+  basicstyle=\footnotesize\monaco,       % the size of the fonts that are used for the code
+  numbers=left,                   % where to put the line-numbers
+  numberstyle=\footnotesize\monaco\color{gray},  % the style that is used for the line-numbers
+  numbersep=5pt
+  stepnumber=1,                   % the step between two line-numbers. If it's 1, each line
+                                  % will be numbered
+  numbersep=5pt,                  % how far the line-numbers are from the code
+  backgroundcolor=\color{white},      % choose the background color. You must add \usepackage{color}
+  showspaces=false,               % show spaces adding particular underscores
+  showstringspaces=false,         % underline spaces within strings
+  showtabs=false,                 % show tabs within strings adding particular underscores
+  frame=lines,                   % adds a frame around the code
+  rulecolor=\color{black},        % if not set, the frame-color may be changed on line-breaks within not-black text (e.g. commens (green here))
+  tabsize=4,                      % sets default tabsize to 2 spaces
+  captionpos=t,                   % sets the caption-position to bottom
+  breaklines=true,                % sets automatic line breaking
+  breakatwhitespace=false,        % sets if automatic breaks should only happen at whitespace
+  title=\lstname,                   % show the filename of files included with \lstinputlisting;
+                                  % also try caption instead of title
+  keywordstyle=\color{blue},          % keyword style
+  commentstyle=\color{dkgreen},       % comment style
+  stringstyle=\color{mauve},         % string literal style
+  escapeinside={\%*}{*)},            % if you want to add LaTeX within your code
+  morekeywords={*,...}               % if you want to add more keywords to the set
+}
+
+\usepackage{amssymb} 
+\usepackage{amsmath}
+\usepackage[ruled,vlined]{algorithm2e}
+
+\setlength{\parindent}{2em}
+
+\renewcommand{\G}{\mathbb{G}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\Q}{\mathbb{Q}}
+\newcommand{\F}{\mathbb{F}}
+
+\newcommand{\Sbox}{\textsf{Sbox}}
+\newcommand{\code}[1]{\lstinline!#1!}
+
+\newcommand{\CKDpriv}{\textsf{CKDpriv}}
+\newcommand{\CKDpub}{\textsf{CKDpub}}
+
+%%%%%%%处理下划线：_%%%%%%%%%
+\usepackage{underscore}
+%%%%%%%处理下划线：_%%%%%%%%%
+
+\setlength{\parindent}{2.1em}
+
+%%%设置页眉和页码格式
+\usepackage{fancyhdr}
+\newcommand{\makeheadrule}{%
+\rule[0.85\baselineskip]{\headwidth}{0.5pt}\vskip-.8\baselineskip}%1.5 0.4->0.5
+\makeatletter
+\renewcommand{\headrule}{%
+{\if@fancyplain\let\headrulewidth\plainheadrulewidth\fi
+\makeheadrule}}
+\makeatother
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[r]{\textit{Crypto In Action}}
+\fancyfoot[C]{--{~\thepage~}--}
+%%%设置页眉和页码格式结束
+
+\usepackage{color}
+\newcommand{\red}{\textcolor{red}}
+\newcommand{\blue}{\textcolor{blue}}
+
+\begin{document}
+
+\title{Monero隐患与ristretto255点群}
+\author{longcpp \\ \small{longcpp9@gmail.com}}
+
+\maketitle
+
+\section{余因子为8的现实挑战与对策}
+
+蒙哥马利曲线Curve25519以及扭曲爱德华曲线Edwards25519因为其速度以及易于安全实现等特点,
+在区块链领域内外逐渐被广泛采用, 例如基于Curve25519的Diffie-Hellman密钥交换协议X25519被
+TLS 1.3协议采纳, Monero中则使用了基于Edwards25519的Schnorr签名机制, 而Tendermint Core
+项目的共识投票过程则采用了基于Edwards25519的EdDSA签名机制Ed25519. 
+对比基于secp256k1/secp256r1等NIST推荐曲线的ECDH协议/ECDSA/Schnorr等签名机制, 
+基于Curve25519/Edwards25519的密钥交换协议或者签名机制在速度安全等方面都胜出.
+也因此很多工程项目倾向于基于Curve25519/Edwards25519构建新的密码学协议,
+然而由于Edwards25519曲线较少被提及的参数余因子不为1的事实, 导致了CryptoNote协议中基于
+该曲线构建RingCT交易时引入了安全漏洞,使得双花甚至多花成为可能,影响了所有基于CryptoNote
+协议的数字货币, 例如Monero, Bytecoin等项目. 值得庆幸的是,在该漏洞被利用之前Monero团队就
+填补了这个安全漏洞. 对比之下Bytecoin项目就没有这么幸运了, 有攻击者利用这一漏洞构建双花交易,
+凭空创建了更多的数字货币.
+
+广泛应用的secp256r1/secp256k1曲线的余因子为1, 天然规避了与余因子相关联的安全隐患,
+因此基于这两条曲线的ECDH或者签名机制通常无需考虑余因子的影响.
+由于Curve25519/Edwards25519的余因子为8,在设计密码协议时必须将余因子不为1这个事实纳入考量,
+例如X25519协议中解码点的倍乘中用到的标量参数时总是会将该标量的最低3比特清零,
+而Ed25519签名机制中,从种子(Seed)派生出私钥后也会将私钥的最低3比特清零之后再参与后续计算.
+椭圆曲线点群的余因子不为1的干扰可以参考X25519/Ed25519协议的设计,在上层协议的设计中将
+底层点群的这一因素纳入考量,并采取相应的措施.然而对于复杂的密码协议,这种方式是一个巨大的安全
+挑战, 这点可CryptoNote中发现的相关安全漏洞.在上层协议设计中,不断加入为底层点群的数学结构
+采取防范措施,也会使得协议的安全性难以论述.另外在复杂的密码学协议设计中考虑应对措施本身
+也是一个技术挑战,参考零知识证明系统Bulletproof. 除了安全性方面的影响之外, 由于Ed25519的私钥
+空间不是连续的整数值, 也导致Ed25519签名机制适配分层钱包的机制时遇到了一些技术困难. 
+
+是否存在方法能够既享用Curve25519/Edwards25519的速度优势,又能够解放上层密码协议的设计?
+答案是肯定的. Mike Hamberg提出的Decaf方法能够利用商群的概念在余因子为4的非素数阶的点群上
+构建素数阶的点群.基于新的素数阶的点群,与余因子不为1相关的安全隐患与技术障碍都得以规避,
+并且这一技术并没有引入新的安全假设, 对既有的Curve25519/Edwards25519代码实现的改动也很少.
+然而Decaf技术无法直接应用于Curve25519/Edwards25519,因为此处的余因子为8.
+Isis Agora Lovecruft和Henry de Valence提出Ristretto技术通过扩展Decaf技术,
+同样利用商群的概念可以将余因子为8的非素数阶点群抽象成为素数阶的点群, 
+由此上层协议可以安心利用曲线的速度优势且不再被余因子非1的事实所羁绊.
+Polkadot项目在其路线图中规划了基于Ristretto的签名机制和可验证随机函数(Verifiable Random 
+Function)开发与集成, 而由Interstellar赞助由
+Henry de Valence, Cathie Yun和Oleg Andreev所完成的基于Ristretto技术所实现的Bulletproof
+(Rust语言实现)是目前效率最高的Bulletproof实现,比基于secp256k1的Bulletproof实现快2倍左右.
+
+本次, 我们首先回顾CryptoNote中相关的安全漏洞, Monero中的补救措施以及Bytecoin中的双花;
+然后尝试去理解Ristretto技术是如何在非素数阶的点群中抽象出素数阶点群.关于Ed25519与BIP32等
+规范的分层钱包机制的适配,留作后续讨论.
+
+\section{Monero隐患与Bytecoin双花}
+
+Monero是目前市值排名最高的提供链上隐私保护特性的数字货币(根据20191015的coinmarketcap.com
+数据显示Monero以\$9亿的市值在所有种类的数字货币中排第14位, Dash排18位, Zcash排30位).
+UTXO模型的Monero通过组合多项技术达到同时保护交易发起方, 接收方和交易金额. 
+利用Diffie-Hellman密钥交换协议为交易的每个输出都创建唯一的一次性地址
+(One-Time Address/Stealth Address)可以隐藏交易的接收方; 
+利用Pedersen承诺及范围证明(一开始基于Borromean环签名后升级为Bulletproof技术)可隐藏交易金额;
+利用可链接的环签名技术可以将交易的发起方
+隐藏在一个群组当中.
+
+\section{Ristretto解放上层密码协议设计}
+
+Decaf的意思为脱因咖啡,而Ristretto则是升级版的Espreesso. 作为Decaf技术的扩展, Ristretto技术
+同样利用了雅各比四次形式(Jacobi Quartic), 扭曲的爱德华形式(Twisted Edwards),
+以及蒙哥马利形式(Montgomery)三种形式的椭圆曲线以及这些形式之间的同源(Isogeny).
+
+\end{document}
+
