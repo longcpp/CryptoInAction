@@ -95,7 +95,7 @@
 
 \begin{document}
 
-\title{Monero隐患与ristretto255点群}
+\title{Edwards25519余因子与ristretto255点群}
 \author{longcpp \\ \small{longcpp9@gmail.com}}
 
 \maketitle
@@ -128,7 +128,10 @@ TLS 1.3协议采纳, Monero中则使用了基于Edwards25519的Schnorr签名机�
 空间不是连续的整数值, 也导致Ed25519签名机制适配分层钱包的机制时遇到了一些技术困难. 
 
 是否存在方法能够既享用Curve25519/Edwards25519的速度优势,又能够解放上层密码协议的设计?
-答案是肯定的. Mike Hamberg提出的Decaf方法能够利用商群的概念在余因子为4的非素数阶的点群上
+答案是肯定的. Mike Hamberg提出的Decaf方法\footnote{
+Mike Hamburg. Decaf: Eliminating cofactors through point compression
+\url{https://www.shiftleft.org/papers/decaf/decaf.pdf}}
+能够利用商群的概念在余因子为4的非素数阶的点群上
 构建素数阶的点群.基于新的素数阶的点群,与余因子不为1相关的安全隐患与技术障碍都得以规避,
 并且这一技术并没有引入新的安全假设, 对既有的Curve25519/Edwards25519代码实现的改动也很少.
 然而Decaf技术无法直接应用于Curve25519/Edwards25519,因为此处的余因子为8.
@@ -136,8 +139,11 @@ Isis Agora Lovecruft和Henry de Valence提出Ristretto技术通过扩展Decaf技
 同样利用商群的概念可以将余因子为8的非素数阶点群抽象成为素数阶的点群, 
 由此上层协议可以安心利用曲线的速度优势且不再被余因子非1的事实所羁绊.
 Polkadot项目在其路线图中规划了基于Ristretto的签名机制和可验证随机函数(Verifiable Random 
-Function)开发与集成, 而由Interstellar赞助由
-Henry de Valence, Cathie Yun和Oleg Andreev所完成的基于Ristretto技术所实现的Bulletproof
+Function)开发与集成\footnote{Polkadot Wiki: Roadmap For Developers
+\url{https://wiki.polkadot.network/docs/en/build-dev-roadmap}}, 而由Interstellar赞助由
+Henry de Valence, Cathie Yun和Oleg Andreev所完成的基于Ristretto技术所实现的Bulletproof\footnote{
+A pure-Rust implementation of Bulletproofs using Ristretto.
+\url{https://github.com/dalek-cryptography/bulletproofs}}
 (Rust语言实现)是目前效率最高的Bulletproof实现,比基于secp256k1的Bulletproof实现快2倍左右.
 
 本次, 我们首先回顾CryptoNote中相关的安全漏洞, Monero中的补救措施以及Bytecoin中的双花;
@@ -152,8 +158,129 @@ UTXO模型的Monero通过组合多项技术达到同时保护交易发起方, �
 利用Diffie-Hellman密钥交换协议为交易的每个输出都创建唯一的一次性地址
 (One-Time Address/Stealth Address)可以隐藏交易的接收方; 
 利用Pedersen承诺及范围证明(一开始基于Borromean环签名后升级为Bulletproof技术)可隐藏交易金额;
-利用可链接的环签名技术可以将交易的发起方
-隐藏在一个群组当中.
+利用可链接的环签名(Linkable Spontaneous Anonymous Group signatures, LSAG, 包括Back's LSAG
+以及Multilayer LSAG)技术可以将交易的发起方隐藏在一个群组当中保护交易发起方的信息.
+其中双花的预防是通过可链接特性来保证的,具体来说是为用来签名的私钥计算key image.
+如果有两笔交易相关联的key image相同, 则意味着这两笔交易是由同一个私钥产生的,
+而一次性地址使用导致每个可花费的UTXO对应的私钥值唯一,因此两个相同的key image意味着
+这两笔交易是尝试对同一个UTXO的双花.由于Edwards25519带来的速度与安全优势, 
+Monero中基于该曲线上的点群实例化了所需的密码协议,包括Schnorr签名, Diffie-Hellman协议,
+环签名机制, Pedersen承诺, 一次性地址及范围证明等.
+值得指出的是, Monero中没有使用基于Edwards25519曲线的EdDSA签名机制Ed25519\footnote{
+StackExchange: Why/how does monero generate public ed25519 keys without using the standard public key generation provided by ed25519 libraries?
+\url{https://monero.stackexchange.com/questions/2290/why-how-does-monero-generate-public-ed25519-keys-without-using-the-standard-publ?rq=1}}.
+
+Edwards25519曲线的采用旨在利用其速度与安全方面优势,然而在基于该曲线构建上层密码协议时,
+却由于Edwards25519曲线上的椭圆曲线点群的余因子(Cofactor)不为1的事实,引发了安全漏洞, 
+考虑到Edwards25519曲线是Bernstein等人为了EdDSA签名机制而构造的椭圆曲线,
+Monero中的漏洞也展示了密码学领域的经典错误,为一个协议设计的底层组件在挪作他用时
+常在不经意间引发安全漏洞.这个安全漏洞在所有基于CryptoNote协议的数字货币项目中均存在,
+包括Monero, Bytecoin, DashCoin以及DigitalNote等. 
+2017年5月在Monero项目通过硬分叉修正了自身的安全漏洞之后在网站上公布了安全漏洞细节\footnote{
+Disclosure of a Major Bug in CryptoNote Based Currencies. 20170517.
+\url{https://web.getmonero.org/2017/05/17/disclosure-of-a-major-bug-in-cryptonote-based-currencies.html}}. 根据相关信息,该安全漏洞是由Monero的研究人员在17年2月份参与
+XEdDSA签名机制\footnote{Trevor Perrin (editor). The XEdDSA and VXEdDSA Signature Schemes. 20161020.\url{https://signal.org/docs/specifications/xeddsa/}}的细节讨论时发现的
+(XEdDSA签名机制是与EdDSA签名机制兼容的签名机制,但是公私钥是X25519协议的形式, 
+会有专门的文档讨论X25519与Ed25519之间共用同一个私钥的机制设计,那时在讨论XEdDSA签名机制).
+随后Monero项目扫描了所有的历史交易确认了该漏洞未被利用过(由于漏洞的特性,利用该漏洞的双花
+交易可以被甄别出来,另外由于区块链自身的可溯源和不可篡改特性保证了所有历史交易信息可查询).
+Monero在17年02月22号悄悄修正了漏洞,并在随后通知了所有基于CryptoNote的同样受影响的项目,
+虽然Monero由于运气和及时补救躲过一劫,但是同样基于CrypteNote的Bytecoin项目就没有这么幸运,
+同样的安全漏洞在Bytecoin项目中被利用凭空增发了大约7亿个BCN (Bytecoin项目的代币)\footnote{
+Exploiting Low Order Generators in One-Time Ring Signatures. 20170523.
+\url{https://jonasnick.github.io/blog/2017/05/23/exploiting-low-order-generators-in-one-time-ring-signatures/}}.
+接下来我们讨论该安全漏洞的技术细节以及Bytecoin中的双花攻击.
+
+由于数字货币领域广泛采纳基于secp256k1曲线实例化ECDSA签名机制或者Schnorr签名机制,
+而secp256k1曲线上的椭圆曲线点群的余因子为1并且余因子为1的情形天然能够避免很多安全隐患,
+因此secp256k1的余因子参数较少被讨论.然而蒙哥马利曲线Curve25519及其双向有理等价的
+扭曲爱德华曲线Edwards25519,在带来速度和易于安全的优良特性之外,
+却也带来了其上的椭圆曲线点群的余因子不为1的问题,
+为诸多上层协议设计带来困扰,也许终究没有任何东西是免费的.
+
+定义在有限域$\F_p, p = 2^{255}-19$上的Curve25519或者Edwards25519的椭圆曲线点群的余因子为8,
+而大的素数子群$\G_1$的阶(Order)为
+$$\ell = 2^{252} + 27742317777372353535851937790883648493$$
+则曲线上点群的阶为$8\cdot\ell$. 根据"深入理解X25519"\footnote{
+longcpp. 深入理解X25519. 20190902. 
+\url{https://github.com/longcpp/CryptoInAction/blob/master/intro-ed25519/190902-intro-x25519.pdf}}中的讨论,该点群中存在阶为8的子群$\G_2$, 而该子群本身内部又有阶为4和阶为2的子群,
+也即$\G_2$中的8个点包括单位元无穷远点, 1个阶为2的点, 2个阶为4的点以及4个阶为8的点.
+记$\G_1$的生成元为$G_1$, $\G_2$的生成元为$G_2$ ($\G_2$中的一个8阶点), 
+则曲线点群中任意的点$P$都可以表示为$P = xG_1 + yG_2$, 其中$x\in \Z_\ell, y\in\Z_8$. 
+对于任意的$P_1 \in \G_1$都有$\ell \cdot P_1 = \mathcal{O}$, 
+而对于任意的$P_2 \in \G_2$都有$8 \cdot P_1 = \mathcal{O}$, 
+也有$8\ell\cdot P = \mathcal{O}$. Ed25519签名机制定义在群$\G_1$中, 
+而基于Edwards25519构建的上层密码协议为了保证安全性也应构建在群$\G_1$上.
+
+环签名技术可以将签名者的公钥隐藏在一组公钥集合当中从而保护签名者的身份.
+CryptoNote中构建的环签名技术以及隐私交易(Confidential Transactions)都基于哈希函数.
+Monero中环签名机制的环大小为1时,环签名机制退化成为Schnorr签名机制, 
+这里指的重申一次, Monero中只是利用了曲线Edwards25519, 但没使用基于该曲线的EdDSA签名Ed25519.
+如前所述, Monero中利用key image来确保在隐藏交易发起方的同时防止双花.
+交易验证时对key imag的验证逻辑是$R = r\cdot \textsf{H}(P) + c\cdot I$,
+其中$\textsf{H}(P)$表示公钥$P$的哈希值, $I$是key image, $c$是来自哈希函数的输出, 
+而$r$是签名者用来表示签名唯一的值. 如果能够找到另一个点$U$满足$c\cdot I = c\cdot U$,
+则上述等式的验证可以用$U$验证通过,也就意味着同一笔资金可以被花费两次.
+根据前述的Edwards25519上点群的结构,容易找到点$U\notin\G_1$但仍满足$c\cdot I = c\cdot U$.
+如果$c$是8的倍数,则对于任意的$y\in \G_2, y\neq 0$,以及$U = I + yG_2$,
+都有$U\neq I,  c\cdot I = c\cdot U$, 由于$\G_2$的阶为8, 则如果$c$是8的倍数,
+则可以构造出7个不同的$U$,意味着此时可以把一笔资金花费8次(1次正常花费, 7次双花).
+双花安全漏洞可以通过对key image进行额外的检查进行避免: 
+检查$\ell \cdot I$是否为无穷远点$\mathcal{O}$,若不是,则拒绝该key image.
+原理在于,如果$U$是通过前述方法构建出来的, 则有$U = I + yG_2$, 意味着
+$\ell\cdot U = \ell\cdot(I + yG_2) = \ell\cdot I + \ell y G_2 = (\ell y)G_2 \neq \mathcal{O}$.
+至于代码层次的修正也比较容易,在2017年02月21号的Updates\#1744\footnote{
+Monero Project. Updates \#1744.
+\url{https://github.com/monero-project/monero/pull/1744/commits/d282cfcc46d39dc49e97f9ec5cedf7425e74d71f}}中通过在函数
+\code{bool core::check_tx_semantic(const transaction& tx, bool keeped_by_block) const}
+中增加对key image的检查修正了这一漏洞,参见Listing~\ref{lst-checkkeyimage}. 
+函数~\code{}~的定义也展示在Listing~\ref{lst-checkkeyimage}~中, 
+也即检查$\ell G_1 == \mathcal{O}$.
+
+\begin{lstlisting}[language=c++, caption=检查key image的唯一性, label=lst-checkkeyimage]
+// file: cryptonote_core.cpp
+bool core::check_tx_semantic(const transaction& tx, bool keeped_by_block) const{
+    // .... 
+    //check if tx use different key images
+    if(!check_tx_inputs_keyimages_diff(tx))
+    {
+      MERROR_VER("tx uses a single key image more than once");
+      return false;
+    }
+    // ... 
+}
+
+// file: cryptonote_core.h
+/**
+ * @brief verify that each input key image in a transaction is unique
+ *
+ * @param tx the transaction to check
+ *
+ * @return false if any key image is repeated, otherwise true
+ */
+bool check_tx_inputs_keyimages_diff(const transaction& tx) const;
+
+// file: cryptonote_core.cpp
+bool core::check_tx_inputs_keyimages_diff(const transaction& tx) const
+{
+  std::unordered_set<crypto::key_image> ki;
+  for(const auto& in: tx.vin)
+  {
+    CHECKED_GET_SPECIFIC_VARIANT(in, const txin_to_key, tokey_in, false);
+    if(!ki.insert(tokey_in.k_image).second)
+      return false;
+  }
+  return true;
+}
+\end{lstlisting}
+
+值得庆幸的是, Monero项目在该漏洞被利用之前就修补了漏洞, 但是Bytecoin项目就没有这么幸运.
+攻击者利用Edwards25519曲线余因子不为1的特性,通过三花62999999.98个BCN和
+四花188999999.98个BCN,凭空增发了总计692999999.9个BCN(大约为7亿个BCN)\footnote{
+How does the recent patched key image exploit work in practice?
+\url{https://monero.stackexchange.com/questions/4241/how-does-the-recent-patched-key-image-exploit-work-in-practice}}.值得注意的是,虽然同样是利用余因子不为1的特性,
+但是Bytecoin上的三花和四花的具体过程与Monero项目所提及的漏洞利用过程不同.
+
 
 \section{Ristretto解放上层密码协议设计}
 
