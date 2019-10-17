@@ -217,8 +217,10 @@ CryptoNote中构建的环签名技术以及隐私交易(Confidential Transaction
 Monero中环签名机制的环大小为1时,环签名机制退化成为Schnorr签名机制, 
 这里指的重申一次, Monero中只是利用了曲线Edwards25519, 但没使用基于该曲线的EdDSA签名Ed25519.
 如前所述, Monero中利用key image来确保在隐藏交易发起方的同时防止双花.
-交易验证时对key imag的验证逻辑是$R = r\cdot \textsf{H}(P) + c\cdot I$,
-其中$\textsf{H}(P)$表示公钥$P$的哈希值, $I$是key image, $c$是来自哈希函数的输出, 
+交易验证时对key image的验证逻辑是
+$$R = r\cdot \textsf{H}(P) + c\cdot I,$$
+其中$\textsf{H}(P)$表示公钥$P$的哈希值, $I$是key image, 通过将公钥$P$哈希到一个点
+然后与私钥进行点的倍乘得到的点, $c$是来自哈希函数的输出, 
 而$r$是签名者用来表示签名唯一的值. 如果能够找到另一个点$U$满足$c\cdot I = c\cdot U$,
 则上述等式的验证可以用$U$验证通过,也就意味着同一笔资金可以被花费两次.
 根据前述的Edwards25519上点群的结构,容易找到点$U\notin\G_1$但仍满足$c\cdot I = c\cdot U$.
@@ -279,14 +281,135 @@ bool core::check_tx_inputs_keyimages_diff(const transaction& tx) const
 四花188999999.98个BCN,凭空增发了总计692999999.9个BCN(大约为7亿个BCN)\footnote{
 How does the recent patched key image exploit work in practice?
 \url{https://monero.stackexchange.com/questions/4241/how-does-the-recent-patched-key-image-exploit-work-in-practice}}.值得注意的是,虽然同样是利用余因子不为1的特性,
-但是Bytecoin上的三花和四花的具体过程与Monero项目所提及的漏洞利用过程不同.
+但是Bytecoin上的三花和四花的具体过程与Monero项目所提及的漏洞利用过程有所不同.
+在验证过程中,会检查下面的方程是否成立
+$$c = \textsf{Hs}(m || r\cdot G_1 + c\cdot P || r\cdot \textsf{Hp}(p) + c\cdot I),$$
+其中$I = x\cdot \textsf{Hp}(P)\in\G_1$是key image, $x$是私钥, 而$P = x\cdot G_1 \in\G_1$是公钥,
+在合法交易构造过程中,基于私钥$x$可以计算得到$c$和$r$使得上述等式成立.
+然而在Bytecoin的双花攻击当中,恶意的交易直接从$\G_2$中选择了低阶点$P, I \in\G_2$.
+注意由于$P\in\G_2$而基点$G_1\in\G_1$,此时并不存在私钥$x \ s.t.\ P = x\cdot G_1$.
+接下来构造双花交易只需要搜索$r$的值,使得
+$$c = \textsf{Hs}(m || r\cdot G_1 || r\cdot \textsf{Hp}(P)$$
+的值为$\G_2$的阶的倍数, 也即使得$c$为8的倍数, 就可以使得下面等式成立:
+$$\textsf{Hs}(m || r\cdot G_1 + c\cdot P || r\cdot \textsf{Hp}(p) + c\cdot I) =
+\textsf{Hs}(m || r\cdot G_1 || r\cdot \textsf{Hp}(P)) = c.$$
+这是因为由于$P, I \in \G_2$有$c\cdot P = \mathcal{O}$并且$c\cdot I = \mathcal{O}$.
 
+为了进一步理解Bytecoin中基于低阶点完成的双花交易,在Listing~\ref{lst-edwards25519lowpoint}~中
+给出了Edwards25519的8个低阶点的具体值,其中包括1个阶为1的点(也即单位元(0,1),
+等价于蒙哥马利形式中的无穷远点$\mathcal{O}$), 1个阶为2的点, 2个阶为4的点, 4个阶为8的点.
+
+
+\begin{lstlisting}[language=bash, caption=Edwards25519的低阶点, label=lst-edwards25519lowpoint]
+sage: fp25519 = FiniteField(2^255-19)
+....: A, B = fp25519(486662), fp25519(1)
+....: curve25519 = EllipticCurve(fp25519, [0, A, 0, B, 0])
+....: P = curve25519.random_element()
+....: ell = int(curve25519.cardinality() / 8)
+....: while true:
+....:     P = ell * P
+....:     if P.order() == 8:
+....:         break
+....:     P = curve25519.random_point()
+....:
+....: mont_G2 = []
+....: for i in range(1, 9):
+....:     p = i * P
+....:     mont_G2.append(p)
+....:
+....: def mont2edwards25519(u, v):
+....:     x = sqrt(fp25519(-486664)) * (u / v)
+....:     y = (u - 1) / (u + 1)
+....:     return x, y
+....:
+....: for point in mont_G2:
+....:     if point.order() == 1:
+....:         x, y = fp25519(0), fp25519(1)
+....:     else:
+....:         u, v = point.xy()
+....:         if u == 0 and v == 0:
+....:             x, y = fp25519(0), fp25519(-1)
+....:         else:
+....:             x, y = mont2edwards25519(u, v)
+....:     print "order = %i \n %064x \n %064x" % (point.order(), x, y)
+....:
+order = 8
+ 1fd5b9a006394a28e933993238de4abb5c193c7013e5e238dea14646c545d14a
+ 05fc536d880238b13933c6d305acdfd5f098eff289f4c345b027b2c28f95e826
+order = 4
+ 2b8324804fc1df0b2b4d00993dfbd7a72f431806ad2fe478c4ee1b274a0ea0b0
+ 0000000000000000000000000000000000000000000000000000000000000000
+order = 8
+ 1fd5b9a006394a28e933993238de4abb5c193c7013e5e238dea14646c545d14a
+ 7a03ac9277fdc74ec6cc392cfa53202a0f67100d760b3cba4fd84d3d706a17c7
+order = 2
+ 0000000000000000000000000000000000000000000000000000000000000000
+ 7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec
+order = 8
+ 602a465ff9c6b5d716cc66cdc721b544a3e6c38fec1a1dc7215eb9b93aba2ea3
+ 7a03ac9277fdc74ec6cc392cfa53202a0f67100d760b3cba4fd84d3d706a17c7
+order = 4
+ 547cdb7fb03e20f4d4b2ff66c2042858d0bce7f952d01b873b11e4d8b5f15f3d
+ 0000000000000000000000000000000000000000000000000000000000000000
+order = 8
+ 602a465ff9c6b5d716cc66cdc721b544a3e6c38fec1a1dc7215eb9b93aba2ea3
+ 05fc536d880238b13933c6d305acdfd5f098eff289f4c345b027b2c28f95e826
+order = 1
+ 0000000000000000000000000000000000000000000000000000000000000000
+ 0000000000000000000000000000000000000000000000000000000000000001
+\end{lstlisting}
+
+重点关注"四花"188999999.98个BCN的4笔交易,这四笔花费同一个UTXO的交易
+可以在网站~\url{https://minergate.com/blockchain/bcn/blocks}~上检索4笔交易的交易ID查看,
+4个交易交易ID分别为: 
+\begin{enumerate}
+\item \texttt{cef289d7fab6e35ac123db8a3f06f7675b48067e0dff185c72b140845b8b3b23},
+\item \texttt{7e418cc77935cc349f007cd5409d2b6908e4130321fa6f97ee0fee64b000ff85},
+\item \texttt{5a3db49ef69e1f9dd9b740cabea7328cd3499c29fc4f3295bac3fa5e55384626},
+\item \texttt{74298d301eb4b4da30c06989e0f7ff24a26c90bf4ffc4f2c18f34b7a22cf1136}.
+\end{enumerate}
+四笔交易所选择的key image分别为:
+\begin{enumerate}
+\item \texttt{26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05},
+\item \texttt{26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc85},
+\item \texttt{0100000000000000000000000000000000000000000000000000000000000000},
+\item \texttt{ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f}.
+\end{enumerate}
+这4笔交易都成功花费了同一个UTXO, 由交易\\
+\centerline{\texttt{07a09e3c26d8ffc2e890713a69974e943a23ef6ad65b3bcbfc2b0f0da1add8f4}}
+所生成的低阶目标地址\\
+\centerline{\texttt{26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05.}}
+也就印证了前述的利用低阶点进行"双花"甚至"多花"的攻击过程.
+值得指出的是, Edwards25519点的编码占用32个字节,其中低255比特用来表示纵坐标$y$的值,
+最高位比特用来标记横坐标$x$的值是否为$\F_p$中的负值(也即$x$的最低比特)
+具体信息参考"深入理解Ed25519:原理与速度"\footnote{
+longcpp. 深入理解Ed25519: 原理与速度. 20190930. 
+\url{https://github.com/longcpp/CryptoInAction/blob/master/intro-ed25519/190930-ed25519-theory-speed.pdf}}.
+注意isting~\ref{lst-edwards25519lowpoint}~中是用大端法表示的值,
+而Bytecoin的区块链浏览器中则是按照Edwards25519曲线的底层实现所采用的小端法表示的256比特的值.
+注意key image 1和2的差别仅在于最高位比特是否为1,
+这是因为同一个$y$坐标可以对应的2个可能的$x$坐标,其中必然有一个偶数一个奇数,
+因此按照前述的编码规则, 会有一个点的编码的最高位被设置为1.
+
+已经看到Bernstein等人为了X25519密钥交换协议以及Ed25519签名机制而构造的曲线
+Curve25519和Edwards25519在挪作他用时会由于曲线的余因子不为1容易引入安全漏洞.
+上层协议可以像X25519和Ed25519一样在设计协议时将余因子不为1的因素考虑在内,
+但是这会使得上层协议的设计变得复杂并且安全性也不容易论证,另外复杂的密码协议中
+再叠加一层应对余因子不为1的措施会增大协议设计的挑战.复杂性是安全的大敌,这种ad-hoc
+方式设计出来的密码协议的安全性也难以保证,参考前文CryptoNote协议中出现的问题.
+Mike Hamberg提出的Decaf方法为解决这一两难困境提出了完备的解决方案.
+Decaf方法可以从余因子为4的点群中"萃取"中素数阶的点群,使得底层点群的问题在底层得到解决,
+从而使得上层协议设计者无需再为底层的点群的余因子不为1的事实所担忧.
+然而Edwards25519点群的余因子为8, Decaf并不能直接应用.
+Ristretto技术通过扩展Decaf方法可以从余因子为8的点群中萃取中素数阶的点群.
+下一节探讨Ristretto技术如何通过代数变换与编解码进行大素数点群的萃取.
 
 \section{Ristretto解放上层密码协议设计}
 
 Decaf的意思为脱因咖啡,而Ristretto则是升级版的Espreesso. 作为Decaf技术的扩展, Ristretto技术
 同样利用了雅各比四次形式(Jacobi Quartic), 扭曲的爱德华形式(Twisted Edwards),
 以及蒙哥马利形式(Montgomery)三种形式的椭圆曲线以及这些形式之间的同源(Isogeny).
+首先考察Decaf处理余因子为4的技术原理,然后再考察Ristretto通过扩展处理余因子为8的情形.
 
 \end{document}
 
