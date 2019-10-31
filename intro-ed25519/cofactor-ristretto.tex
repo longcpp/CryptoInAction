@@ -102,59 +102,62 @@
 
 \section{余因子为8的现实挑战与对策}
 
-蒙哥马利曲线Curve25519以及扭曲爱德华曲线Edwards25519因为其速度以及易于安全实现等特点,
-在区块链领域内外逐渐被广泛采用, 例如基于Curve25519的Diffie-Hellman密钥交换协议X25519被
-TLS 1.3协议采纳, Monero中则使用了基于Edwards25519的Schnorr签名机制, 而Tendermint Core
-项目的共识投票过程则采用了基于Edwards25519的EdDSA签名机制Ed25519. 
+蒙哥马利曲线Curve25519以及其双向有理等价的扭曲爱德华曲线Edwards25519
+因为其速度以及易于安全实现等特点,在区块链领域内外逐渐被广泛采用, 
+例如基于Curve25519的Diffie-Hellman密钥交换协议X25519被TLS 1.3协议采纳, 
+Monero中则使用了基于Edwards25519的Schnorr签名机制, 
+Tendermint Core的共识投票过程则采用了基于Edwards25519的EdDSA签名机制Ed25519. 
 对比基于secp256k1/secp256r1等NIST推荐曲线的ECDH协议/ECDSA/Schnorr等签名机制, 
-基于Curve25519/Edwards25519的密钥交换协议或者签名机制在速度安全等方面都胜出.
+基于Curve25519/Edwards25519的密钥交换协议或者签名机制在运算速度与实现安全等方面都胜出.
 也因此很多工程项目倾向于基于Curve25519/Edwards25519构建新的密码学协议,
-然而由于Edwards25519曲线较少被提及的参数余因子不为1的事实, 导致了CryptoNote协议中基于
-该曲线构建RingCT交易时引入了安全漏洞,使得双花甚至多花成为可能,影响了所有基于CryptoNote
-协议的数字货币, 例如Monero, Bytecoin等项目. 值得庆幸的是,在该漏洞被利用之前Monero团队就
-填补了这个安全漏洞. 对比之下Bytecoin项目就没有这么幸运了, 有攻击者利用这一漏洞构建双花交易,
-凭空创建了更多的数字货币.
+然而由于Edwards25519曲线参数余因子不为1的事实,
+导致了CryptoNote协议中基于该曲线构建RingCT交易时引入了安全漏洞,
+使得双花甚至多花成为可能,影响了所有基于CryptoNote协议的数字货币, 例如Monero, Bytecoin等项目. 
+值得庆幸的是,在该漏洞被利用之前Monero团队就填补了这个安全漏洞. 
+对比之下Bytecoin项目就没有这么幸运了, 有攻击者利用这一漏洞构建双花交易,凭空创建了更多的数字货币.
 
 广泛应用的secp256r1/secp256k1曲线的余因子为1, 天然规避了与余因子相关联的安全隐患,
 因此基于这两条曲线的ECDH或者签名机制通常无需考虑余因子的影响.
-由于Curve25519/Edwards25519的余因子为8,在设计密码协议时必须将余因子不为1这个事实纳入考量,
+由于Curve25519/Edwards25519的余因子大于1,在设计密码协议时必须将余因子不为1这个事实纳入考量,
 例如X25519协议中解码点的倍乘中用到的标量参数时总是会将该标量的最低3比特清零,
 而Ed25519签名机制中,从种子(Seed)派生出私钥后也会将私钥的最低3比特清零之后再参与后续计算.
-椭圆曲线点群的余因子不为1的干扰可以参考X25519/Ed25519协议的设计,在上层协议的设计中将
-底层点群的这一因素纳入考量,并采取相应的措施.然而对于复杂的密码协议,这种方式是一个巨大的安全
-挑战, 这点可CryptoNote中发现的相关安全漏洞.在上层协议设计中,不断加入为底层点群的数学结构
-采取防范措施,也会使得协议的安全性难以论述.另外在复杂的密码学协议设计中考虑应对措施本身
-也是一个技术挑战,参考零知识证明系统Bulletproof. 除了安全性方面的影响之外, 由于Ed25519的私钥
-空间不是连续的整数值, 也导致Ed25519签名机制适配分层钱包的机制时遇到了一些技术困难. 
+当椭圆曲线点群的余因子不为1时,设计上层密码协议设计需要将底层点群的这一因素纳入考量,
+并采取相应的措施.然而对于复杂的密码协议,这种方式是一个巨大的安全挑战, 
+这点可CryptoNote中发现的相关安全漏洞.
+在上层协议设计中,不断加入为底层点群的数学结构采取防范措施,也会使得协议的安全性难以论述.
+另外在复杂的密码学协议设计中考虑应对措施本身也是一个技术挑战,参考零知识证明系统Bulletproof. 
+另外, 为了应对余因子的影响Ed25519签名算法的私钥空间不是连续的整数值, 
+也导致Ed25519签名机制适配分层钱包的机制时面临新的技术挑战.
 
-是否存在方法能够既享用Curve25519/Edwards25519的速度优势,又能够解放上层密码协议的设计?
+是否存在方法能够既享用Curve25519/Edwards25519的优势,又能够解放上层密码协议的设计?
 答案是肯定的. Mike Hamberg提出的Decaf方法\footnote{
 Mike Hamburg. Decaf: Eliminating cofactors through point compression
 \url{https://www.shiftleft.org/papers/decaf/decaf.pdf}}
-能够利用商群的概念在余因子为4的非素数阶的点群上
-构建素数阶的点群.基于新的素数阶的点群,与余因子不为1相关的安全隐患与技术障碍都得以规避,
-并且这一技术并没有引入新的安全假设, 对既有的Curve25519/Edwards25519代码实现的改动也很少.
+能够在特定条件下从余因子为4的非素数阶的点群上"萃取"出素数阶的点群.
+基于新的素数阶的点群,与余因子不为1相关的安全隐患与技术障碍都得以规避.
+Decaf技术无需引入新的安全假设, 对既有的Curve25519/Edwards25519代码实现的改动也很少.
 然而Decaf技术无法直接应用于Curve25519/Edwards25519,因为此处的余因子为8.
-Isis Agora Lovecruft和Henry de Valence提出Ristretto技术通过扩展Decaf技术,
-同样利用商群的概念可以将余因子为8的非素数阶点群抽象成为素数阶的点群, 
-由此上层协议可以安心利用曲线的速度优势且不再被余因子非1的事实所羁绊.
-Polkadot项目在其路线图中规划了基于Ristretto的签名机制和可验证随机函数(Verifiable Random 
-Function)开发与集成\footnote{Polkadot Wiki: Roadmap For Developers
-\url{https://wiki.polkadot.network/docs/en/build-dev-roadmap}}, 而由Interstellar赞助由
-Henry de Valence, Cathie Yun和Oleg Andreev所完成的基于Ristretto技术所实现的Bulletproof\footnote{
-A pure-Rust implementation of Bulletproofs using Ristretto.
+Isis Agora Lovecruft和Henry de Valence提出Ristretto技术通过扩展Decaf技术
+可以从余因子为8的非素数阶点群萃取出素数阶点群,记为ristretto255.
+由此上层协议可以安心利用曲线的各项优势而不再被余因子不为1的事实所羁绊.
+Polkadot项目基于该技术实现了sr25519签名机制, MuSig以及可验证随机函数(Verifiable Random Function)
+\footnote{Polkadot Wiki. Polkadot Keys
+\url{https://wiki.polkadot.network/docs/en/learn-keys\#account-keys}}, 
+其中sr25519表示基于ristretto255点群的Schnorr签名机制.
+而由Interstellar赞助Henry de Valence, Cathie Yun和Oleg Andreev所完成的基于Ristretto技术
+所实现的Bulletproof\footnote{A pure-Rust implementation of Bulletproofs using Ristretto.
 \url{https://github.com/dalek-cryptography/bulletproofs}}
-(Rust语言实现)是目前效率最高的Bulletproof实现,比基于secp256k1的Bulletproof实现快2倍左右.
+(Rust语言实现)是目前效率最高的Bulletproof实现,比基于secp256k1曲线的Bulletproof实现快2倍左右.
 
-本次, 我们首先回顾CryptoNote中相关的安全漏洞, Monero中的补救措施以及Bytecoin中的双花;
+本次, 我们首先回顾CryptoNote中相关的安全漏洞, Monero中的补救措施以及Bytecoin中的双花和多花;
 然后尝试去理解Ristretto技术是如何在非素数阶的点群中抽象出素数阶点群.关于Ed25519与BIP32等
 规范的分层钱包机制的适配,留作后续讨论.
 
 \section{Monero隐患与Bytecoin双花}
 
 Monero是目前市值排名最高的提供链上隐私保护特性的数字货币(根据20191015的coinmarketcap.com
-数据显示Monero以\$9亿的市值在所有种类的数字货币中排第14位, Dash排18位, Zcash排30位).
-UTXO模型的Monero通过组合多项技术达到同时保护交易发起方, 接收方和交易金额. 
+数据显示Monero以9亿美金的市值在所有种类的数字货币中排第14位, Dash排18位, Zcash排30位).
+基于UTXO模型的Monero通过组合多项技术达到同时保护交易发起方, 接收方和交易金额. 
 利用Diffie-Hellman密钥交换协议为交易的每个输出都创建唯一的一次性地址
 (One-Time Address/Stealth Address)可以隐藏交易的接收方; 
 利用Pedersen承诺及范围证明(一开始基于Borromean环签名后升级为Bulletproof技术)可隐藏交易金额;
@@ -173,15 +176,16 @@ StackExchange: Why/how does monero generate public ed25519 keys without using th
 Edwards25519曲线的采用旨在利用其速度与安全方面优势,然而在基于该曲线构建上层密码协议时,
 却由于Edwards25519曲线上的椭圆曲线点群的余因子(Cofactor)不为1的事实,引发了安全漏洞, 
 考虑到Edwards25519曲线是Bernstein等人为了EdDSA签名机制而构造的椭圆曲线,
-Monero中的漏洞也展示了密码学领域的经典错误,为一个协议设计的底层组件在挪作他用时
-常在不经意间引发安全漏洞.这个安全漏洞在所有基于CryptoNote协议的数字货币项目中均存在,
+Monero中的漏洞也展示了密码学领域的经典错误:
+为一个协议设计的底层组件在挪作他用时常在不经意间引发安全漏洞.
+这个安全漏洞在所有基于CryptoNote协议的数字货币项目中均存在,
 包括Monero, Bytecoin, DashCoin以及DigitalNote等. 
 2017年5月在Monero项目通过硬分叉修正了自身的安全漏洞之后在网站上公布了安全漏洞细节\footnote{
 Disclosure of a Major Bug in CryptoNote Based Currencies. 20170517.
 \url{https://web.getmonero.org/2017/05/17/disclosure-of-a-major-bug-in-cryptonote-based-currencies.html}}. 根据相关信息,该安全漏洞是由Monero的研究人员在17年2月份参与
 XEdDSA签名机制\footnote{Trevor Perrin (editor). The XEdDSA and VXEdDSA Signature Schemes. 20161020.\url{https://signal.org/docs/specifications/xeddsa/}}的细节讨论时发现的
 (XEdDSA签名机制是与EdDSA签名机制兼容的签名机制,但是公私钥是X25519协议的形式, 
-会有专门的文档讨论X25519与Ed25519之间共用同一个私钥的机制设计,那时在讨论XEdDSA签名机制).
+我们后续专门讨论X25519与Ed25519之间共用同一个私钥的机制设计,并讨论XEdDSA签名机制).
 随后Monero项目扫描了所有的历史交易确认了该漏洞未被利用过(由于漏洞的特性,利用该漏洞的双花
 交易可以被甄别出来,另外由于区块链自身的可溯源和不可篡改特性保证了所有历史交易信息可查询).
 Monero在17年02月22号悄悄修正了漏洞,并在随后通知了所有基于CryptoNote的同样受影响的项目,
@@ -395,10 +399,11 @@ longcpp. 深入理解Ed25519: 原理与速度. 20190930.
 Curve25519和Edwards25519在挪作他用时会由于曲线的余因子不为1容易引入安全漏洞.
 上层协议可以像X25519和Ed25519一样在设计协议时将余因子不为1的因素考虑在内,
 但是这会使得上层协议的设计变得复杂并且安全性也不容易论证,另外复杂的密码协议中
-再叠加一层应对余因子不为1的措施会增大协议设计的挑战.复杂性是安全的大敌,这种ad-hoc
-方式设计出来的密码协议的安全性也难以保证,参考前文CryptoNote协议中出现的问题.
+再叠加一层应对余因子不为1的措施会增大协议设计的挑战.
+复杂性是安全的大敌,这种ad-hoc方式设计出来的密码协议的安全性也难以保证,
+参考前文CryptoNote协议中出现的问题.
 Mike Hamberg提出的Decaf方法为解决这一两难困境提出了完备的解决方案.
-Decaf方法可以从余因子为4的点群中"萃取"中素数阶的点群,使得底层点群的问题在底层得到解决,
+Decaf方法在特定条件下可从余因子为4的点群中"萃取"中素数阶点群,使得底层点群的问题在底层得到解决,
 从而使得上层协议设计者无需再为底层的点群的余因子不为1的事实所担忧.
 然而Edwards25519点群的余因子为8, Decaf并不能直接应用.
 Ristretto技术通过扩展Decaf方法可以从余因子为8的点群中萃取中素数阶的点群.
@@ -406,10 +411,11 @@ Ristretto技术通过扩展Decaf方法可以从余因子为8的点群中萃取�
 
 \section{Ristretto解放上层密码协议设计}
 
-Decaf的意思为脱因咖啡,而Ristretto则是升级版的Espreesso. 作为Decaf技术的扩展, Ristretto技术
+Decaf的意思为脱因咖啡,而Ristretto则是升级版的Espreesso. 与Decaf技术一样, Ristretto技术
 同样利用了雅各比四次形式(Jacobi Quartic), 扭曲的爱德华形式(Twisted Edwards),
 以及蒙哥马利形式(Montgomery)三种形式的椭圆曲线以及这些形式之间的同源(Isogeny).
-首先考察Decaf处理余因子为4的技术原理,然后再考察Ristretto通过扩展处理余因子为8的情形.
+接下来考察Decaf和Ristretto是如何通过利用不同的曲线形式以及同源关系消除了余因子不为1的影响.
+%首先考察Decaf处理余因子为4的技术原理,然后再考察Ristretto通过扩展处理余因子为8的情形.
 
 \end{document}
 
