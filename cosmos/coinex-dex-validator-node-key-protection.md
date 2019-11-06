@@ -1,4 +1,4 @@
-# CoinEx DEX 验证节点部署中的投票私钥的保护
+# CoinEx DEX 验证节点部署保护投票私钥
 
 longcpp @ 20191105
 
