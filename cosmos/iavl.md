@@ -1,10 +1,12 @@
-# COSMOS-SDK中的存储实现
+# 可认证数据结构IAVL+树
 
 基于账户模型的cosmos-sdk中需要可认证数据结构(Authenticated Data Structure, ADS)来存储包括账户的状态信息在内的各类信息. 以太坊中使用Merkle Patricia Tree (MPT树)数据结构来提供相应的功能, 而cosmos-sdk另辟蹊径通过组合Mekle树和自平衡的二叉搜索树构建了新型的ADS数据结构IAVL+树. 本文首先介绍IAVL+树结构的概念和实现, 然后分析这一数据结构在cosmos-sdk中的应用. IAVL+树的实现参照`github.com/tendermint/iavl`的[`v0.12.4`](https://github.com/tendermint/iavl/tree/v0.12.4)版本, cosmos-sdk的实现参考`github.com/cosmos/cosmos-sdk`的[`v0.37.5`](https://github.com/cosmos/cosmos-sdk/tree/v0.37.5)版本.
 
 ## 可认证数据结构IAVL+树
 
 IAVL+是cosmos-sdk中各个模块所依赖的`KVStore`的底层实现, 全称为"Immutable AVL +"树. 其设计目标是为键值对(例如账户余额)提供可持久化存储的能力, 同时支持版本化以及快照功能. IAVL+树中的节点是不可修改的(Immutable)并且通过节点的哈希值来进行索引.如果节点不可修改, 如何更新的节点的状态以反映存储状态的变化? 在IAVL+树中修改某个节点时, 会先生成一个新的节点, 然后用该节点来替换目标节点. 这种更新方式配合在节点中保存的版本信息, 就同时实现了版本化和生成快照的功能, 也就支持了状态版本之间的快速切换. IAVL+树是基于AVL树构建而来的. 在AVL树中, 任意节点的左右子树的高度最多相差1. 当插入/删除做到导致某个节点的左右子树高度差值大于1时, 会出发自平衡操作. AVL树中通常叶子节点和中间节点都可以存储键值对, 而AVL+树通过修改AVL树使得仅有叶子节点存储键值对, 而中间节点仅用来存储键以及左右子树的信息. 这种改动可以简化数据结构的实现. IAVL+树继承了AVL树的特性: 自平衡的二叉搜索树, 对于n个叶子节点的查找/插入/删除操作的时间复杂度都为O(logn), 在新增或删除Node时可能会触发一次或者多次树的旋转操作以保证树的平衡.
+
+## IAVL+树的节点与存储
 
 `ival/node.go`中给出了节点的具体定义. 值得注意的是, 叶子节点和中间节点的数据结构相同, 差别在于节点中具体字段的值不同. 对于叶子节点来说,其中的`size`字段一直为1, `height`字段一直为0, 并且`value`字段真正存储了对应某个键的值, 而关于左右孩子的字段则为`nil`. 对于中间节点来说, `size`字段大于1, `height`字段大于0, `value`字段为空, 而`key`字段则等于其右子树中节点的`key`的最小值.由此可知, 在IAVL+树中叶子节点的`key`值是按照从左到右的顺序逐渐增大. 通过在中间节点存储右子树叶子节点`key`的最小值, 可以在根据`key`值进行查找时进行二分查找. 
 
@@ -49,6 +51,8 @@ type nodeDB struct {
 
 - 叶子节点序列化: `Amino(height||size||version||key||value)` 
 - 中间节点序列化: `Amino(height||size||version||key||leftHash||rightHash)`
+
+## IAVL+树的读写操作
 
 有了`Node`结构体和`nodeDB`, IAVL+树的定义在文件`iavl/immutable_tree.go`的结构体`ImmutableTree`中.  结构体比较简单, 只包括指向IAVL+树的根节点的指针`root`, 存储树中所有`Node`的数据库`ndb`以及这棵树的版本号. 如前所述, 每个区块执行完成之后都会形成一个新的IAVL+树来保存最新的状态集合, 而一次状态更新都会导致原先版本的IAVL+树中的一些节点被替换下来, 这些被替换下来的`Node`成为孤儿节点. 默认配置下, 所有的节点包括对应每个IAVL+树版本的根节点, 版本更新中形成的孤儿节点以及新生成的节点都会被`nodeDB`持久化到数据库中, 这就需要`nodeDB`的读写过程中能够区分三种类型的节点.
 
@@ -249,7 +253,9 @@ func (tree *MutableTree) recursiveRemove(node *Node, key []byte) ([]byte, *Node,
       // 返回该节点的右孩子信息,则其父节点可以直接指向其右孩子
       // 删除左孩子后会引发某些中间节点(子树树根)的key字段变动
       // node.key == node.rightNode.key, 所以返回值第3个字段为node.key
-      // todo 该节点应加入孤儿节点,这里并没有将该节点放入孤儿节点的操作
+      // NOTE v0.12.4中的实现中,此处有忘了处理将node加入orphans中
+      // 参见 https://github.com/tendermint/iavl/pull/177
+      // 将node加入orphans: *orphans = append(*orphans, node)
 			return node.rightHash, node.rightNode, node.key, value, orphaned
 		}
     // 成功删除@key对应的节点,从左孩子递归返回至高度>1的中间节点时,会进入该分支
@@ -271,7 +277,9 @@ func (tree *MutableTree) recursiveRemove(node *Node, key []byte) ([]byte, *Node,
     // 只有高度为1的中间节点的右叶子节点被删除时才会进入该条件分支
     // 返回该节点的左孩子信息,则其父节点可以直接指向其左孩子
     // 删除右孩子,不会影响路径上中间节点的key值,所以返回值的第3个字段为nil
-    // todo 该节点应该加入孤儿节点才对,但是这里并没有将该节点放入孤儿节点的操作
+    // NOTE v0.12.4中的实现中,此处有忘了处理将node加入orphans中
+    // 参见 https://github.com/tendermint/iavl/pull/177
+    // 将node加入orphans: *orphans = append(*orphans, node)
 		return node.leftHash, node.leftNode, nil, value, orphaned
 	}
 	orphaned = append(orphaned, node)
@@ -301,13 +309,29 @@ func (tree *MutableTree) recursiveRemove(node *Node, key []byte) ([]byte, *Node,
 
 对于前述的中间节点的第3点状态变化的修改则发生`recursiveRemove`方法输入参数中的节点高度大于1时. 如果是从左孩子节点返回则根据前2个返回值更新该节点的左孩子相关的状态. 如果是从右孩子节点返回则根据前2个返回值更新该节点的右孩子相关的状态. 此时需要注意的是,如果是从右孩子节点返回并且第3个参数的值不为`nil`, 则意味着以该节点为树根的子树中的最左叶子节点被删除,此时需要根据第3个返回参数更新该节点中的key. 从左孩子返回时则不需要考虑这种情况.
 
+## IAVL+树的Merkle证明
+
+在`Node`结构中加入左右孩子节点的哈希值,可以对IAVL+树中存储的键对应的值做存在性证明, 如果树中没有相应的键值对也可构建不存在性证明.由于IAVL+树中仅有叶子节点保存值, 所以对于一个键值对的存在性证明就是从树根到相应叶子节点的路径. 验证时只需要从叶子节点逐层计算哈希值并将最终得到的哈希值与已知的根节点的哈希值进行比对,如果相等就证明了该键值对在树中确实存在. 
+
+```go
+type RangeProof struct {
+  LeftPath   PathToLeaf      // 树根到最左侧叶子节点的路径(不含叶子节点)
+  InnerNodes []PathToLeaf    // 到其它叶子节点的路径
+	Leaves     []proofLeafNode // Range包含的所有的叶子节点
+
+	rootVerified bool
+	rootHash     []byte // valid iff rootVerified is true
+	treeEnd      bool   // valid iff rootVerified is true
+}
+```
 
 
-## COSMOS-SDK中的存储实现
 
-![](/Users/long/Git/github/longcpp/CryptoInAction/cosmos/store-types.svg)
+## IAVL+树在COSMOS-SDK中的应用
 
-## COSMOS-SDK中的剪枝功能
+
+
+## IAVL+树的剪枝操作
 
 
 
