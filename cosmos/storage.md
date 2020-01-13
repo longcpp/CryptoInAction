@@ -45,7 +45,7 @@ type nodeDB struct {
 }
 ```
 
-`Node`中的信息在序列话之后通过`db`持久化到数据库中. 序列化时通过Amino编码对相应的字段依次进行编码, 值得注意的是叶子节点和中间节点在存储时, 被序列化的字段不同:
+`Node`中的信息在序列化之后通过`db`持久化到数据库中. 序列化时通过Amino编码对相应的字段依次进行编码, 值得注意的是叶子节点和中间节点在存储时, 被序列化的字段不同:
 
 - 叶子节点序列化: `Amino(height||size||version||key||value)` 
 - 中间节点序列化: `Amino(height||size||version||key||leftHash||rightHash)`
@@ -192,8 +192,8 @@ func (tree *MutableTree) recursiveSet(node *Node, key []byte, value []byte) (
 			orphaned = append(orphaned, rightOrphaned...) // 记录新的孤儿节点
 		}
 
-		if updated { // 到达叶子节点之后, 逐层递归返回
-			return node, updated, orphaned
+		if updated { // 仅更新了叶子节点的value字段,可直接返回,不影响height等字段
+			return node, updated, orphaned 
 		}
 		node.calcHeightAndSize(tree.ImmutableTree) 
     // 再平衡并计算左右哈希值, 会产生新的孤儿节点
