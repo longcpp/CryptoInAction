@@ -27,6 +27,10 @@ type Node struct {
 }
 ```
 
+下图中展示了一个含有8个节点的二叉树, 其中大写字母用来指代具体的节点, 而每个节点中的数字表示该节点的键`key`字段.,为了简化起见,图中没有叶子节点的`value`字段.
+
+![tree-8Leaves](/Users/long/Downloads/plantuml/tree-8Leaves.png)
+
 虽然叶子节点和中间节点复用了相同的数据结构`Node`, 但是由于字段值的不同, 两种节点的哈希值计算过程也不相同:
 
 - 计算叶子节点哈希值: `Hash(height||size||version||key||value)`
@@ -119,6 +123,77 @@ func (node *Node) get(t *ImmutableTree, key []byte) (index int64, value []byte) 
 	return index, value // 叶子节点的index从0开始,从左到右按照1为步长递增
 }
 ```
+
+在树形结构进行操作时,同时希望能够遍历树中的某些节点,并且在遍历时对经过的每个节点进行处理. 这部分的逻辑实现在文件`iavl/node.go`文件中的`Node`方法`traverseInRange`中, 参见下面的代码. 该方法的输入参数包括当前IAVL+树的指针 `t`, 遍历的起始点`start`和结束点`end`,遍历的范围是键属于`[start, end)`中的中间节点和叶子节点, 是否要进行升序遍历的标记符`ascending`, 是否要访问结束点`end`的标记位`inclusive`,在树中的深度`depth` 以及对每个经过的节点的操作`cb func(*Node, uint8) bool`,其中函数`cb`有两个输入参数要处理的节点以及当前深度. 参照下面的实现代码, 可知当升序遍历时,相当于在`start`和`end`标记的范围内的节点进行前序遍历.
+
+```go
+func (node *Node) traverseInRange(t *ImmutableTree, start, end []byte, ascending bool, inclusive bool, depth uint8, cb func(*Node, uint8) bool) bool {
+	afterStart := start == nil || bytes.Compare(start, node.key) < 0
+	startOrAfter := start == nil || bytes.Compare(start, node.key) <= 0
+	beforeEnd := end == nil || bytes.Compare(node.key, end) < 0
+	if inclusive { // inclusive为true表示需要访问结束点end
+		beforeEnd = end == nil || bytes.Compare(node.key, end) <= 0
+	}
+
+	// Run callback per inner/leaf node.
+	stop := false
+	if !node.isLeaf() || (startOrAfter && beforeEnd) { // 对中间节点和叶子节点都调用cb函数
+		stop = cb(node, depth)
+		if stop { // cb函数可以利用返回值控制是否继续遍历访问节点
+			return stop
+		}
+	}
+	if node.isLeaf() { // 递归终止条件
+		return stop
+	}
+
+	if ascending { // 升序遍历
+		// check lower nodes, then higher
+		if afterStart { // 仍在遍历范围中, 前序遍历, 先左子树再右子树
+			stop = node.getLeftNode(t).traverseInRange(t, start, end, ascending, inclusive, depth+1, cb)
+		}
+		if stop {
+			return stop
+		}
+		if beforeEnd {
+			stop = node.getRightNode(t).traverseInRange(t, start, end, ascending, inclusive, depth+1, cb)
+		}
+	} else { // 降序遍历
+		// check the higher nodes first
+		if beforeEnd { // 仍在遍历范围中, 前序遍历, 但是先访问右子树再访问左子树
+			stop = node.getRightNode(t).traverseInRange(t, start, end, ascending, inclusive, depth+1, cb)
+		}
+		if stop {
+			return stop
+		}
+		if afterStart {
+			stop = node.getLeftNode(t).traverseInRange(t, start, end, ascending, inclusive, depth+1, cb)
+		}
+	}
+
+	return stop
+}
+```
+
+以前面8个叶子节点的二叉树图为例, 升序遍历键取值在范围`[2, 6]`的节点, 依次访问过(调用`cb`函数)的节点为 `A, B, E, J, K, C, F, L, M, G, N`, 参照下图,其中会执行`cb`函数的节点用不同的符号表示.
+
+![treeTraverse26](/Users/long/Downloads/plantuml/treeTraverse26.png)
+
+利用该函数可以对整棵IAVL+树进行遍历,如果不关心当前遍历的深度,则可以通过简单的包装忽略其中的`depth`参数, 参见`Node`方法`traverse`和`traverseWithDepth`的实现.
+
+```go
+func (node *Node) traverse(t *ImmutableTree, ascending bool, cb func(*Node) bool) bool {
+	return node.traverseInRange(t, nil, nil, ascending, false, 0, func(node *Node, depth uint8) bool {
+		return cb(node)
+	})
+}
+
+func (node *Node) traverseWithDepth(t *ImmutableTree, ascending bool, cb func(*Node, uint8) bool) bool {
+	return node.traverseInRange(t, nil, nil, ascending, false, 0, cb)
+}
+```
+
+
 
 `ImmutableTree`没有`Set`和`Remove`方法, 对IAVL+树的更新操作由`MutableTree`完成. 文件`iavl/mutable_tree.go`中定义了这两个方法:
 
@@ -311,7 +386,7 @@ func (tree *MutableTree) recursiveRemove(node *Node, key []byte) ([]byte, *Node,
 
 ## IAVL+树的Merkle证明
 
-在`Node`结构中加入左右孩子节点的哈希值,可以对IAVL+树中存储的键对应的值做存在性证明, 如果树中没有相应的键值对也可构建不存在性证明.由于IAVL+树中仅有叶子节点保存值, 所以对于一个键值对的存在性证明就是从树根到相应叶子节点的路径. 验证时只需要从叶子节点逐层计算哈希值并将最终得到的哈希值与已知的根节点的哈希值进行比对,如果相等就证明了该键值对在树中确实存在. 
+在`Node`结构中加入左右孩子节点的哈希值,可以对IAVL+树中存储的键对应的值做存在性证明, 如果树中没有相应的键值对也可构建不存在性证明.由于IAVL+树中仅有叶子节点保存值, 所以对于一个键值对的存在性证明就是从树根到相应叶子节点的路径. 验证时只需要从叶子节点逐层计算哈希值并将最终得到的哈希值与已知的根节点的哈希值进行比对,如果相等就证明了该键值对在树中确实存在. 由于叶子节点按照从左到右的顺序键逐渐增大,则键值对的不存在性证明可以通过如下思路来完成: 在IAVL+树上确定目标键对应的叶子节点区间,并证明这些叶子节点的键不等于目标. 假设目标键为4, 而树中没有键为4的叶子节点,但是有键为3和5的叶子节点,则找到这两个叶子节点之后,通过证明这两个节点相邻的叶子节点并且键都不等于4, 就可以证明树中不存在键为4的值. 这就需要构建区间证明`RangeProof`. 实际上, 在IAVL+树的该实现中用文件`iavl/proof_range.go`文件中的`RangeProof`结构体统一了存在性证明与不存在性证明. 
 
 ```go
 type RangeProof struct {
@@ -319,11 +394,233 @@ type RangeProof struct {
   InnerNodes []PathToLeaf    // 到其它叶子节点的路径
 	Leaves     []proofLeafNode // Range包含的所有的叶子节点
 
-	rootVerified bool
-	rootHash     []byte // valid iff rootVerified is true
-	treeEnd      bool   // valid iff rootVerified is true
+	rootVerified bool   // 已经用合法的根哈希验证过该RangeProof
+	rootHash     []byte // 只有当rootVerified为true时才是合法值
+	treeEnd      bool   // 只有当rootVerified为true时才是合法值
 }
 ```
+
+其中`PathToLeaf`是定义在文件`iavl/proof_path.go`中的`ProofInnerNode`的数组, 表示从根节点到某个叶子节点的路径, 不包括叶子节点, 而`proofInnerNode`是定义在文件`iavl/proof.go`中的结构体,仅包括在哈希值计算在过程中涉及到的中间节点的字段值, 该文件中同样定义了结构体`proofLeafNode`, 由于叶子节点的`height`和`size`字段都是固定值,需要包含在结构中. 而其中的`ValueHash`则是叶子节点存储的值的哈希值. `RangProof`结构体的构建较为复杂, 我们先讨论`PathToLeaf`的构建.
+
+```go
+type PathToLeaf []proofInnerNode
+
+type proofInnerNode struct {
+	Height  int8   `json:"height"`
+	Size    int64  `json:"size"`
+	Version int64  `json:"version"`
+	Left    []byte `json:"left"` // 左孩子节点哈希值
+	Right   []byte `json:"right"`// 右孩子节点哈希值
+}
+
+type proofLeafNode struct {
+	Key       cmn.HexBytes `json:"key"`
+	ValueHash cmn.HexBytes `json:"value"` 
+	Version   int64        `json:"version"`
+}
+```
+
+文件`iavl/proof.go`文件中的`PathToLeaf`方法可以根据键在树中构建从根节点到键所在叶子节点的路, 而具体的实现由函数`pathToLeaf`递归实现. 值得注意的是, 构成路径的中间节点在添加到路径中时, 如果该节点的左孩子节点是路径的一部分, 则当前`proofInnerNode`中的左孩子节点哈希值为`nil`; 如果该节点的右孩子节点是路径的一部分, 则当前`proofInnerNode`中的右孩子节点哈希值为`nil`. 这些为`nil`的哈希值可以根据路径中的其它节点计算而来. 
+
+```go
+func (node *Node) PathToLeaf(t *ImmutableTree, key []byte) (PathToLeaf, *Node, error) {
+	path := new(PathToLeaf)
+	val, err := node.pathToLeaf(t, key, path)
+	return *path, val, err
+}
+
+func (node *Node) pathToLeaf(t *ImmutableTree, key []byte, path *PathToLeaf) (*Node, error) {
+	if node.height == 0 {
+		if bytes.Equal(node.key, key) {
+			return node, nil
+		}
+		return node, errors.New("key does not exist")
+	}
+
+	if bytes.Compare(key, node.key) < 0 { // 应进入左子树
+		pin := proofInnerNode{
+			Height:  node.height,
+			Size:    node.size,
+			Version: node.version,
+			Left:    nil, // 左孩子为空, 可根据路径计算
+			Right:   node.getRightNode(t).hash,
+		}
+		*path = append(*path, pin) // 先添加当前节点再进入左子树
+		n, err := node.getLeftNode(t).pathToLeaf(t, key, path)
+		return n, err
+	} // 进入右子树
+	pin := proofInnerNode{
+		Height:  node.height,
+		Size:    node.size,
+		Version: node.version,
+		Left:    node.getLeftNode(t).hash,
+		Right:   nil, // 右孩子为空, 可根据路径计算
+	}
+	*path = append(*path, pin) // 先添加当前节点再进入右子树
+	n, err := node.getRightNode(t).pathToLeaf(t, key, path)
+	return n, err
+}
+```
+
+根据`pathToLeaf`的实现,当树中存在对应键的节点时, `PathToLeaf`返回的`PathToLeaf`中的第一个元素为根节点(下标为0), 最后一个元素则为目标叶子节点的父节点. 下图中展示了一个含有8个节点的二叉树, 其中大写字母用来指代具体的节点, 而每个节点中的数字表示该节点的键. 则`PathToLeaf`方法返回的关于键是`2`的节点的路径为`{A, B, E},J,nil`.  值得考虑的是, 当树中不存在对应键的节点时, 返回的`PathToLeaf`是什么? 上述实现根据`PathToLeaf`方法在下图展示的树中构建键为`2.5`的节点的路径为`{A, B, E}, J, err`. 
+
+![tree](/Users/long/Downloads/plantuml/treePathToLeaf.png)
+
+根据`PathToLeaf`以及叶子节点可以计算出根节点的哈希值,通过与已知的合法的根节点的哈希值比较即可完成验证, 这一逻辑在文件`iavl/proof_path.go`文件实现, 参见下面的代码, 这是`PathToLeaf`的方法,输入参数为相应的叶子节点以及已知的合法的根节点哈希值.
+
+```go
+func (pl PathToLeaf) verify(leafHash []byte, root []byte) error {
+	hash := leafHash // 叶子节点开始逐层计算哈希值
+	for i := len(pl) - 1; i >= 0; i-- {
+		pin := pl[i]
+		hash = pin.Hash(hash)
+	}
+	if !bytes.Equal(root, hash) { // 与已知的合法的根哈希值做比对
+		return errors.Wrap(ErrInvalidProof, "")
+	}
+	return nil
+}
+```
+
+接下来考察`RangeProof`的构造过程, 主要逻辑由`ImmutableTree` 的方法`getRangeProof`实现, 该方法的实现逻辑比较复杂, 但是粗线条的实现逻辑可以归纳为: 
+
+1. 对输入参数做适当的检查并通过`t.root.hashWithCount()`完成树中所有的哈希计算
+2. 通过`PathToLeaf`方法构建达到最左侧叶子节点的路径, 并保存路径和叶子节点至`RangeProof`结构体中
+3. 根据`limit`和`keyEnd`判断是否可以终止,是则返回
+4. 利用`t.root.traverseInRange`进行区间遍历,并在过程中保存区间中其它叶子节点和路径至`RangeProof`结构体中
+
+```go
+func (t *ImmutableTree) getRangeProof(keyStart, keyEnd []byte, limit int) (proof *RangeProof, keys, values [][]byte, err error) {
+	// ... 省略部分参数检查
+	t.root.hashWithCount() // Ensure that all hashes are calculated.
+  
+	path, left, err := t.root.PathToLeaf(t, keyStart) // 尝试获取keyStart对应节点的路径
+	if err != nil { // keyStart不存在, 可以提供不存在性证明
+		err = nil
+	}
+	startOK := keyStart == nil || bytes.Compare(keyStart, left.key) <= 0
+	endOK := keyEnd == nil || bytes.Compare(left.key, keyEnd) < 0
+	// If left.key is in range, add it to key/values.
+	if startOK && endOK { // 找到的叶子节点在区间中, 保存相应的值
+		keys = append(keys, left.key) // == keyStart
+		values = append(values, left.value)
+	}
+	// Either way, add to proof leaves.
+	var leaves = []proofLeafNode{ // 保存找到的叶子节点的信息
+		{
+			Key:       left.key,
+			ValueHash: tmhash.Sum(left.value),
+			Version:   left.version,
+		},
+	}
+
+	_stop := false
+	if limit == 1 {
+		_stop = true // case 1 limit 是 1 
+	} else if keyEnd != nil && bytes.Compare(cpIncr(left.key), keyEnd) >= 0 {
+		_stop = true // case 2 keyEnd = left.Key + 1
+	}
+	if _stop { // 可以终止, 直接返回
+		return &RangeProof{
+			LeftPath: path,
+			Leaves:   leaves,
+		}, keys, values, nil
+	}
+
+	// Get the key after left.key to iterate from.
+	afterLeft := cpIncr(left.key) // 没有返回, 键递增1, 继续查找叶子节点
+
+	// Traverse starting from afterLeft, until keyEnd or the next leaf
+	// after keyEnd.
+	var innersq = []PathToLeaf(nil) // 保存后续叶子节点路径中新的中间节点
+	var inners = PathToLeaf(nil)
+	var leafCount = 1 // 记录保存的叶子节点的数目, 已经保存了最左侧叶子节点
+	var pathCount = 0 // 
+	// var keys, values [][]byte defined as function outs.
+	// 从afterLeft进行区间遍历直到keyEnd或者keyEnd的下一个叶子节点, 终止条件有传入的函数判断
+  // 区间中的叶子节点会共享一些中间节点, RangeProof不保存重复的中间节点
+  // 单独存储的取件中最左侧叶子节点的路径为RangeProof的这种构造过程提供指导信息
+	t.root.traverseInRange(t, afterLeft, nil, true, false, 0,
+		func(node *Node, depth uint8) (stop bool) { 
+
+			// Track when we diverge from path, or when we've exhausted path,
+			// since the first innersq shouldn't include it.
+			if pathCount != -1 { // 分支1
+				if len(path) <= pathCount { // 分支1-1
+					// We're done with path counting.
+					pathCount = -1
+				} else { // 分支1-2
+					pn := path[pathCount]
+					if pn.Height != node.height ||
+						pn.Left != nil && !bytes.Equal(pn.Left, node.leftHash) ||
+						pn.Right != nil && !bytes.Equal(pn.Right, node.rightHash) { // 分支1-2-1
+
+						// 条件判断为真,意味着前序遍历与左侧相邻叶子节点的路径的中间节点产
+						pathCount = -1 
+					} else { // 分支1-2-2
+						pathCount++
+					}
+				}
+			}
+
+			if node.height == 0 { // 遍历至新的叶子节点, 分支3
+				innersq = append(innersq, inners) // 保存路径中新增的中间节点, 可能为空
+				inners = PathToLeaf(nil)
+				leaves = append(leaves, proofLeafNode{ // 保存叶子节点信息
+					Key:       node.key,
+					ValueHash: tmhash.Sum(node.value),
+					Version:   node.version,
+				})
+				leafCount++ // 更新叶子节点计数器
+				// Maybe terminate because we found enough leaves.
+				if limit > 0 && limit <= leafCount { 
+					return true // 检查终止条件, 找到足够多叶子节点
+				}
+				// Terminate if we've found keyEnd or after.
+				if keyEnd != nil && bytes.Compare(node.key, keyEnd) >= 0 {
+					return true // 检查终止条件, 遍历至keyEnd或者已经超过keyEnd
+				}
+				// Value is in range, append to keys and values.
+				keys = append(keys, node.key) // 叶子节点在范围中, 记录叶子节点信息
+				values = append(values, node.value)
+				// Terminate if we've found keyEnd-1 or after.
+				// We don't want to fetch any leaves for it.
+				if keyEnd != nil && bytes.Compare(cpIncr(node.key), keyEnd) >= 0 {
+					return true
+				}
+			} else { // 分支4
+				// Inner node.
+				if pathCount >= 0 { // 分支4-1
+					// Skip redundant path items.
+				} else { // 分支4-2
+					inners = append(inners, proofInnerNode{
+						Height:  node.height, // Left 字段为 nil, 因为是在从左到右构建
+						Size:    node.size,   // 因为在按照从左到右的顺序构建叶子节点的路径
+						Version: node.version,// 并且提前构建了最左侧叶子节点的路径
+						Left:    nil,         // 意味着后续叶子节点的中间路径的左孩子哈希值
+						Right:   node.rightHash, // 都可以根据已保存的中间和叶子节点进行计算
+					})
+				}
+			}
+			return false
+		},
+	)
+
+	return &RangeProof{
+		LeftPath:   path,
+		InnerNodes: innersq,
+		Leaves:     leaves,
+	}, keys, values, nil
+}
+```
+
+`getRangeProof`实现中最难理解的是第4步的计算, 尤其是有`pathCount`相关的部分, 为了方便阐述这部分的逻辑,在代码注释中对不同的分支添加了标记. 为了理解第4步需要记住的是, 在该函数之前已经构建并保存了区间最左侧叶子节点的路径, 第4步是为了根据这一路径构建区间中其它叶子节点的路径并且需要达到不重复存储相同中间节点的效果. 第4步中就是为了借助`t.root.traverseInRange`的前序遍历功能完成这一目标. 最左侧叶子节点的`PathToLeaf`和区间中的第2个叶子节点的`PathToLeaf`会共享从根节点开始的多个中间节点. 
+
+还是以8个叶子节点的树为例,假设是在构造键属于`[2, 6]`范围`RangeProof`,其中所有叶子节点的`PathToLeaf`的路径上的中间节点用不同的图形表示. 最左侧叶子节点`J`对应的路径为`{A, B, E}`, 而`traverseInRange`遍历到第2个叶子节点`K`经过的中间路径也为`{A, B, E}`. 因此在``getRangeProof`的计算时,会不断进入"分支1-2-2"对`pathCount`进行累加, 每次累加之后会进入"分支4-1"不做任何计算. 当`pathCount`的值变为3后, `traverseInRange`访问的下一个节点是`K`, 此时会进入"分支1-1"执行`pathCount=-1`, 可以注意到的是一但`pathCount`的值变为-1之后,函数中没有任何地方会再修改该变量的值,也即"分支1"不会再执行. 此时在访问叶子节点所以会进入"分支3",保存节点`K`的信息以及其`PathToLeaf`引入的新的中间节点. 由于叶子节点`K`没有引入新的中间节点,所以叶子节点在`RangeProof`中对应的`PathToLeaf`为`nil`. 接下来由于只会进入"分支3"和"分支4-2", 借助`traverseInRange`的前序遍历, 中间节点被会加入到`PathToLeaf`中,而每碰到叶子节点就保存节点以及对应的`PathToLeaf`. 因此下图中构建的`RangeProof`的最终值为: `LeftPath  = {A, B, E},InnderNodes = { {}, {C, F}, {}, {G}}, Leaves = {J, K, L, M, N}`.
+
+![treeRangeProof26](/Users/long/Downloads/plantuml/treeRangeProof26.png)
+
+
 
 
 
