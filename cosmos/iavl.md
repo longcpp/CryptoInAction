@@ -31,7 +31,7 @@ type Node struct {
 
 下图中展示了一个含有8个节点的二叉树, 其中大写字母用来指代具体的节点, 而每个节点中的数字表示该节点的键`key`字段.,为了简化起见,图中没有叶子节点的`value`字段.
 
-![tree8Leaves](/Users/long/Downloads/plantuml/tree-8Leaves.png)
+![Tree8Leaves](./images/tree-8Leaves.png)
 
 虽然叶子节点和中间节点复用了相同的数据结构`Node`, 但是由于字段值的不同, 两种节点的哈希值计算过程也不相同:
 
@@ -179,7 +179,7 @@ func (node *Node) traverseInRange(t *ImmutableTree, start, end []byte, ascending
 
 以前面8个叶子节点的二叉树图为例, 升序遍历键取值在范围`[2, 6]`的节点, 依次访问过(调用`cb`函数)的节点为 `A, B, E, J, K, C, F, L, M, G, N`, 参照下图,其中会执行`cb`函数的节点用不同的符号表示.
 
-![treeTraverse26](/Users/long/Downloads/plantuml/treeTraverse26.png)
+![treeTraverse26](./images/treeTraverse26.png)
 
 利用该函数可以对整棵IAVL+树进行遍历,如果不关心当前遍历的深度,则可以通过简单的包装忽略其中的`depth`参数, 参见`Node`方法`traverse`和`traverseWithDepth`的实现.
 
@@ -464,7 +464,7 @@ func (node *Node) pathToLeaf(t *ImmutableTree, key []byte, path *PathToLeaf) (*N
 
 根据`pathToLeaf`的实现,当树中存在对应键的节点时, `PathToLeaf`返回的`PathToLeaf`中的第一个元素为根节点(下标为0), 最后一个元素则为目标叶子节点的父节点. 下图中展示了一个含有8个节点的二叉树, 其中大写字母用来指代具体的节点, 而每个节点中的数字表示该节点的键. 则`PathToLeaf`方法返回的关于键是`2`的节点的路径为`{A, B, E},J,nil`.  值得考虑的是, 当树中不存在对应键的节点时, 返回的`PathToLeaf`是什么? 上述实现根据`PathToLeaf`方法在下图展示的树中构建键为`2.5`的节点的路径为`{A, B, E}, J, err`. 
 
-![treePathToLeaf](/Users/long/Downloads/plantuml/treePathToLeaf.png)
+![treePathToLeaf](./images/treePathToLeaf.png)
 
 根据`PathToLeaf`以及叶子节点可以计算出根节点的哈希值,通过与已知的合法的根节点的哈希值比较即可完成验证, 这一逻辑在文件`iavl/proof_path.go`文件实现, 参见下面的代码, 这是`PathToLeaf`的方法,输入参数为相应的叶子节点以及已知的合法的根节点哈希值.
 
@@ -616,9 +616,9 @@ func (t *ImmutableTree) getRangeProof(keyStart, keyEnd []byte, limit int) (proof
 
 `getRangeProof`实现中最难理解的是第4步的计算, 尤其是有`pathCount`相关的部分, 为了方便阐述这部分的逻辑,在代码注释中对不同的分支添加了标记. 为了理解第4步需要记住的是, 在该函数之前已经构建并保存了区间最左侧叶子节点的路径, 第4步是为了根据这一路径构建区间中其它叶子节点的路径并且需要达到不重复存储相同中间节点的效果. 第4步中就是为了借助`t.root.traverseInRange`的前序遍历功能完成这一目标. 最左侧叶子节点的`PathToLeaf`和区间中的第2个叶子节点的`PathToLeaf`会共享从根节点开始的多个中间节点. 
 
-还是以8个叶子节点的树为例,假设是在构造键属于`[2, 6]`范围`RangeProof`,其中所有叶子节点的`PathToLeaf`的路径上的中间节点用不同的图形表示. 最左侧叶子节点`J`对应的路径为`{A, B, E}`, 而`traverseInRange`遍历到第2个叶子节点`K`经过的中间路径也为`{A, B, E}`. 因此在``getRangeProof`的计算时,会不断进入"分支1-2-2"对`pathCount`进行累加, 每次累加之后会进入"分支4-1"不做任何计算. 当`pathCount`的值变为3后, `traverseInRange`访问的下一个节点是`K`, 此时会进入"分支1-1"执行`pathCount=-1`, 可以注意到的是一但`pathCount`的值变为-1之后,函数中没有任何地方会再修改该变量的值,也即"分支1"不会再执行. 此时在访问叶子节点所以会进入"分支3",保存节点`K`的信息以及其`PathToLeaf`引入的新的中间节点. 由于叶子节点`K`没有引入新的中间节点,所以叶子节点在`RangeProof`中对应的`PathToLeaf`为`nil`. 接下来由于只会进入"分支3"和"分支4-2", 借助`traverseInRange`的前序遍历, 中间节点被会加入到`PathToLeaf`中,而每碰到叶子节点就保存节点以及对应的`PathToLeaf`. 因此下图中构建的`RangeProof`的最终值为: `LeftPath  = {A, B, E},InnderNodes = {{}, {C, F}, {}, {G}}, Leaves = {J, K, L, M, N}`.
+还是以8个叶子节点的树为例,假设是在构造键属于`[2, 6]`范围`RangeProof`,其中所有叶子节点的`PathToLeaf`的路径上的中间节点用不同的图形表示. 最左侧叶子节点`J`对应的路径为`{A, B, E}`, 而`traverseInRange`遍历到第2个叶子节点`K`经过的中间路径也为`{A, B, E}`. 因此在`getRangeProof`的计算时,会不断进入"分支1-2-2"对`pathCount`进行累加, 每次累加之后会进入"分支4-1"不做任何计算. 当`pathCount`的值变为3后, `traverseInRange`访问的下一个节点是`K`, 此时会进入"分支1-1"执行`pathCount=-1`, 可以注意到的是一但`pathCount`的值变为-1之后,函数中没有任何地方会再修改该变量的值,也即"分支1"不会再执行. 此时在访问叶子节点所以会进入"分支3",保存节点`K`的信息以及其`PathToLeaf`引入的新的中间节点. 由于叶子节点`K`没有引入新的中间节点,所以叶子节点在`RangeProof`中对应的`PathToLeaf`为`nil`. 接下来由于只会进入"分支3"和"分支4-2", 借助`traverseInRange`的前序遍历, 中间节点被会加入到`PathToLeaf`中,而每碰到叶子节点就保存节点以及对应的`PathToLeaf`. 因此下图中构建的`RangeProof`的最终值为: `LeftPath  = {A, B, E},InnderNodes = {{}, {C, F}, {}, {G}}, Leaves = {J, K, L, M, N}`.
 
-![treeRangeProof26](/Users/long/Downloads/plantuml/treeRangeProof26.png)
+![treeRangeProof26](./images/treeRangeProof26.png)
 
 `ImmutableTree`的`GetWithProof`方法封装了`getRangeProof`函数. 该方法输入参数为目标键, 当键在树中时返回对应的值,当键不在树中时返回`nil`,两种情况下均用参数`start, end, limit = @key, @key+1, 2`构建`RangeProof`, 可以在随后用来做(不)存在性证明. 
 
