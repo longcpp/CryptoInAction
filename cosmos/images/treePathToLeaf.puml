@@ -1,0 +1,65 @@
+@startuml
+
+skinparam monochrome true
+
+cloud A[
+A : 4
+]
+cloud B[
+B : 2
+]
+card C[
+C : 6
+]
+card D[
+D : 1
+]
+cloud E[
+E : 3
+]
+card F[
+F : 5
+]
+card G[
+G : 7
+]
+card H[
+H : 0
+]
+card I[
+I : 1
+]
+card J[
+J : 2
+]
+card K[
+K : 3
+]
+card L[
+L : 4
+]
+card M[
+M : 5
+]
+card N[
+N : 6
+]
+card O[
+O : 7
+]
+
+A..>B
+A-->C
+B-->D
+B..>E
+C-->F
+C-->G
+D-->H
+D-->I
+E..>J
+E-->K
+F-->L
+F-->M
+G-->N
+G-->O
+@enduml

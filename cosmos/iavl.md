@@ -31,7 +31,7 @@ type Node struct {
 
 下图中展示了一个含有8个节点的二叉树, 其中大写字母用来指代具体的节点, 而每个节点中的数字表示该节点的键`key`字段.,为了简化起见,图中没有叶子节点的`value`字段.
 
-![tree-8Leaves](/Users/long/Downloads/plantuml/tree-8Leaves.png)
+![tree8Leaves](/Users/long/Downloads/plantuml/tree-8Leaves.png)
 
 虽然叶子节点和中间节点复用了相同的数据结构`Node`, 但是由于字段值的不同, 两种节点的哈希值计算过程也不相同:
 
@@ -464,7 +464,7 @@ func (node *Node) pathToLeaf(t *ImmutableTree, key []byte, path *PathToLeaf) (*N
 
 根据`pathToLeaf`的实现,当树中存在对应键的节点时, `PathToLeaf`返回的`PathToLeaf`中的第一个元素为根节点(下标为0), 最后一个元素则为目标叶子节点的父节点. 下图中展示了一个含有8个节点的二叉树, 其中大写字母用来指代具体的节点, 而每个节点中的数字表示该节点的键. 则`PathToLeaf`方法返回的关于键是`2`的节点的路径为`{A, B, E},J,nil`.  值得考虑的是, 当树中不存在对应键的节点时, 返回的`PathToLeaf`是什么? 上述实现根据`PathToLeaf`方法在下图展示的树中构建键为`2.5`的节点的路径为`{A, B, E}, J, err`. 
 
-![tree](/Users/long/Downloads/plantuml/treePathToLeaf.png)
+![treePathToLeaf](/Users/long/Downloads/plantuml/treePathToLeaf.png)
 
 根据`PathToLeaf`以及叶子节点可以计算出根节点的哈希值,通过与已知的合法的根节点的哈希值比较即可完成验证, 这一逻辑在文件`iavl/proof_path.go`文件实现, 参见下面的代码, 这是`PathToLeaf`的方法,输入参数为相应的叶子节点以及已知的合法的根节点哈希值.
 
