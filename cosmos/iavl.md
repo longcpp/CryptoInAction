@@ -1,8 +1,10 @@
 # 可认证数据结构IAVL+树
 
-基于账户模型的cosmos-sdk中需要可认证数据结构(Authenticated Data Structure, ADS)来存储包括账户的状态信息在内的各类信息. 以太坊中使用Merkle Patricia Tree (MPT树)数据结构来提供相应的功能, 而cosmos-sdk另辟蹊径通过组合Mekle树和自平衡的二叉搜索树构建了新型的ADS数据结构IAVL+树. 本文首先介绍IAVL+树结构的概念和实现, 然后分析这一数据结构在cosmos-sdk中的应用. IAVL+树的实现参照`github.com/tendermint/iavl`的[`v0.12.4`](https://github.com/tendermint/iavl/tree/v0.12.4)版本, cosmos-sdk的实现参考`github.com/cosmos/cosmos-sdk`的[`v0.37.5`](https://github.com/cosmos/cosmos-sdk/tree/v0.37.5)版本.
+longcpp ( longcpp9@gmail.com ), JIa (yin.jia987@gmail.com)
 
-## 可认证数据结构IAVL+树
+20200115
+
+基于账户模型的cosmos-sdk中需要可认证数据结构(Authenticated Data Structure, ADS)来存储包括账户的状态信息在内的各类信息. 以太坊中使用Merkle Patricia Tree (MPT树)数据结构来提供相应的功能, 而cosmos-sdk另辟蹊径通过组合Mekle树和自平衡的二叉搜索树构建了新型的ADS数据结构IAVL+树. 本文首先介绍IAVL+树结构的概念和实现, 然后分析这一数据结构在cosmos-sdk中的应用. IAVL+树的实现参照`github.com/tendermint/iavl`的[`v0.12.4`](https://github.com/tendermint/iavl/tree/v0.12.4)版本, cosmos-sdk的实现参考`github.com/cosmos/cosmos-sdk`的[`v0.37.5`](https://github.com/cosmos/cosmos-sdk/tree/v0.37.5)版本.
 
 IAVL+是cosmos-sdk中各个模块所依赖的`KVStore`的底层实现, 全称为"Immutable AVL +"树. 其设计目标是为键值对(例如账户余额)提供可持久化存储的能力, 同时支持版本化以及快照功能. IAVL+树中的节点是不可修改的(Immutable)并且通过节点的哈希值来进行索引.如果节点不可修改, 如何更新的节点的状态以反映存储状态的变化? 在IAVL+树中修改某个节点时, 会先生成一个新的节点, 然后用该节点来替换目标节点. 这种更新方式配合在节点中保存的版本信息, 就同时实现了版本化和生成快照的功能, 也就支持了状态版本之间的快速切换. IAVL+树是基于AVL树构建而来的. 在AVL树中, 任意节点的左右子树的高度最多相差1. 当插入/删除做到导致某个节点的左右子树高度差值大于1时, 会出发自平衡操作. AVL树中通常叶子节点和中间节点都可以存储键值对, 而AVL+树通过修改AVL树使得仅有叶子节点存储键值对, 而中间节点仅用来存储键以及左右子树的信息. 这种改动可以简化数据结构的实现. IAVL+树继承了AVL树的特性: 自平衡的二叉搜索树, 对于n个叶子节点的查找/插入/删除操作的时间复杂度都为O(logn), 在新增或删除Node时可能会触发一次或者多次树的旋转操作以保证树的平衡.
 
@@ -33,7 +35,7 @@ type Node struct {
 
 虽然叶子节点和中间节点复用了相同的数据结构`Node`, 但是由于字段值的不同, 两种节点的哈希值计算过程也不相同:
 
-- 计算叶子节点哈希值: `Hash(height||size||version||key||value)`
+- 计算叶子节点哈希值: `Hash(height||size||version||key||Hash(value))`
 - 计算中间节点哈希值: `Hash(height||size||version||leftHash||rightHash)`
 
 `Node`结构体中的`version`字段存储了该节点被首次插入树中时IAVL+树的版本号, 一个版本的IAVL+树就对应一个区块高度的状态集合. 如果一个`Node`在两个版本的IAVL+树中相同, 则后一版本的IAVL+树中可以直接应用前一版本的`Node`, 由此可以节省存储空间, `Node`信息的持久化通过在`iavl/nodedb.go`中定义的`nodeDB`结构体完成. 其中`db dbm.DB`字段代表一个持久化数据库, 其中`dbm.DB`是[`github.com/tendermint/tm-db`](https://github.com/tendermint/tm-db/blob/master/types.go)项目中定义的接口`DB`, `github.com/tendermint/tm-db`提供了通过[leveldb](https://github.com/tendermint/tm-db/blob/master/c_level_db.go), [rocksdb](https://github.com/tendermint/tm-db/blob/master/rocks_db.go)等数据库后端实现的数据库`DB`和`Batch`批处理接口. `nodeDB`另外有`Node`的缓存, 从`nodeDB`中读取`Node`时, 首先尝试从`nodeCache`中获取, 获取失败的话改为从底层数据库中获取.
@@ -56,7 +58,7 @@ type nodeDB struct {
 - 叶子节点序列化: `Amino(height||size||version||key||value)` 
 - 中间节点序列化: `Amino(height||size||version||key||leftHash||rightHash)`
 
-## IAVL+树的读写操作
+## IAVL+树的读写与遍历
 
 有了`Node`结构体和`nodeDB`, IAVL+树的定义在文件`iavl/immutable_tree.go`的结构体`ImmutableTree`中.  结构体比较简单, 只包括指向IAVL+树的根节点的指针`root`, 存储树中所有`Node`的数据库`ndb`以及这棵树的版本号. 如前所述, 每个区块执行完成之后都会形成一个新的IAVL+树来保存最新的状态集合, 而一次状态更新都会导致原先版本的IAVL+树中的一些节点被替换下来, 这些被替换下来的`Node`成为孤儿节点. 默认配置下, 所有的节点包括对应每个IAVL+树版本的根节点, 版本更新中形成的孤儿节点以及新生成的节点都会被`nodeDB`持久化到数据库中, 这就需要`nodeDB`的读写过程中能够区分三种类型的节点.
 
@@ -70,9 +72,9 @@ type ImmutableTree struct {
 
 `github.com/tendermint/iavl`项目中为3类`Node`在存储到数据库中时, 定义了不同的键格式. 根节点, 其它节点及孤儿节点的键格式分别以字符`r`, `o`和`n`开始,并在后面级联不同的字段, 具体如下:
 
-- 根节点的键格式: `r||<version>`
-- 其它节点的键格式: `n||<node.hash>`
-- 孤儿节点的键格式: `o||toVersion||fromVersion||hash`
+- 根节点的键格式: `r||version`
+- 其它节点的键格式: `n||node.hash`
+- 孤儿节点的键格式: `o||toVersion||fromVersion||node.hash`
 
 其中根节点的键格式中包含了对应的IAVL+树的版本号, 其它节点的键格式中包含了节点的哈希值, 而孤儿节点的键格式比较特殊. 如前所述, 孤儿节点是在IAVL+树从老版本`fromVersion`更新到新版本`toVersion`时被替换下来的节点. 孤儿节点的这种键格式表明了该节点的生存期. 孤儿节点的键格式中, 以`toVersion||fromVersion`的顺序排列生存期对于快速删除孤儿节点有好处. 默认情况下`ndb`会存储所有的节点信息, 但`nodeDB`也可以根据用户自定义的剪枝选项`PruningOptions`对数据库中存储的内容进行精简, 例如从`nodeDB`中删除过版本为`v`的IAVL+树. 在这种场景下, 就可以根据`o||v`遍历所有目标孤儿节点,并执行删除操作, 后续再详细介绍剪枝选项.
 
@@ -192,8 +194,6 @@ func (node *Node) traverseWithDepth(t *ImmutableTree, ascending bool, cb func(*N
 	return node.traverseInRange(t, nil, nil, ascending, false, 0, cb)
 }
 ```
-
-
 
 `ImmutableTree`没有`Set`和`Remove`方法, 对IAVL+树的更新操作由`MutableTree`完成. 文件`iavl/mutable_tree.go`中定义了这两个方法:
 
@@ -395,8 +395,8 @@ type RangeProof struct {
 	Leaves     []proofLeafNode // Range包含的所有的叶子节点
 
 	rootVerified bool   // 已经用合法的根哈希验证过该RangeProof
-	rootHash     []byte // 只有当rootVerified为true时才是合法值
-	treeEnd      bool   // 只有当rootVerified为true时才是合法值
+	rootHash     []byte // 当前RangeProof对应的根节点哈希,需rootVerified为true
+	treeEnd      bool   // 最末叶子节点是树的最右叶子节点,需rootVerified为true
 }
 ```
 
@@ -616,19 +616,301 @@ func (t *ImmutableTree) getRangeProof(keyStart, keyEnd []byte, limit int) (proof
 
 `getRangeProof`实现中最难理解的是第4步的计算, 尤其是有`pathCount`相关的部分, 为了方便阐述这部分的逻辑,在代码注释中对不同的分支添加了标记. 为了理解第4步需要记住的是, 在该函数之前已经构建并保存了区间最左侧叶子节点的路径, 第4步是为了根据这一路径构建区间中其它叶子节点的路径并且需要达到不重复存储相同中间节点的效果. 第4步中就是为了借助`t.root.traverseInRange`的前序遍历功能完成这一目标. 最左侧叶子节点的`PathToLeaf`和区间中的第2个叶子节点的`PathToLeaf`会共享从根节点开始的多个中间节点. 
 
-还是以8个叶子节点的树为例,假设是在构造键属于`[2, 6]`范围`RangeProof`,其中所有叶子节点的`PathToLeaf`的路径上的中间节点用不同的图形表示. 最左侧叶子节点`J`对应的路径为`{A, B, E}`, 而`traverseInRange`遍历到第2个叶子节点`K`经过的中间路径也为`{A, B, E}`. 因此在``getRangeProof`的计算时,会不断进入"分支1-2-2"对`pathCount`进行累加, 每次累加之后会进入"分支4-1"不做任何计算. 当`pathCount`的值变为3后, `traverseInRange`访问的下一个节点是`K`, 此时会进入"分支1-1"执行`pathCount=-1`, 可以注意到的是一但`pathCount`的值变为-1之后,函数中没有任何地方会再修改该变量的值,也即"分支1"不会再执行. 此时在访问叶子节点所以会进入"分支3",保存节点`K`的信息以及其`PathToLeaf`引入的新的中间节点. 由于叶子节点`K`没有引入新的中间节点,所以叶子节点在`RangeProof`中对应的`PathToLeaf`为`nil`. 接下来由于只会进入"分支3"和"分支4-2", 借助`traverseInRange`的前序遍历, 中间节点被会加入到`PathToLeaf`中,而每碰到叶子节点就保存节点以及对应的`PathToLeaf`. 因此下图中构建的`RangeProof`的最终值为: `LeftPath  = {A, B, E},InnderNodes = { {}, {C, F}, {}, {G}}, Leaves = {J, K, L, M, N}`.
+还是以8个叶子节点的树为例,假设是在构造键属于`[2, 6]`范围`RangeProof`,其中所有叶子节点的`PathToLeaf`的路径上的中间节点用不同的图形表示. 最左侧叶子节点`J`对应的路径为`{A, B, E}`, 而`traverseInRange`遍历到第2个叶子节点`K`经过的中间路径也为`{A, B, E}`. 因此在``getRangeProof`的计算时,会不断进入"分支1-2-2"对`pathCount`进行累加, 每次累加之后会进入"分支4-1"不做任何计算. 当`pathCount`的值变为3后, `traverseInRange`访问的下一个节点是`K`, 此时会进入"分支1-1"执行`pathCount=-1`, 可以注意到的是一但`pathCount`的值变为-1之后,函数中没有任何地方会再修改该变量的值,也即"分支1"不会再执行. 此时在访问叶子节点所以会进入"分支3",保存节点`K`的信息以及其`PathToLeaf`引入的新的中间节点. 由于叶子节点`K`没有引入新的中间节点,所以叶子节点在`RangeProof`中对应的`PathToLeaf`为`nil`. 接下来由于只会进入"分支3"和"分支4-2", 借助`traverseInRange`的前序遍历, 中间节点被会加入到`PathToLeaf`中,而每碰到叶子节点就保存节点以及对应的`PathToLeaf`. 因此下图中构建的`RangeProof`的最终值为: `LeftPath  = {A, B, E},InnderNodes = {{}, {C, F}, {}, {G}}, Leaves = {J, K, L, M, N}`.
 
 ![treeRangeProof26](/Users/long/Downloads/plantuml/treeRangeProof26.png)
 
+`ImmutableTree`的`GetWithProof`方法封装了`getRangeProof`函数. 该方法输入参数为目标键, 当键在树中时返回对应的值,当键不在树中时返回`nil`,两种情况下均用参数`start, end, limit = @key, @key+1, 2`构建`RangeProof`, 可以在随后用来做(不)存在性证明. 
 
+```go
+func (t *ImmutableTree) GetWithProof(key []byte) (value []byte, proof *RangeProof, err error) {
+	proof, _, values, err := t.getRangeProof(key, cpIncr(key), 2)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "constructing range proof")
+	}
+	if len(values) > 0 && bytes.Equal(proof.Leaves[0].Key, key) {
+		return values[0], proof, nil
+	}
+	return nil, proof, nil
+}
+```
 
+ (不)存在性证明需要能够根据证明本身构建出根节点的哈希值并与已知的合法的根哈希值进行比对. 定义在文件`iavl/proof_range.go`中的`RangeProof`方法`_computeRootHash`可以基于该结构体计算出根节点的哈希值, 此处不再具体介绍实现原理. `computeRootHash`封装了`_computeRootHash`并且在没有错误的情况下记录`rootHash`和`treeEnd`.而与根节点哈希值的比对则在`RangeProof`的方法`verify`中完成, 而方法`Verify`则进一步封装了`verify`方法.
 
+```go
+func (proof *RangeProof) computeRootHash() (rootHash []byte, err error) {
+	rootHash, treeEnd, err := proof._computeRootHash()
+	if err == nil {
+		proof.rootHash = rootHash // memoize
+		proof.treeEnd = treeEnd   // memoize
+	}
+	return rootHash, err
+}
 
-## IAVL+树在COSMOS-SDK中的应用
+func (proof *RangeProof) verify(root []byte) (err error) {
+	rootHash := proof.rootHash
+	if rootHash == nil {
+		derivedHash, err := proof.computeRootHash()
+		if err != nil {
+			return err
+		}
+		rootHash = derivedHash
+	}
+	if !bytes.Equal(rootHash, root) {
+		return errors.Wrap(ErrInvalidRoot, "root hash doesn't match")
+	} else {
+		proof.rootVerified = true
+	}
+	return nil
+}
+```
 
+在深入了解`RangeProof`结构的定义, 构造与验证之后,可以讨论对于键值对的存在性证明和不存在证明了, 两种证明的分别在`RangeProof`的方法`VerifyItem`和`VerifyAbsence`中实现. `VerifyItem`的输入参数为键值对, 这个函数的目标是利用`RangeProof`做该键值对的存在性证明, 具体实现逻辑参见代码中的注释.
 
+```go
+func (proof *RangeProof) VerifyItem(key, value []byte) error {
+	leaves := proof.Leaves
+	if proof == nil {
+		return errors.Wrap(ErrInvalidProof, "proof is nil")
+	}
+	if !proof.rootVerified { // RangeProof必须已经用合法的树根节点哈希验证过
+		return errors.New("must call Verify(root) first")
+	}
+	i := sort.Search(len(leaves), func(i int) bool { // 二分查找@key
+		return bytes.Compare(key, leaves[i].Key) <= 0
+	})
+	if i >= len(leaves) || !bytes.Equal(leaves[i].Key, key) { // RangeProof未找到键@key
+		return errors.Wrap(ErrInvalidProof, "leaf key not found in proof")
+	}
+	valueHash := tmhash.Sum(value)
+	if !bytes.Equal(leaves[i].ValueHash, valueHash) { // 比较@value的哈希值
+		return errors.Wrap(ErrInvalidProof, "leaf value hash not same")
+	}
+	return nil
+}
+```
 
-## IAVL+树的剪枝操作
+对比之下, 不存在证明的方法`VerifyAbsence`的实现逻辑较为复杂. 其主要逻辑可以归纳为如果目标键小于树的最左叶子节的键, 或者大于树的最右叶子节点的键, 或者目标键位于`RangeProof`中2个叶子节点的键之间, 则树中不存在目标键.
 
+```go
+func (proof *RangeProof) VerifyAbsence(key []byte) error {
+	if proof == nil {
+		return errors.Wrap(ErrInvalidProof, "proof is nil")
+	}
+	if !proof.rootVerified { // 首先需要验证RangeProof自身合法
+		return errors.New("must call Verify(root) first")
+	}
+	cmp := bytes.Compare(key, proof.Leaves[0].Key) // 至少含有一个叶子节点
+	if cmp < 0 { // 如果@key小于键最小的叶子节点
+		if proof.LeftPath.isLeftmost() { // 且该节点为IAVL+树中的最左叶子节点
+			return nil // 则IAVL+树中不存在@key
+		} else {
+			return errors.New("absence not proved by left path")
+		}
+	} else if cmp == 0 { // 如果相等的话, @key在树中
+		return errors.New("absence disproved via first item #0")
+	} // @key > proof.Leaves[0].Key
+	if len(proof.LeftPath) == 0 { // 树中只有根节点时, PathToLeaf为空
+		return nil // proof ok
+	}
+	if proof.LeftPath.isRightmost() { // @key大于树的最右叶子节点
+		return nil // 也即@key不在树中
+	}
 
+  // 尝试找到第一个键大于@key的叶子节点
+	for i := 1; i < len(proof.Leaves); i++ {
+		leaf := proof.Leaves[i]
+		cmp := bytes.Compare(key, leaf.Key)
+		if cmp < 0 { // @key < leaf.key
+			return nil // proof ok 
+		} else if cmp == 0 { // @key等于叶子节点的键,存在于树中
+			return errors.New(fmt.Sprintf("absence disproved via item #%v", i))
+		} else { // @key > leaf.key
+			continue
+		}
+	}
+	
+  // 执行到这里意味着@key大于RangeProof中所有叶子节点的键
+	if proof.treeEnd { // 如果最后一个叶子节点是树的最右叶子节点
+		return nil // OK! @key不存在于树中
+	}
+	
+	if len(proof.Leaves) < 2 { // 至少需要2个叶子节点才可进行不存在性证明
+		return errors.New("absence not proved by right leaf (need another leaf?)")
+	} else {
+		return errors.New("absence not proved by right leaf")
+	}
+}
+```
 
+至此已经介绍了`RangeProof`的定义,构造以及用来做(不)存在性证明的原理与实现. 文件`iavl/proof_iavl_value.go`和`iavl/proof_iavl_absence.go`中基于`RangeProof`定义了相应的结构体`IAVLValueOp`和`IAVLAbsenceOp`. 在两个结构体都有的`Run`方法中会分别调用`RangeProof`的`VerifyItem`和`VerifyAbsence`方法验证存在性与不存在性. 这两个结构体都实现了`ProofOp`, `GetKey`以及`Run`方法, 也就实现了[Tendermint](https://github.com/tendermint/tendermint/tree/v0.32)项目中的`ProofOperator`接口, 参考的是v0.32.9版本中的文件`tendermint/crypto/merkle/proof.go`文件. 其中的`ProofOp`是定义在`tendermint/crypto/merkle/merkle.pb.go`文件中结构体. `ProofOperator`接口的存在使得Tendermint项目中在相同的接口下可以根据需求在不同的场景采用不同的可认证数据结构. 例如对于不断更新的账户余额等信息使用IAVL+树, 而每个区块中的交易等生成之后不会再变化则可以采用类似于Bitcoin中的Merkle树(`tendermint/crypto/merkle`文件下有相关的实现,此处不再讲解)
+
+```go
+type IAVLValueOp struct {
+	key []byte // Encoded in ProofOp.Key.
+	Proof *RangeProof `json:"proof"`
+}
+
+type IAVLAbsenceOp struct {
+	// Encoded in ProofOp.Key.
+	key []byte
+	Proof *RangeProof `json:"proof"`
+}
+
+// tendermint/crypto/merkle/proof.go
+type ProofOperator interface {
+	Run([][]byte) ([][]byte, error)
+	GetKey() []byte
+	ProofOp() ProofOp // dingyile
+}
+
+// tendermint/crypto/merkle/merkle.pb.go
+type ProofOp struct {
+	Type                 string   
+	Key                  []byte   
+	Data                 []byte   
+  // ... 
+}
+```
+
+## 在COSMOS-SDK中的应用
+
+[cosmos-sdk v0.37.5](https://github.com/cosmos/cosmos-sdk/tree/v0.37.5)的`cosmos-sdk/store/iavl/store.go`文件中将IAVL+树封装成`Store`结构体, 其中的`tree Tree`字段为接口, 前述的IAVL+树的实现满足了接口结束, 而`numRecent`和`storeEvery`则与剪枝操作相关,随后再介绍.
+
+```go
+type Store struct {
+	tree Tree // Tree接口, 前述的IAVL+树实现了相应的接口
+	numRecent int64 // 保存多少个老版本, 0意味着不保存老版本
+
+	// This is the distance between state-sync waypoint states to be stored.
+	// See https://github.com/tendermint/tendermint/issues/828
+	// A value of 1 means store every state.
+	// A value of 0 means store no waypoints. (node cannot assist in state-sync)
+	// By default this value should be set the same across all nodes,
+	// so that nodes can know the waypoints their peers store.
+	storeEvery int64 // 
+}
+```
+
+接下来关注cosmos-sdk中基于`Store`结构体的写操作,也即将IAVL+树持久化到数据库中. 持久化过程是通过cosmos-sdk的ABCI接口的`Commit()`方法触发的, `Commit`会依次出发各个子模块的`func (st *Store) Commit() types.CommitID `操作, 从而触发IAVL+树的`SaveVersion`操作, 参见下面的代码. 保存完成之后, 则会根据剪枝策略判断是否需要进行删除操作, 并根据需要触发IAVL+树的`DeleteVersion`操作.
+
+```go
+func (st *Store) Commit() types.CommitID {
+	// Save a new version.
+	hash, version, err := st.tree.SaveVersion() //持久化working tree
+	if err != nil {
+		// TODO: Do we want to extend Commit to allow returning errors?
+		panic(err)
+	}
+
+	// Release an old version of history, if not a sync waypoint.
+	previous := version - 1 // 剪枝操作相关的逻辑
+	if st.numRecent < previous { // 超过numRecent个版本之后, 每个版本都需剪枝检查
+		toRelease := previous - st.numRecent // 需要剪枝的版本号
+		if st.storeEvery == 0 || toRelease%st.storeEvery != 0 {
+      // 不需要存储每个版本或者该版本不是storeEvery指定的需要额外存储的历史版本
+			err := st.tree.DeleteVersion(toRelease) // 删除版本
+			if errCause := errors.Cause(err); errCause != nil && errCause != iavl.ErrVersionDoesNotExist {
+				panic(err)
+			}
+		}
+	}
+
+	return types.CommitID{
+		Version: version,
+		Hash:    hash,
+	}
+}
+```
+
+IAVL+树的`DeleteVersion`方法值得详细介绍, 经过必要的参数检查之后会出发数据库的`DeleteVersion`操作并通过底层数据库的`Commit`方法持久化本次修改. 而底层数据库的`DeleteVersion`会首先删除特定版本的孤儿节点然后删除版本对应的整棵树. 删除特定版本的孤儿节点时，只会删除从下一个版本开始不会再被引用的那些节点，以及那些在之前的并未删除的版本中不会被引用的节点. Tendermint关于IAVL+树的实现是支持跳跃式删除版本的，但cosmos-sdk在使用的时候其减枝策略是按照版本号从小到大依次删除的. 这里可以回一下孤儿节点在存储时的键格式: `o||toVersion||fromVersion||node.hash`, 对于完成这一按照不再引用的孤儿节点操作大有裨益.
+
+```go
+func (tree *MutableTree) DeleteVersion(version int64) error {
+   if version == 0 {
+      return errors.New("version must be greater than 0")
+   }
+   if version == tree.version { // 不能删除最新版本
+      return errors.Errorf("cannot delete latest saved version (%d)", version)
+   }
+   if _, ok := tree.versions[version]; !ok { 
+      return errors.Wrap(ErrVersionDoesNotExist, "")
+   }
+
+   tree.ndb.DeleteVersion(version, true) // 触发数据库的DeleteVersion操作
+   tree.ndb.Commit() // 持久化修改
+
+   delete(tree.versions, version) // 从IAVL+树结构中删除相应的版本
+
+   return nil
+}
+// DeleteVersion deletes a tree version from disk.
+func (ndb *nodeDB) DeleteVersion(version int64, checkLatestVersion bool) {
+	ndb.mtx.Lock()
+	defer ndb.mtx.Unlock()
+
+	ndb.deleteOrphans(version) // 删除孤儿节点
+	ndb.deleteRoot(version, checkLatestVersion) // 删除目标版本的整棵树
+}
+```
+
+## COSMOS-SDK中的剪枝选项
+
+前面我们看到cosmos-sdk在封装IAVL+树时,在`Store`结构体中额外包含了与剪枝操作相关的两个字段`numRecent`和`storeEvery`. 这两个字段对应cosmos-sdk中剪枝选项结构体`PruningOptions`中的两个字段`keepRecent`和`keepEvery`, 参见文件`cosmos-sdk/store/types/pruning.go`.
+
+- `keepRecent`:  出当前版本之外,保存多少个最近的历史版本
+- `keepEvery`:  在`keepRecent`之外额外保存一些旧版本, 每隔`keepEvery`个版本保存一次
+
+```go
+type PruningOptions struct {
+	keepRecent int64 // 保存多少个最近的历史版本
+	keepEvery  int64 // 额外保存一些旧版本, 每隔`keepEvery`个版本保存一次
+}
+
+// default pruning strategies
+var (
+	// PruneEverything - 只保存最新版本, 所有历史版本都删除
+	PruneEverything = NewPruningOptions(0, 0)
+	// PruneNothing - 保存所有历史状态, 不删除任何东西
+	PruneNothing = NewPruningOptions(0, 1)
+  // PruneSyncable - 只保持最近的100个区块,并且再次之外每隔10000个版本保存一次
+	PruneSyncable = NewPruningOptions(100, 10000)
+)
+```
+
+cosmosd-sdk预置了3种剪枝选项, `PruneEverything`, `PruneNothing`, `PruneSyncable`, 具体含义参加下面的代码. 如果不特定指定剪枝选项, 默认为`PruneSyncable`. 在此基础上,可以理解`func (st *Store) Commit() types.CommitID`函数体中后半段的剪枝操作, 参见前面的代码注释. 下面以一个测试用例展示具体的剪枝操作. 这个例子中`keepRecent=5, keepEvery=3`.可以看到在不超过5个旧版本的状态时, 不会发生剪枝. 在最新版本为`curr`时, 首先计算`previous`的版本号`previous=curr-1`, 随后计算`toRelease = (previous-keepRecent)`以及`target%keepEvery==0`是否成立，如果成立，则不进行剪枝，否则就将`target`对应的版本状态给删除。
+
+```go
+type pruneState struct {
+	stored  []int64
+	deleted []int64
+}
+
+func TestIAVLDefaultPruning(t *testing.T) {
+	//Expected stored / deleted version numbers for:
+	//numRecent = 5, storeEvery = 3
+	var states = []pruneState{
+		{[]int64{}, []int64{}},
+		{[]int64{1}, []int64{}},
+		{[]int64{1, 2}, []int64{}},
+		{[]int64{1, 2, 3}, []int64{}},
+		{[]int64{1, 2, 3, 4}, []int64{}},
+		{[]int64{1, 2, 3, 4, 5}, []int64{}},
+		{[]int64{1, 2, 3, 4, 5, 6}, []int64{}},
+		{[]int64{2, 3, 4, 5, 6, 7}, []int64{1}},
+		{[]int64{3, 4, 5, 6, 7, 8}, []int64{1, 2}},
+		{[]int64{3, 4, 5, 6, 7, 8, 9}, []int64{1, 2}},
+		{[]int64{3, 5, 6, 7, 8, 9, 10}, []int64{1, 2, 4}},
+		{[]int64{3, 6, 7, 8, 9, 10, 11}, []int64{1, 2, 4, 5}},
+		{[]int64{3, 6, 7, 8, 9, 10, 11, 12}, []int64{1, 2, 4, 5}},
+		{[]int64{3, 6, 8, 9, 10, 11, 12, 13}, []int64{1, 2, 4, 5, 7}},
+		{[]int64{3, 6, 9, 10, 11, 12, 13, 14}, []int64{1, 2, 4, 5, 7, 8}},
+		{[]int64{3, 6, 9, 10, 11, 12, 13, 14, 15}, []int64{1, 2, 4, 5, 7, 8}},
+	}
+	testPruning(t, int64(5), int64(3), states)
+}
+```
+
+## 小结
+
+本文中首先介绍了IAVL+树的设计理念, 以及树中节点的结构与每个字段的含义. 结合`Node`定义以及底层数据库, 介绍了IAVL+树数据库中的存储. 随后介绍了对IAVL+树读写和遍历操作. 随后介绍了作为可认证数据结构的IAVL+树所支持的键值对的存在性证明以及键的不存在性证明, 以及Tendermint项目中基于该结构所支持的数据认证操作. 最后我们介绍了cosmos-sdk对IAVL+树的封装以及所支持的剪枝操作. 
