@@ -347,14 +347,13 @@ $\textsf{gcd}\left(L\left(g^{\lambda(n)} \mod n^2\right), n\right) = 1$保证了
 所选取的$g\in\Z_{n^2}^*$的阶是$n$的非零整数倍, 进而保证了
 $\textsf{Enc}_{pk}$是$\Z_n\times\Z_n^*$到和$\Z_{n^2}^*$之间的单射.
 这就使得对密文的唯一解密成为可能, 但仍然有一个问题需要澄清:
-$\textsf{Dec}_{sk}$是否真的能够解密得到明文$m$?,也即
+$\textsf{Dec}_{sk}$是否真的能够解密得到明文$m$? 也即
 $$
 \textsf{Dec}_{sk}\left(\textsf{Enc}_{pk}(m)\right) = m
 $$
 是否成立. 
 
-接下来考察Pallier解密算法的正确性. 
-首先引入$n$次剩余类($n^{th}$ Residuosity Class)的概念,
+接下来考察Pallier解密算法的正确性.首先引入$n$次剩余类($n^{th}$ Residuosity Class)的概念,
 假设$g\in\mathcal{B},\ c\in\Z_{n^2}^*$, 如果存在$r\in\Z_{n}^*$使得$m \in \Z_n$满足
 $$
 c = g^mr^n~\textsf{mod}~n^2,
