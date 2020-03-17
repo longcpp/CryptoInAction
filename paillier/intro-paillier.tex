@@ -444,9 +444,9 @@ Paillier公钥加密机制的安全性,依赖于两个计算问题:
 \blue{用$\textsf{CLASS}[n, g]$表示合成剩余类问题, 即给定$c\in\Z_{n^2}^*$以及$g\in\mathcal{B}$, 
 计算$[c]_g$的问题}. \blue{用$\textsf{CR}[n]$表示合成剩余问题, 
 即给定$c\in\Z_{n^2}^*$, 判断$c$是否是$\Z_{n^2}^*$中的$n$次剩余.}
-目前学术界认为$\textsf{CR}[n]$是困难的, 也即判定合成剩余假设
-(DCRA, Decisional Composite Residuosity Assumption):
-不存在多项式时间算法可以判定$c\in\Z_{n^2}^*$是否是$\Z_{n^2}^*$中的$n$次剩余.
+Pascal Paillier在EUROCRYPT'99上推断$\textsf{CR}[n]$是困难的, 
+也即\textbf{DCRA假设(Decisional Composite Residuosity Assumption):
+不存在多项式时间算法可以解决$\textsf{CR}[n]$, e.g. $\textsf{CR}[n]$是计算困难的.}
 
 注意$\textsf{CLASS}[n, g]$与Pallier解密算法$\textsf{Dec}_{sk}$之间的关系.
 值得注意的是$\textsf{CLASS}[n, g]$的难度与$g\in\mathcal{B}$的具体选择无关,
@@ -479,7 +479,17 @@ $$
 $$
 \textsf{CR}[n] \equiv \textsf{D-CLASS}[n] \Leftarrow \textsf{CLASS}[n] \Leftarrow \textsf{Factor}[n].
 $$
+基于该计算层级, Pascal Paillier推断计算合成剩余问题
+(Computational Composite Residuosity Problem)是困难的,
+也即\textbf{CCRA假设(Computational Composite Residuosity Assumption): 
+不存在概率多项式时间算法能够解决计算合成剩余问题, e.g. $\textsf{CLASS}[n]$是计算困难的.}
 
+CCRA假设确保了则Paillier加密机制的单向性, 
+因为解密就是在有限门信息($n=pq$)的情况下解决$\textsf{CR}[n]$的过程.
+而DCRA假设则确保了Paillier加密机制的语义安全(Semantically Secure),
+这是因为假设$c$是两个已知明文$m_0$和$m_1$中的一个对应的密文,
+则$c$是明文$m_0$对应的密文等价于
+$cg^{-m_0}~\textsf{mod}~n^2$是$n$次剩余, 反之亦然.
 
 \end{document}
 
