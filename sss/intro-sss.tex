@@ -1,0 +1,192 @@
+\documentclass{article}
+\usepackage[UTF8, heading = false, scheme = plain]{ctex}
+
+\usepackage{geometry}
+\geometry{b5paper,left=2cm,right=2cm,top=2cm,bottom=2cm}
+
+\usepackage{color}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+
+\linespread{1.5}
+
+\usepackage[colorlinks,
+            linkcolor=red,
+            anchorcolor=blue,
+            citecolor=green
+            ]{hyperref}
+
+\usepackage{listings}
+\usepackage{fontspec}
+\usepackage{graphicx}
+\usepackage{algorithmic}
+\newfontfamily\monaco{Monaco}
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+\lstset{ %
+  basicstyle=\footnotesize\monaco,       % the size of the fonts that are used for the code
+  numbers=left,                   % where to put the line-numbers
+  numberstyle=\footnotesize\monaco\color{gray},  % the style that is used for the line-numbers
+  numbersep=5pt
+  stepnumber=1,                   % the step between two line-numbers. If it's 1, each line
+                                  % will be numbered
+  numbersep=5pt,                  % how far the line-numbers are from the code
+  backgroundcolor=\color{white},      % choose the background color. You must add \usepackage{color}
+  showspaces=false,               % show spaces adding particular underscores
+  showstringspaces=false,         % underline spaces within strings
+  showtabs=false,                 % show tabs within strings adding particular underscores
+  frame=lines,                   % adds a frame around the code
+  rulecolor=\color{black},        % if not set, the frame-color may be changed on line-breaks within not-black text (e.g. commens (green here))
+  tabsize=4,                      % sets default tabsize to 2 spaces
+  captionpos=t,                   % sets the caption-position to bottom
+  breaklines=true,                % sets automatic line breaking
+  breakatwhitespace=false,        % sets if automatic breaks should only happen at whitespace
+  title=\lstname,                   % show the filename of files included with \lstinputlisting;
+                                  % also try caption instead of title
+  keywordstyle=\color{blue},          % keyword style
+  commentstyle=\color{dkgreen},       % comment style
+  stringstyle=\color{mauve},         % string literal style
+  escapeinside={\%*}{*)},            % if you want to add LaTeX within your code
+  morekeywords={*,...}               % if you want to add more keywords to the set
+}
+
+\usepackage{amssymb} 
+\usepackage{amsmath}
+\usepackage[ruled,vlined]{algorithm2e}
+
+\setlength{\parindent}{2em}
+
+\renewcommand{\G}{\mathbb{G}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\Zn}{\mathbb{Z}_n}
+\newcommand{\Q}{\mathbb{Q}}
+
+\newcommand{\F}{\mathbb{F}}
+\newcommand{\Fq}{\mathbb{F}_q}
+\newcommand{\Fp}{\mathbb{F}_p}
+
+\newcommand{\Sbox}{\textsf{Sbox}}
+\newcommand{\code}[1]{\lstinline!#1!}
+
+\newcommand{\CKDpriv}{\textsf{CKDpriv}}
+\newcommand{\CKDpub}{\textsf{CKDpub}}
+
+%%%%%%%处理下划线：_%%%%%%%%%
+\usepackage{underscore}
+%%%%%%%处理下划线：_%%%%%%%%%
+
+\setlength{\parindent}{2.1em}
+
+%%%设置页眉和页码格式
+\usepackage{fancyhdr}
+\newcommand{\makeheadrule}{%
+\rule[0.85\baselineskip]{\headwidth}{0.5pt}\vskip-.8\baselineskip}%1.5 0.4->0.5
+\makeatletter
+\renewcommand{\headrule}{%
+{\if@fancyplain\let\headrulewidth\plainheadrulewidth\fi
+\makeheadrule}}
+\makeatother
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[r]{\textit{Crypto In Action}}
+\fancyfoot[C]{--{~\thepage~}--}
+%%%设置页眉和页码格式结束
+
+\usepackage{color}
+\newcommand{\red}{\textcolor{red}}
+\newcommand{\blue}{\textcolor{blue}}
+
+\begin{document}
+
+\title{Introducing Shamir's Secret Sharing}
+\author{longcpp \\ \small{longcpp9@gmail.com}}
+
+\maketitle
+
+Shamir’s Secret Sharing (SSS)是Adi Shamir提出的算法,
+用来将秘密信息进行分割成多个秘密份额,给每个参与者一份独特的秘密份额(Share). 
+需要重构秘密信息的时候, 需要一部分参与(有最少个数要求,也即阈值)提供各自的秘密份额. 
+如果密钥份额的个数小于阈值,则无法获得关于原始秘密的任何信息.
+为方便讨论,用$\textsf{t-of-n}$ SSS表示将秘密信息分割成$n$份, 阈值为$t$的SSS方案,
+也即最少需要$t$份秘密份额才能重构出原始的秘密信息.
+
+通过将秘密信息进行分割,可以避免单独的参与方能够完全控制秘密信息,实现分权管理. 
+另外也实现了对秘密信息的冗余备份,这是因为通常选择的阈值$t$小于$n$, 
+即使有的参与方不小心丢失了自己的秘密份额, 
+只要还有$t$个参与方能够提供其的秘密份额就仍可以恢复出原始秘密信息,避免了单点失败的风险. 
+基于同样的思路, 只要系统中被共谋作恶的参与方小于阈值,
+即可保证恶人无法获取关于秘密信息的任何知识.
+
+SSS方案的核心思想是两点定线,三点定圆,
+或者更通用的说法: $t$个点可以唯一确定次数为$t-1$的多项式. 
+假设秘密信息是有限域$\F$中的元素$s$, 
+为了构建 $\textsf{t-of-n}$ SSS方案,其中 $0< t \leq n$,
+可以随机选择$a_1,…,a_{t-1} \in_R \F$, 并且设置$a_0 = s$, 则可以构建$\F$上的多项式
+$$
+f(x)=a_0+a_1 x+a_2 x^2+ \cdots +a_{t-1} x^{t-1}.
+$$ 
+
+为了生成$n$份秘密份额, 设置$i=1, \ldots ,n$, 并计算$f(i)$, 则每个参与者获得的秘密份额为$(i,f(i))$. 
+注意到$f(x)$的常数项即为秘密信息$s$,所以为了重构出秘密信息,只需要重构出多项式$f(x)$即可.
+由于$k$个点可以唯一确定阶为$t-1$的多项式, 所以只需要$t$个秘密份额$(i,f(i))$.
+利用插值(Interpolation)方法即可重构多项式$f(x)$,从而重构秘密信息$s$. 
+给定点的集合$(x_0,y_0), \ldots ,(x_j,y_j), \ldots ,(x_{t-1},y_{t-1} )$,
+则拉格朗日形式的插值多项式为
+$$
+f(x)=\sum_{i=0}^{t-1}y_i \ell_i (x),\ \ell_i (x)=\prod_{0 \leq j \leq t-1,i \neq j}\frac{x-x_j}{x_i-x_j}
+$$
+另外考虑到最终只需要$f(0)$的值 ,可以采用下面算式直接计算$f(0)$的值:
+$$
+f(0) = \sum_{i=0}^{t-1} y_i \prod_{j = 0, j \neq i}^{t-1}\frac{x_j}{x_j-x_i}
+$$
+
+在具体实现时候则需要考虑如何选取有限域$\F$. 
+提供128比特安全性的分组密码的密钥长度通常为128比特,
+所以理想情况下有限域$\F$应该能够处理所有可能的秘密信息.
+自然的想法是选取一个128比特的尽可能大的素数.
+128比特所能表示的最大的素数是$2^{128}-159$.
+有限域$\F_{2^{128}-159}$可以在绝大多数情况下满足我们想要处理128比特秘密信息的需求,
+但是如果秘密信息位于$2^{128}-158 \sim 2^{128}-1$这个区间中,
+基于有限域$\F_{2^{128}-159}$的SSS方案无法处理,
+这种情况发生的概率是$158/2^{128} \approx 2^{-120}$,概率可忽略.
+Sage实现PoC代码如下.
+
+\lstinputlisting[language = python, caption=基于二进制扩域$\F_{2^m}$的SSS方案, label=lst-sss-f2]{./sss-fp.sage}
+
+$2^{-120}$的概率的事件通常不会发生,如果128比特的密钥是随机生成的,
+则可以预期概率上不会出现基于有限域$F_{2^{128}-159}$的SSS方案无法处理的情况.
+但是有158个秘密值无法处理显得该SSS方案不够完美.
+是否构造出能够处理所有的128比特秘密值的SSS的方案?答案是肯定的,这就要求重新选择有限域.
+基于大素数的有限域显然不满足条件, 因为需要域中有$2^{128}$个元素,
+而$2^{128}$显然不是素数.此时需要的是二进制域的扩域.
+因为对于正整数$m$的任意取值, $\F_{2^m}$确实是存在的并且在同构的意义下是唯一的. 
+$\F_{2^m}$的构造方法:选择$\F_2$上的次数为$m$的不可约多项式$p(x)$.
+
+将$\F_{2^m}$定义为$\F_2$上的次数至多为$m-1$的所有多项式构成的集合,
+则该集合中总共有$2^m$个元素.  
+$\F_{2^m}$中的加法定义为多项式的常规加法, 
+而 $\F_{2^m}$中的乘法定义为多项式的模乘, 模不可约多项式$p(x)$. 
+现在我们需要的是$\F_2$上的次数为128的不可约多项式$p(x)$,
+此处借用GCM工作模式中的定义$p(x)=x^{128}+x^7+x^2+x+1$.
+选用这种有限域,我们可以构造能够处理任意128比特的秘密值的SSS方案.
+PoC验证代码如下.
+
+\lstinputlisting[language = python, caption=基于二进制扩域$\F_{2^m}$的SSS方案, label=lst-sss-f2]{./sss-f2m.sage}
+
+值得注意的是, 虽然$\textsf{t-of-n}$ SSS方案可以将秘密信息分割成多份,
+可以在安全和防丢失方面提供一定程度的冗余.
+SSS的问题在于,要使用原始秘密信息时,需要先重构出原始秘密信息,
+原始秘密信息重构又重新引入了单点失败的分享,这是在使用SSS方案时需要考虑的问题.
+密码机等HSM会使用SSS来备份根密钥,而分割和恢复的过程限定在HSM内部,
+从而能够避免前述提及的单点失败的问题,因为可认为HSM是安全的.
+也因此$\textsf{t-of-n}$ SSS方案是常见的用来备份根密钥的惯用手法.
+一个很自然的问题是, 如何能够消除对可信方的依赖?
+一个思路是利用安全多方计算的形式, 由多方共同完成依赖某项计算.
+另一个思路是让每个参与方都选择自己的秘密信息并分割使得每个参与方都有所有参与方秘密的某个分片,
+而真正用于计算的秘密信息是通过每个参与方的秘密信息计算而来,
+这种思路的构造常用于构造多方阈值数字签名协议, 而其中为了保证协议安全需要引入同态加密,
+零知识证明等密码学原语保证协议的安全性.
+
+\end{document}
+
