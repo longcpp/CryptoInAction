@@ -1,0 +1,119 @@
+\documentclass{article}
+\usepackage[UTF8, heading = false, scheme = plain]{ctex}
+
+\usepackage{geometry}
+\geometry{b5paper,left=2cm,right=2cm,top=2cm,bottom=2cm}
+
+\usepackage{color}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+
+\linespread{1.5}
+
+\usepackage[colorlinks,
+            linkcolor=red,
+            anchorcolor=blue,
+            citecolor=green
+            ]{hyperref}
+
+\usepackage{listings}
+\usepackage{fontspec}
+\usepackage{graphicx}
+\usepackage{algorithmic}
+\newfontfamily\monaco{Monaco}
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+\lstset{ %
+  basicstyle=\footnotesize\monaco,       % the size of the fonts that are used for the code
+  numbers=left,                   % where to put the line-numbers
+  numberstyle=\footnotesize\monaco\color{gray},  % the style that is used for the line-numbers
+  numbersep=5pt
+  stepnumber=1,                   % the step between two line-numbers. If it's 1, each line
+                                  % will be numbered
+  numbersep=5pt,                  % how far the line-numbers are from the code
+  backgroundcolor=\color{white},      % choose the background color. You must add \usepackage{color}
+  showspaces=false,               % show spaces adding particular underscores
+  showstringspaces=false,         % underline spaces within strings
+  showtabs=false,                 % show tabs within strings adding particular underscores
+  frame=lines,                   % adds a frame around the code
+  rulecolor=\color{black},        % if not set, the frame-color may be changed on line-breaks within not-black text (e.g. commens (green here))
+  tabsize=4,                      % sets default tabsize to 2 spaces
+  captionpos=t,                   % sets the caption-position to bottom
+  breaklines=true,                % sets automatic line breaking
+  breakatwhitespace=false,        % sets if automatic breaks should only happen at whitespace
+  title=\lstname,                   % show the filename of files included with \lstinputlisting;
+                                  % also try caption instead of title
+  keywordstyle=\color{blue},          % keyword style
+  commentstyle=\color{dkgreen},       % comment style
+  stringstyle=\color{mauve},         % string literal style
+  escapeinside={\%*}{*)},            % if you want to add LaTeX within your code
+  morekeywords={*,...}               % if you want to add more keywords to the set
+}
+
+\usepackage{amssymb} 
+\usepackage{amsmath}
+\usepackage[ruled,vlined]{algorithm2e}
+
+\setlength{\parindent}{2em}
+
+\renewcommand{\G}{\mathbb{G}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\Q}{\mathbb{Q}}
+\newcommand{\F}{\mathbb{F}}
+
+\newcommand{\Sbox}{\textsf{Sbox}}
+\newcommand{\code}[1]{\lstinline!#1!}
+
+\newcommand{\CKDpriv}{\textsf{CKDpriv}}
+\newcommand{\CKDpub}{\textsf{CKDpub}}
+
+%%%%%%%处理下划线：_%%%%%%%%%
+\usepackage{underscore}
+%%%%%%%处理下划线：_%%%%%%%%%
+
+\setlength{\parindent}{2.1em}
+
+%%%设置页眉和页码格式
+\usepackage{fancyhdr}
+\newcommand{\makeheadrule}{%
+\rule[0.85\baselineskip]{\headwidth}{0.5pt}\vskip-.8\baselineskip}%1.5 0.4->0.5
+\makeatletter
+\renewcommand{\headrule}{%
+{\if@fancyplain\let\headrulewidth\plainheadrulewidth\fi
+\makeheadrule}}
+\makeatother
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[r]{\textit{Crypto In Action}}
+\fancyfoot[C]{--{~\thepage~}--}
+%%%设置页眉和页码格式结束
+
+\usepackage{color}
+\newcommand{\red}{\textcolor{red}}
+\newcommand{\blue}{\textcolor{blue}}
+
+
+
+\begin{document}
+
+\title{Ristretto: 萃取非素数阶点群}
+\author{longcpp \\ \small{longcpp9@gmail.com}}
+
+\maketitle
+
+大量的密码协议的构造都依赖\textbf{素数阶群$\G$}, 工程实现时又多采用基于椭圆曲线的素数阶点群$\G$:
+例如基于secp256k1, secp256r1等曲线的素数阶点群.
+密码机制的实现为了防止侧信道攻击等通常要求涉及到敏感信息的运算为常量时间(Constant-Time),
+然而secp256k1/secp256r1上的素数阶点群由于加法运算规则的不完备性,
+在做群运算(椭圆曲线点群加法)时,需要对输入的点做条件判断并用不同的执行分支处理不同的情形,
+因此很难做到常量时间实现,由此带来了安全隐患. 
+虽然可以构造具有完备加法运算(Complete Addition Law)素数阶点群,
+但扭曲爱德华曲线(Twisted Edwards Curves),雅各比四次曲线(Jacobi Quartic Curves)等
+新的曲线类型上的点群有完备的加法运算规则并且通常更快更简单,但代价是这些曲线上的点群的阶不是素数.
+用$n$表示这些曲线上点群的阶, 则$n$可以表示为$n = p \cdot h$, 其中$p$为大素数, 
+而$h$称为余因子(Cofactor), 扭曲爱德华曲线中$h$通常为4或者4的倍数.
+
+
+\end{document}
+
