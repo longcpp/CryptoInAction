@@ -62,7 +62,20 @@
 \newcommand{\Q}{\mathbb{Q}}
 \newcommand{\F}{\mathbb{F}}
 
+
+\newcommand{\E}{\mathcal{E}}
+\newcommand{\M}{\mathcal{M}}
+\newcommand{\J}{\mathcal{J}}
+
 \newcommand{\Sbox}{\textsf{Sbox}}
+\newcommand{\order}{\textsf{order}}
+\newcommand{\Encode}{\textsf{Encode}}
+\newcommand{\Decode}{\textsf{Decode}}
+\newcommand{\Equal}{\textsf{Equal}}
+\newcommand{\True}{\textsf{True}}
+\newcommand{\False}{\textsf{False}}
+\newcommand{\Kernel}{\textsf{Kernel}}
+
 \newcommand{\code}[1]{\lstinline!#1!}
 
 \newcommand{\CKDpriv}{\textsf{CKDpriv}}
@@ -97,7 +110,7 @@
 
 \begin{document}
 
-\title{Ristretto: 萃取非素数阶点群}
+\title{Ristretto: 萃取素数阶点群}
 \author{longcpp \\ \small{longcpp9@gmail.com}}
 
 \maketitle
@@ -111,9 +124,360 @@
 虽然可以构造具有完备加法运算(Complete Addition Law)素数阶点群,
 但扭曲爱德华曲线(Twisted Edwards Curves),雅各比四次曲线(Jacobi Quartic Curves)等
 新的曲线类型上的点群有完备的加法运算规则并且通常更快更简单,但代价是这些曲线上的点群的阶不是素数.
-用$n$表示这些曲线上点群的阶, 则$n$可以表示为$n = p \cdot h$, 其中$p$为大素数, 
-而$h$称为余因子(Cofactor), 扭曲爱德华曲线中$h$通常为4或者4的倍数.
+用$n$表示这些曲线上点群的阶, 则$n$可以表示为$n = p \cdot h$, 
+其中$p$为大素数, $h$称为余因子(Cofactor).
+secp256k1/secp256r1曲线上点群的$h = 1$, 而扭曲爱德华曲线中$h$通常为4的倍数.
 
+基于余因子不为1的点群构建密码协议通常需要在协议中添加额外检查以保证协议的安全性,
+也因此为密码协议的构造带来额外的复杂度. 参见蒙哥马利曲线Curve25519上的Diffie-Hellman协议X25519
+以及基于扭曲爱德华曲线Edwards25519(与Curve25519双向有理等价)的Ed25519签名机制.
+(本文后续不再严格区分扭曲爱德华曲线和爱德华曲线, 爱德华曲线可以看成是扭曲爱德华曲线的特殊情况)
+然而爱德华曲线等所带来的速度和易于安全实现的优点受到许多密码协议设计者青睐:
+TLS1.3中采纳了基于爱德华曲线和蒙哥马利曲线的签名和Diffie-Hellman密钥交换协议,
+而CryptoNote协议(Monero, ByteCoin的隐私交易协议)也基于Edwards25519曲线构造.
+
+在上层密码协议设计时考虑底层群结构的特殊性,增加了协议设计的复杂性,也增加了设计正确协议的难度,
+这一点可参见CryptoNote协议中由于余因子不为1导致的双花漏洞
+以及该漏洞在ByteCoin中的真实利用\footnote{longcpp. Edwards25519 余因子与双花交易. 20200212. 
+\url{https://github.com/longcpp/CryptoInAction/blob/master/intro-ed25519/200212-edwards25519-cofactor.pdf}}.
+为了方便叙述, 记曲线点群的阶为$n = h\cdot\ell$, 其中$h$为余因子, $\ell$为大素数.
+用$G$表示大素数子群的基点: $\order(G) = \ell$, 用$H$表示小子群的基点: $\order(H) = h$,
+则椭圆曲线中的任一点$P$可以表示为: $P = x\cdot G + y \cdot H,~x\in\Z_\ell,~y\in\Z_h$.
+假设$P_1 = xG + y_1H,\ P_2 = xG + y_2H, x\in\Z_\ell,~y_1,~y_2\in\Z_h$,
+则当$k\in\Z_n,~k | h$时, 有$kP_1 = kP_2$, 
+由于Edwards25519的点群的余因子为8, 也就使得CryptoNote中的八花成为可能.
+
+由此可见,这种通过在上层协议设计中不断为底层点群数学结构的添加防范措施的方式,
+很难构建正确的密码协议,而且也会使得密码协议的安全论证更加复杂.
+Mike Hamberg提出的Decaf方法\footnote{
+Mike Hamburg. Decaf: Eliminating cofactors through point compression \\
+\phantom{xxxx}\url{https://www.shiftleft.org/papers/decaf/decaf.pdf}}
+能够在特定条件下从余因子为4的非素数阶的点群上"萃取"出素数阶的点群.
+基于新的素数阶的点群,余因子不为1相关的安全隐患与技术障碍都得以规避.
+通过在爱德华曲线的点群上采用Decaf技术,
+既可以利用爱德华曲线的速度等优势,又能够避开点群余因子不为1的问题.
+Decaf技术无需引入新的安全假设, 对既有的椭圆曲线点运算的实现的改动也很少.
+然而Decaf技术无法直接应用于余因子为8的Edwards25519点群.
+Isis Agora Lovecruft和Henry de Valence提出Ristretto技术通过扩展Decaf技术
+可以从余因子为8的非素数阶点群萃取出素数阶点群,得到的素数阶点群记为ristretto255.
+由此上层协议可以安心利用曲线的各项优势而不再被余因子不为1的事实所阻碍.
+
+余因子不为1所带来的主要问题是, 不同的点有可能在计算中表现出相同的行为, 
+e.g. $P = x\cdot G + y \cdot H$中的$H$部分可能被消除. 
+消除问题的一种思路就是检查所用的点均属于大素数子群.
+然而这种检查比较耗时,需要一个点的标量乘法运算:检查$k\cdot P$是否为无穷远点$\mathcal{O}$.
+另一种思路调整点相等的判断逻辑,对于点$P_1,~P_2$, 如果$P_1 - P_2 = yH, y \in \Z_h$, 
+则认为$P_1,~P_2$相等. 也即对于固定的$x\in\Z_\ell$,将集合$\{P: P = xG + yH,  y = 0, 1, \ldots, (h-1)\}$
+整个视为一个元素. 在这种视角下, 差值为低阶点的两个点变成了同一个点, 
+则阶为$n = h\cdot\ell$的点群也就变成了素数$\ell$阶的点群. 
+这就要求在椭圆曲线点群的实现中, 对应的调整3个计算过程: 
+点的编解码$\Encode(\cdot)$和$\Decode(\cdot)$
+以及点的相等判断$\Equal(\cdot, \cdot)$. 
+其中$\Equal(P_1, P_2) = \True \iff \exists y \in \Z_h,~\text{s.t.}~P_1 - P_2 = yH$.
+当$\Equal(P_1, P_2) = \True$时, 有$\Encode(P_1) = \Encode(P_2)$, 
+并且$\Decode(\cdot)$只接受$\Encode$的输出为合法的输入参数.
+
+基于这种思路, 一个自然的解决方案是在商群的视角下实现$\Equal(P_1, P_2)$的逻辑.
+并通过对陪集(Coset)添加逻辑约束的方式选定其中一个元素并进行编码来代表整个的陪集.
+这也是Hamberg在Decaf的论文中提出的第一种方法, 这种方式的在于有些情况下不容易构造
+$\Decode(\cdot)$函数,并且无法适配蒙哥马利阶梯算法. Mike Hamberg进一步提出了基于
+雅各比四次曲线(Jacobi Quartic Curve)的解决方案, 可以避开前述解决方案的问题,
+也即有清晰的编解码计算过程,并且快速转换可参与爱德华曲线点群和蒙哥马利曲线点群运算.
+Decaf可以处理余因子为4的点群, 而Ristretto技术则可以处理余因子为8的点群
+(例如Edwards25519曲线上的点群). 两种技术都涉及到了3中椭圆曲线类型.
+
+\section{曲线类型与同源关系}
+
+每一个有2阶点的Weierstrass曲线都双向有理等价于雅各比四次曲线(Jacobi Quartic Curve),
+该曲线是由两个参数$e, A$决定的如下形式的曲线:
+$$
+\J_{e, A}: t^2 = es^4 + 2As^2 + 1,
+$$
+其中单位元为$(0,1)$, 当$e(A^2-e) \neq 0$时是非奇异(Non-Singular)的.
+当$e$为有限域上的二次剩余,(仅考虑$e$为有限域上的二次剩余的情形) 
+也即存在$\delta$满足$e = \delta^2$时, 
+$\J_{e, A}$有完整的2-torsion: $\J[2] \cong \Z_2 \times \Z_2$.\footnote{
+$\J[2] \cong \Z_2 \times \Z_2$意味着存在3个2阶点. $\J_{e, A}$的特殊之处在于,
+仿射坐标系下$\J_{e,A}$仅有一个2阶点$(0,-1)$, 另外2个2阶点存在于坐标系下.
+$\J_{e, A}$的投影闭包的方程为:
+$$
+\overline{\J}_{e,A}: Y^2Z^2 = eX^4 + 2AX^2Z^2 + Z^4,
+$$
+曲线上的点$(X : Y : Z), Z \neq 0$对应$\J_{e, A}$上仿射坐标$(X/Z,Y/Z)$.
+然而不幸运的是, $\overline{\J}_{e,A}$上的点$(0: 1: 0)$为奇点. 
+为了消除该奇点会额外引入两个点记为$\mathcal{O}_1, \mathcal{O}_2$.
+消除该奇点的一种方式是考虑带权重的投影方程:
+$$
+\hat{\J}_{e,A} : Y^2 = eX^4 + 2AX^2Z^2 + Z^4,
+$$
+曲线上的点$(X : Y : Z), Z \neq 0$对应$\J_{e, A}$上仿射坐标$(X/Z,Y/Z^2)$.
+而点$(1 : \delta : 0), (1 : -\delta : 0) \in \hat{\J}_{e,A}$就对应$\mathcal{O}_1, \mathcal{O}_2$,
+并且$\hat{\J}_{e,A}$上不存在$Z = 0$的其它点. 
+可以将$\mathcal{O}_1 = (1 : \delta : 0), \mathcal{O} = (1 : -\delta : 0)$看做是两个无穷远点.
+比较特殊的是,这两个无穷远点都是2阶点.
+\red{点$P = (s,t)$的$\J[2]$陪集的表示形式, 没有能够完整的推导推出来.
+推测一个可行的路径是,在带权重的投影方程下根据点加公式计算
+完成点$P$与$(0,1), (0,-1), \mathcal{O}_1, \mathcal{O}_2$的和,
+然后将结果映射到仿射坐标系下}.
+关于雅各比四次曲线的更多细节可以参考Hüseyin Hişil 2010年的博士论文
+``Elliptic curves, group law, and efficient computation.''
+\url{https://eprints.qut.edu.au/33233}}
+点$P= (s,t)$的$\J[2]$陪集为:
+$$
+P + \J[2] = \{(s,t), (-s, -t), (1/\delta s, -t/\delta s^2), (-1 / \delta s, t / \delta s^2) \}.
+$$
+注意到由于$(-\delta)^2 = e$并且当选取$-\delta$时,得到的仍然是同样的陪集.
+
+扭曲爱德华曲线(Twisted Edwards Curve)是由参数$a, d$定义的如下形式的曲线:
+$$
+\E_{a,d}: ax^2 + y^2 = 1 + dx^2y^2
+$$
+当$a=1$即为爱德华曲线,而当$a = -1$时曲线上的点群运算最快.
+当$a$为二次剩余而$d$为非二次剩余时, 图线上的点群具有完备的加法规则并且具有循环4-torsion子群:
+$$
+\E_{a,d}[4] = \{(0,1), (0,-1), (1/\sqrt{a}, 0), (-1/\sqrt{a}, 0)\}
+$$
+注意到Edwards25519中$a = -1$为二次剩余并且, $d$为非二次剩余时,
+则Edwards25519
+$(0,1)$为单位元, $(0, -1)$为2阶点, 而$(1/\sqrt{-1},0), (-1/\sqrt{-1},0)$为4阶点.
+爱德华曲线上的加法公式, 两个点$(x_1, y_1), (x_2, y_2)$的和记为$(x_3, y_3)$, 则有
+$$
+(x_3, y_3) = (x_1, y_1) + (x_2, y_2) = \left( \frac{x_1y_2 + y_1x_2}{1 + dx_1x_2y_1y_2}, \frac{y_1y_2 - ax_1x_2}{1-dx_1x_2y_1y_2} \right)
+$$
+根据该计算公式有, 点$P=(x,y)\in\E_{a,d}$关于$\E_{a,d}[4]$的陪集为:
+$$
+P + \E_{a,d}[4] = \{ (x,y), (-x,-y), (y/\sqrt{a}, -\sqrt{a}x), (-y/\sqrt{a}, \sqrt{a}x) \}.
+$$
+根据Decaf的论文有, $\J_{a_1^2, a_1-2d_1}$与$\E_1 = \E_{a_1, d_1}$是2-同源的(2-Isogenous):
+$$
+(x,y) \in \E_1 = \E_{a_1, d_1} = \phi(s,t)  = \left( \frac{2s}{1 + a_1s^2}, \frac{1-a_1s^2}{t}\right), 
+$$
+并且有
+$$
+(s,t) \in \J_{a_1^2, a_1-2d_1} = \hat{\phi}(x,y) = \left( \frac{x}{y}, \frac{2-y^2 - a_1x^2}{y^2}\right)
+$$
+意味对于点$(s,t)\in \J_{a_1^2, a_1-2d_1}$, 有$\hat{\phi}\circ\phi(s,t) = 2(s,t).$
+论文``Jacobi Quartic Curves Revisited"\footnote{
+Huseyin Hisil, Kenneth Koon-Ho Wong, Gary Carter, Ed Dawson. 
+Jacobi Quartic Curves Revisited
+\url{https://eprint.iacr.org/2009/312.pdf}}
+中指出, 雅各比四次曲线$\J_{e, A}$的点加公式$(s_3, t_3) = (s_1, t_1) + (s_2 + t_2)$为
+$$
+(s_3, t_3) = \left(
+\frac{s_1t_2 + t_1s_2}{1 - es_1^2s_2^2},
+\frac{(t_1t_2 + 2As_1s_2)(1 + es_1^2s_2^2) + 2es_1s_2(s_1^2+s_2^2)}{\left(1 - es_1^2s_2^2\right)^2}
+\right)
+$$
+由此得到可以得到点的倍乘公式:
+\begin{equation}\label{eq-jacobi-double}
+2(s,t) = \left(
+\frac{2st}{1 - es^4},
+\frac{(t^2 + 2As^2)(1 + es^4) + 4es^4}{\left(1 - es^4\right)^2}
+\right)
+\end{equation}
+根据上述公式以及$\phi$和$\hat{\phi}$,我们接下来验证
+$\J_{a_1^2, a_1-2d_1}$与$\E_1 = \E_{a_1, d_1}$之间的2同源.
+取点$(s,t) \in \J_{a_1^2, a_1-2d_1}$, 则
+$$
+(x,y) = \phi(s,t)  = \left( \frac{2s}{1 + a_1s^2}, \frac{1-a_1s^2}{t}\right)
+$$
+假设点$(s',t')\in \J_{a_1^2, a_1-2d_1} = \hat{\phi}(x,y)$,则有
+$$
+(s',t') = \left(
+\frac{x}{y}, 
+\frac{2-y^2 - a_1x^2}{y^2}
+\right) = \left(
+\frac{\frac{2s}{1 + a_1s^2}}{\frac{1-a_1s^2}{t}},
+\frac{2-\left(\frac{1-a_1s^2}{t}\right)^2 - a_1\left(\frac{2s}{1 + a_1s^2}\right)^2}{\left(\frac{1-a_1s^2}{t}\right)^2}
+\right)
+$$
+则有
+\begin{equation}\label{eq-s}
+s' = \frac{2st}{(1+a_1s^2)(1-a_1s^2)} = \frac{2st}{1-a_1^2s^4} = \frac{2st}{1-es^4}.
+\end{equation}
+接下来考虑$t'$:
+$$
+t' = 
+\frac{2t^2(1+a_1s^2)^2 -(1-a_1s^2)^2(1+a_1s^2)^2 - a_1(2s)^2t^2}{(1-a_1s^2)^2(1+a_1s^2)^2},
+$$
+$$
+t' = 
+\frac{2t^2(1+a_1s^2)^2 - 2t^2\cdot 2a_1s^2 - (1-a_1s^2)^2(1+a_1s^2)^2}{(1-a_1^2s^4)^2},
+$$
+$$
+t' = 
+\frac{2t^2(1+a_1^2s^4) -  (1-a_1^2s^4)^2}{(1-a_1^2s^4)^2} = 
+\frac{2t^2(1+a_1^2s^4) -  [(1+a_1^2s^4)^2 - 4a_1^2s^4]}{(1-a_1^2s^4)^2}
+$$
+\begin{equation}\label{eq-t}
+t' = \frac{(1+a_1^2s^4)\cdot \left[2t^2 -  (1+a_1^2s^4)\right] + 4a_1^2s^4}{(1-a_1^2s^4)^2}
+\end{equation}
+注意到$\J_{a_1^2, a_1-2d_1}$中有$e = a_1^2$以及
+$t^2 = es^4 + 2As^2 + 1 \Rightarrow t^2 - (es^4 + 1) = 2As^2$, 代入上式就有
+$$
+t' = \frac{(1+es^4)\cdot (t^2 +  2As^2) + 4es^4}{(1-es^4)^2}
+$$
+对比公式(\ref{eq-s}), 公式(\ref{eq-t})以及公式(\ref{eq-jacobi-double}), 可以验证:
+$$
+\hat{\phi}\circ\phi(s,t) = 2(s,t)
+$$
+同理也可验证
+$$
+\phi\circ\hat{\phi}(x,y) = 2(x,y)
+$$
+
+蒙哥马利曲线(Montgomery Curves)是由参数$A,B, B(A^2-4)\neq 0$定义的如下形式的曲线:
+$$
+\M_{B,A}: Bv^2 = u(u^2 + Au + 1),
+$$
+其中单位元为无穷远点. 
+值得注意的是, $\J_{a_1^2, a_1-2d_1}$与$\M_{B,A}, B = a_1, A = (2-4d_1) / a_1$也是2同源的:
+$$
+\psi(s,t)  = \left(\frac{1}{a_1s^2}, \frac{-t}{a_1s^3}\right), \ 
+\hat{\psi}(u,v) = \left( \frac{1-u^2}{2a_1v}, \frac{a_1(u+1)^4+8d_1u(u^2+1)}{4a_1^2v^2} \right)
+$$
+而当$(A+2)/a_2B$为二次剩余时, $\M_{B,A}$与爱德华曲线$\E_2 = \E_{a_2,d_2}$同构,
+其中
+$$a_2 = \pm 1, d_2 = a_2\frac{A-2}{A+2}.$$
+同构映射以及逆映射分别用$\eta(u,v)$和$\hat{\eta}(x,y)$表示, 具体定义参见
+\url{https://ristretto.group/details/isogeny_encoding.html}.
+其中$a_1, a_2, d_1, d_2$之间的关系为$a_1 = -a_2, d_1 = (a_2d_2)/(a_2-d_2)$,
+也即
+$$\J_{a_1^2, a_1-2d_1} = \J = \J_{a_2^2, -a_2(a_2+d_2) / (a_2-d_2)}.$$
+根据$\psi, \hat{\psi}, \eta, \hat{\eta}$就有$\J$与$\E_2$为2同源的:
+$$
+\theta_{a_2,d_2}(s,t) = \eta\circ\psi(s,t) = \left( \frac{1}{\sqrt{a_2d_2-1}}\cdot\frac{2s}{t}, \frac{1+a_2s^2}{1-a_2s^2}\right),
+$$
+其对偶映射为
+$$
+\hat{\theta}_{a_2,d_2}(x,y) =\hat{\psi}\circ  \hat{\eta}(x,y) = \left(
+\sqrt{a_2d_2-1}\cdot\frac{xy}{1-a_2x^2}, 
+\frac{y^2 + a_2x^2}{1 - a_2x^2}
+\right)
+$$
+
+Decaf使用了曲线$\E_1 = \E_{a_1, d_1}$, 而Ristretto使用了曲线$\E_2 = \E_{a_2,d_2}$.
+Ristretto之所以选用与Decaf中不同的爱德华曲线表示, 是因为在Edwards25519曲线上
+实现Ristretto255点群时, 这种方式可以有更好的实现效率.
+
+\section{基于曲线同源的编解码}
+
+上一小节中,引入了三种椭圆曲线,并且不厌其烦的考察了三种曲线之间的同源关系.
+这也是Decaf和Ristretto技术的核心. Decaf的方法是利用商群$\J/\J[2]$进行编码,
+然后可以将编码方式快速映射成爱德华曲线或者蒙哥马利曲线以参与点群运算. 
+Distretto技术基于同样的技术路线,但是在编码$\J/\J[2]$时不同并且支持余因子为8的情况.
+
+如前所述, 点$P = (s,t) \in \J_{e, A}$的$\J[2]$陪集为:
+$$
+P + \J[2] = \{(s,t), (-s, -t), (1/\delta s, -t/\delta s^2), (-1 / \delta s, t / \delta s^2) \}.
+$$
+接下来只需要定义关于该陪集的一个规范表示(Canonical Representative), 
+也即选择陪集中的一个点代表整个陪集,然后编码该点即可.考虑进点的压缩表示,
+则可以用选中的点的$s$坐标表示该点,并规定$t$坐标的正负即可.
+Decaf技术中要求$s$坐标非负并且为有限值, 而$t/s$为非负值或者无限.
+Ristretto则选用了不同的符号规定.
+
+接下来考察上一节引入的各种曲线之间的同源关系在Decaf和Ristretto技术中的应用.
+首先回顾一个代数结论: 对于如果$\G'$是交换群$\G$的子群, 并且存在群同态
+$\rho: \G \rightarrow \mathbb{H}$, 则$\rho$也是从$\G/\G'$到$\rho(\G)/\rho(\G')$的群同态,
+并且有$\rho(\G)/\rho(\G') \subseteq \mathbb{H}/\rho(\G')$.
+更进一步, 如果$\Kernel(\rho) \subseteq \G'$,则$\rho$为同构映射.
+对于
+$$\phi: \J \rightarrow \E_1, \theta: \J \rightarrow \E_2,$$ 
+都有
+$$\Kernel(\phi) \subseteq \J[2], \Kernel(\theta) \subseteq \J[2],$$
+则有
+$$
+\frac{\J}{\J[2]} \cong \frac{\phi(\J)}{\phi(\J[2])} \cong \frac{[2]\E_1}{\E_1[2]}, \ 
+\frac{\J}{\J[2]} \cong \frac{\theta(\J)}{\theta(\J[2])} \cong \frac{[2]\E_2}{\E_2[2]},
+$$
+根据上述同构映射, $\J/\J[2]$的编码可以被转换到$[2]\E_1/\E_1[2]$和$[2]\E_2/\E_2[2]$.
+当余因子为4,也即点群的阶为$4\ell$是, $|[2]\E_1/\E_1[2]| = \ell$, 余因子被消除.
+而余因子为8时并且8-torison为循环子群时, 无法通过相同方式直接消除掉余因子.
+然而注意到此时有$[2](\E[8]) = \E[4]$, 也即$\E[4] \subseteq [2]\E$. 
+同时注意到$|[2]\E/\E[4]| = \ell$并且根据前述同构映射可以将$\J/\J[2]$的编码
+映射到$[2]\E_2/\E_2[2]$上, 则对于余因子为8时的编码,唯一剩下的需要处理的问题
+就是$\E/\E[4]$与$\E/\E[2]$之间的不同, 也即将点从$\E/\E[4]$扭转到$\E/\E[2]$.
+
+根据前面对爱德华曲线的描述, $\E_{a,d}[4]$的4-torsion为:
+$$
+\E_{a,d}[4] = \{(0,1), (0,-1), (1/\sqrt{a}, 0), (-1/\sqrt{a}, 0)\},
+$$
+并且$(0,1)$为单位元, $(0,-1)$为2阶点, $(1/\sqrt{a}, 0), (-1/\sqrt{a}, 0)$为4阶点.
+点$P = (x,y) \in \E_{a,d}$关于4-torsion的陪集为:
+$$
+P + \E_{a,d}[4] = \{ (x,y), (-x,-y), (y/\sqrt{a}, -\sqrt{a}x), (-y/\sqrt{a}, \sqrt{a}x) \},
+$$
+其中
+$$
+\begin{array}{rl}
+(x,y) + (0, 1) & = (x,y) \\
+(x,y) + (0, -1) &= (-x, -y) \\
+(x, y) + (1/\sqrt{a}, 0) &=   (y/\sqrt{a}, -\sqrt{a}x)\\
+(x,y) + (-1/\sqrt{a}, 0) &=  (-y/\sqrt{a}, \sqrt{a}x)\\
+\end{array}
+$$
+当要求上述运算的结果的两个坐标$xy > 0$时, 也即为点属于$\{(x,y), (-x, -y)\}$时,
+参与加法运算的点$(0,1), (0,-1) \in \E_{a,d}[2]$.
+当$xy < 0$或者$y = 0$时, 对应的点属于$\{(y/\sqrt{a}, -\sqrt{a}x), (-y/\sqrt{a}, \sqrt{a}x)\}$时,
+给对应的点再加上一个4阶点, $a = 1$时选用点$(1,0)$, $a = -1$时选用点$(i, 0)$,
+则$\{(y/\sqrt{a}, -\sqrt{a}x), (-y/\sqrt{a}, \sqrt{a}x)\}$被转换成$\{(x,y), (-x, -y)\}$:
+$$
+(y/\sqrt{a}, -\sqrt{a}x) + (1,0) = (-x, -y),  (-y/\sqrt{a}, \sqrt{a}x) + (1,0) = (x,y),
+$$
+或者
+$$
+(y/\sqrt{a}, -\sqrt{a}x) + (i,0) = (x, y),  (-y/\sqrt{a}, \sqrt{a}x) + (i,0) = (-x,-y)
+$$
+也即给定点$P + \E_{a,d}[4]$, 当$xy > 0$, 点已经在$\E/\E[2]$中, 
+当$xy < 0$或者$y=0$时, 给点加上一个4阶点就将点扭转(Torquing)到了$\E/\E[2]$.
+由此解决了应用$\J/\J[2]$进行编码的最后一个障碍,也因此
+从余因子为8的点群出发最终萃取出了素数阶点群$\J/\J[2]$.
+
+输入$(x,y) \in [2]\E$, 具体的编码步骤为: 
+\begin{enumerate}
+\item 如果$xy < 0$或者$y = 0$, 进行点扭转$(x,y)\leftarrow (x,y) + Q_4$, $Q_4$为4阶点.
+\item 如果$x < 0$或者$y=-1$, $(x,y) \leftarrow (x,y) + (0,1) = (-x, -y)$
+\item 计算 $s = \pm\sqrt{(-a)(1-y)/(1+y)}$, 选择正值
+\end{enumerate}
+则最终有限域上的值$s$的编码记为点$(x,y) \in [2]\E$的Ristretto编码.
+值得注意的是, Ristretto编码只处理$[2]\E$中的点, 以Edwards25519曲线为例,
+由于其8-torsion为循环群, 因此$[2]\E[8] = \E[4]$, 因此任意的$(x,y) \in [2]\E$, 
+都隶属于某个点的$\E[4]$陪集. 编码中的第1步将点从$\E/\E[4]$扭转到了$\E/\E[2]$中.
+对于第2步和第3步, 根据$\theta(s,t)$有$y = (1 + as^2)/(1-as^2)$, 则
+$\theta^{-1}(x,y)$的$s$坐标为: $s^2 = (-a)(1-y)/(1+y)$, 
+则$x = 2s/(t\cdot\sqrt{ad-1}) \implies s/t = x\sqrt{ad-1}/2$,
+也即$s/t$的正负号已经由$x$的符号决定,也即第2步决定了$s/t$的符号.
+$(s,t) + \J[2]$进行规范编码时要求做2个符号选择: $s$的符号以及$s/t$的符号.
+$s/t$的符号已经在第2步中选定, 而第3步中则计算$s$并选定其符号.
+而第2步中,对$y=-1$情形的处理是是为了避免在第3步中发生除以0的情况,
+
+输入字节串,进行Ristretto解码的过程如下:
+\begin{enumerate}
+\item 解码得到$s$, 如果字节串不是$s$的规范编码, 解码失败
+\item 如果$s$为负数, 解码失败
+\item 计算$y = (1+as^2) / (1-as^2)$
+\item 计算$x = +\sqrt{(4s^2) / \left(ad(1+as^2)^2 - (1-as^2)^2\right)}$, 根不存在则解码失败
+\item 如果$xy < 0$或者$y = 0$解码失败
+\end{enumerate}
+
+有了编解码之后,还需要考虑在这种编码下如何判断点的相等, 此时需要在商群的视角下进行判断.
+如果有两个点位于同样的陪集, 则两个点相等. 
+通常点群的实现依赖投影坐标系,而为了判断点是否相等,往往需要将投影坐标转到换射影坐标,
+其中会涉及到计算量很大的求逆运算. 然而判断两个点是否位于同一个陪集,
+可以至二级在投影坐标系下完成, 使得此时的点相等判断反而具有更高的效率.
+具体实现时, 点$(x,y)$通常表示为扩展的扭爱德华坐标系$(X:Y:Z:T)$,
+其中$x = X/Z, y = Y/Z, xy = T/Z$.
+采用Ristretto编码时,$P_1$和$P_2$相等,如果满足
+$$
+P_1 \equiv P_2 \mod \E[2],~\text{or}~, P_1 + Q_4 \equiv P_2 \mod \E[2].
+$$
+Decaf论文中已经证明, 判断$P_1 \equiv P_2 \mod \E[2]$等价于判断$X_1Y_2= Y_1X_2$.
+记$P_1 + Q_4 = (X_1' : Y_1' :  Z_1' : T_1')$, 在射影坐标系下$P + Q_4 = (y/\sqrt{a}, -x\sqrt{a})$,
+也即$X_1' = Y_1 / \sqrt{a}$, 而$Y_1' = -X_1\sqrt{a}$,则有
+$$X_1'Y_2 = Y_1'X_2 \iff Y_1Y_2\sqrt{a} = -\sqrt{a}X_1X_2 \iff Y_1Y_2 = -aX_1X_2.$$
+也即判断两个点在$\mod \E[4]$的视角下是否相等,等价于判断
+$$X_1Y_2 = Y_1X_2~\text{or}~Y_1Y_2 = -aX_1X_2.$$
 
 \end{document}
 
