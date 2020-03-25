@@ -121,8 +121,6 @@ Rust语言实现的\textsf{curve25519-dalek}库中提供了3种点群的快速�
 \textsf{zkp}\footnote{\url{https://github.com/dalek-cryptography/zkp}}中实现了Schnorr形式的零知识证明, 
 \textsf{bulletproofs}\footnote{\url{https://github.com/dalek-cryptography/bulletproofs}}中实现了零知识证明系统Bulletproof.
 本次我们结合数学理论简要介绍\textsf{curve25519-dalek}库提供的接口和功能,
-并简要介绍\textsf{x25519-dalek}, \textsf{ed25519-dalek}, \textsf{schnorrkel}中
-基于该库实现的\textsf{X25519}, \textsf{Ed25519}和\textsf{sr25519}.
 
 \section{Curve25519与Edwards25519曲线}
 
@@ -336,7 +334,16 @@ The Ristretto Group\url{The Ristretto Group}}.
 \textsf{curve25519-dalek}~中的实现正是如此. \code{ristretto}~模块定义了两种点格式
 ~\code{RistrettoPoint}~以及~\code{CompressedRistretto}, 从两种结构体的定义中可以
 看到具体的~\textsf{curve25519-dalek}~中$\textsf{ristretto255}$的实现策略,
-参见Listing~\ref{lst-ristretto-point}.
+参见Listing~\ref{lst-ristretto-point}. 由于
+$$
+\mathcal{E}(\F_p)[4] = \{ (0,1), (0,-1), (1/\sqrt{-1}, 0), (-1/\sqrt{-1}, 0) \},
+$$
+所以对于任意的~\code{EdwardsPoint}~$P=(x,y)\in\mathcal{E}(\F_p)[\ell]$, 
+根据Ristretto编码, 点$P$关于$\mathcal{E}(\F_p)[4]$的陪集中的四个点
+$$
+P + \mathcal{E}(\F_p)[4] = \{ (x,y), (-x,-y), (y/\sqrt{-1}, -\sqrt{-1}x), (-y/\sqrt{-1}, \sqrt{-1}x) \}.
+$$
+在Ristretto编码下会得到相同的编码值,也即相同的~\code{CompressedRistretto}.
 
 \begin{lstlisting}[caption=\code{RistrettoPoint}~和~\code{CompressedRistretto}~定义, label=lst-ristretto-point]
 /// A `RistrettoPoint` represents a point in the Ristretto group for
@@ -370,7 +377,7 @@ Listing~\ref{lst-ristretto-point}~中可以看到~\code{RistrettoPoint}~结构�
 相应逻辑实现在~\code{RistrettoPoint}~的~\code{compress}~方法中.
 \code{compress}~方法在扩展的扭曲爱德华坐标系下,严格按照Ristretto编码方式完成.
 解码方式则实现在~\code{CompressedRistretto}~的~\code{decompress}~方法中.
-2个~\code{RistrettoPoint}~相等的判断在\code{RistrettoPoint}~的~\code{ct_eq}~方法中实现,
+2个~\code{RistrettoPoint}~相等的判断在~\code{RistrettoPoint}~的~\code{ct_eq}~方法中实现,
 参见Listing~\ref{lst-ristretto-eq}, 相关的逻辑解释请参考\footnote{longcpp. Ristretto: 萃取素数阶点群.
 \url{https://github.com/longcpp/CryptoInAction/blob/master/intro-ed25519/200324-intro-ristretto.pdf}}.
 
@@ -392,15 +399,46 @@ impl ConstantTimeEq for RistrettoPoint {
     }
 }
 \end{lstlisting}
-值得提及的是, \code{ristretto}~模块内部还提供了Elligator映射, 该映射本质上实现了安全哈希到点群的逻辑.
+
+值得提及的是, \code{ristretto}~模块内部还提供了Elligator映射, 该映射本质上实现了哈希到点群的逻辑.
 Elligator映射不是外部接口,但可经由外部接口调用.
 \code{RistrettoPoint::random()}~用来从随机数发生器生成\textsf{ristretto255}中的随机点,
 \code{RistrettoPoint::from_hash()}和~\code{RistrettoPoint::hash_from_bytes()}~完成哈希到点群的逻辑.
+至此~\code{curve25519-dalek}~中最为关键的三种点群已经介绍完,
+他们之间的逻辑关系参见Figure~\ref{fig-curve25519dalek}.
 
-\section{\textsf{X25519}的实现}
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{curve25519-dalek.png}
+\caption{\code{curve25519-dalek}中点群间的关系}\label{fig-curve25519dalek}
+\end{figure}
 
-\section{\textsf{Ed25519}的实现}
+code{constants}~模块中定义了3个点群中的常量, 如$\ell$用~\code{BASEPOINT_ORDER}~表示,
+\code{X25519_BASEPOINT}~是X25519协议选用的基点$G_{\mathcal{M}}$,
+$\mathcal{E}(\F_p)$大素数阶子群$\mathcal{E}(\F_p)[\ell]$的基点$G_{\mathcal{E}}$及其压缩表示
+\code{ED25519_BASEPOINT_POINT}, \code{ED25519_BASEPOINT_COMPRESSED}.
+\code{EdwardsPoint}~形式表示的8阶循环子群$\mathcal{E}(\F_p)[8]$
+由8个元素的数组~\code{EIGHT_TORSION}~表示. 
+值得提及的是, \code{EIGHT_TORSION}~下标为0,2,4,6的
+4个~\code{EdwardsPoint}~记为$\mathcal{E}(\F_p)[4]$.
+由此可以理解~\code{RistrettoPoint}~的~\code{coset4}~方法返回的陪集, 
+参见Listing~\ref{lst-ristretto-coset4}.
+点群\textsf{ristretto255}的基点定义为~\code{RISTRETTO_BASEPOINT_POINT},
+其压缩表示形式为~\code{RISTRETTO_BASEPOINT_COMPRESSED}.
+接下来介绍基于\textsf{curve25519-dalek}实现的\textsf{X25519},
+\textsf{Ed25519}以及\textsf{sr25519}协议, 这3个协议分别用到了
+\code{MontgomeryPoint}, \code{EdwardsPoint}~以及~\code{RistrettoPoint}.
 
-\section{\textsf{sr25519}的实现}
+\begin{lstlisting}[caption=\code{RistrettoPoint}~的~\code{coset4}~方法, label=lst-ristretto-coset4]
+/// Return the coset self + E[4], for debugging.
+fn coset4(&self) -> [EdwardsPoint; 4] {
+    [  self.0
+    , &self.0 + &constants::EIGHT_TORSION[2]
+    , &self.0 + &constants::EIGHT_TORSION[4]
+    , &self.0 + &constants::EIGHT_TORSION[6]
+    ]
+}
+\end{lstlisting}
+
 
 \end{document}
