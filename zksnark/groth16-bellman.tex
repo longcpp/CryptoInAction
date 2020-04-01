@@ -1,0 +1,420 @@
+\documentclass{article}
+\usepackage[UTF8, heading = false, scheme = plain]{ctex}
+
+\usepackage{geometry}
+\geometry{b5paper,left=2cm,right=2cm,top=2cm,bottom=2cm}
+
+\usepackage{color}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+
+\linespread{1.5}
+
+\usepackage[colorlinks,
+            linkcolor=red,
+            anchorcolor=blue,
+            citecolor=green
+            ]{hyperref}
+
+\usepackage{listings}
+\usepackage{fontspec}
+\usepackage{graphicx}
+\usepackage{algorithmic}
+\newfontfamily\monaco{Monaco}
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+\lstset{ %
+  basicstyle=\footnotesize\monaco,       % the size of the fonts that are used for the code
+  numbers=left,                   % where to put the line-numbers
+  numberstyle=\footnotesize\monaco\color{gray},  % the style that is used for the line-numbers
+  numbersep=5pt
+  stepnumber=1,                   % the step between two line-numbers. If it's 1, each line
+                                  % will be numbered
+  numbersep=5pt,                  % how far the line-numbers are from the code
+  backgroundcolor=\color{white},      % choose the background color. You must add \usepackage{color}
+  showspaces=false,               % show spaces adding particular underscores
+  showstringspaces=false,         % underline spaces within strings
+  showtabs=false,                 % show tabs within strings adding particular underscores
+  frame=lines,                   % adds a frame around the code
+  rulecolor=\color{black},        % if not set, the frame-color may be changed on line-breaks within not-black text (e.g. commens (green here))
+  tabsize=4,                      % sets default tabsize to 2 spaces
+  captionpos=t,                   % sets the caption-position to bottom
+  breaklines=true,                % sets automatic line breaking
+  breakatwhitespace=false,        % sets if automatic breaks should only happen at whitespace
+  title=\lstname,                   % show the filename of files included with \lstinputlisting;
+                                  % also try caption instead of title
+  keywordstyle=\color{blue},          % keyword style
+  commentstyle=\color{dkgreen},       % comment style
+  stringstyle=\color{mauve},         % string literal style
+  escapeinside={\%*}{*)},            % if you want to add LaTeX within your code
+  morekeywords={*,...}               % if you want to add more keywords to the set
+}
+
+\usepackage{amssymb} 
+\usepackage{amsmath}
+\usepackage[ruled,vlined]{algorithm2e}
+
+\setlength{\parindent}{2em}
+
+\renewcommand{\G}{\mathbb{G}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\Zn}{\mathbb{Z}_n}
+\newcommand{\Q}{\mathbb{Q}}
+
+\newcommand{\F}{\mathbb{F}}
+\newcommand{\Fq}{\mathbb{F}_q}
+\newcommand{\Fp}{\mathbb{F}_p}
+
+\newcommand{\Sbox}{\textsf{Sbox}}
+\newcommand{\code}[1]{\lstinline!#1!}
+
+\newcommand{\CKDpriv}{\textsf{CKDpriv}}
+\newcommand{\CKDpub}{\textsf{CKDpub}}
+
+%%%%%%%处理下划线：_%%%%%%%%%
+\usepackage{underscore}
+%%%%%%%处理下划线：_%%%%%%%%%
+
+\setlength{\parindent}{2.1em}
+
+%%%设置页眉和页码格式
+\usepackage{fancyhdr}
+\newcommand{\makeheadrule}{%
+\rule[0.85\baselineskip]{\headwidth}{0.5pt}\vskip-.8\baselineskip}%1.5 0.4->0.5
+\makeatletter
+\renewcommand{\headrule}{%
+{\if@fancyplain\let\headrulewidth\plainheadrulewidth\fi
+\makeheadrule}}
+\makeatother
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[r]{\textit{Crypto In Action}}
+\fancyfoot[C]{--{~\thepage~}--}
+%%%设置页眉和页码格式结束
+
+\usepackage{color}
+\newcommand{\red}{\textcolor{red}}
+\newcommand{\blue}{\textcolor{blue}}
+
+\begin{document}
+\title{Groth16从原理到实现}
+\author{hwp, longcpp\\ \small{leo.hou@tron.network, longcpp9@gmail.com}}
+
+\maketitle
+\section{预备知识}
+\subsection{FFT/iFFT}
+$\omega$是$N$次单位根，N是2的$n$次幂.
+$$ f(X) \triangleq \sum_{i=0}^{N-1}{a_i\cdot X^i} $$
+$$ b_j = f(\omega^j)=\sum_{i=0}^{N-1}{a_i\cdot \omega^{ji}}$$
+$(b_0,b_1,..,b_{N-1})$是$(a_0,a_1,...,a_{N-1})$的离散傅里叶变换,可以用FFT快速实现。\\
+$$
+\begin{bmatrix}
+\omega^{0\cdot0} & \omega^{0\cdot1} & ... & \omega^{0\cdot{N-1}}\\
+\omega^{1\cdot0} & \omega^{1\cdot1} & ... & \omega^{1\cdot{N-1}}\\
+\vdots & \\
+\omega^{(N-1)\cdot0} & \omega^{(N-1)\cdot1} & ... & \omega^{(N-1)\cdot{N-1}}\\
+\end{bmatrix}
+\cdot 
+\begin{pmatrix} a_0 \\ a_1 \\ \vdots \\a_{N-1}\\ \end{pmatrix} = 
+\begin{pmatrix} b_0 \\ b_1 \\ \vdots \\b_{N-1}\\ \end{pmatrix}
+$$
+由于,
+$$
+\begin{bmatrix}
+\omega^{-0\cdot0} & \omega^{-0\cdot1} & ... & \omega^{-0\cdot{N-1}}\\
+\omega^{-1\cdot0} & \omega^{-1\cdot1} & ... & \omega^{-1\cdot{N-1}}\\
+\vdots & \\
+\omega^{-(N-1)\cdot0} & \omega^{-(N-1)\cdot1} & ... & \omega^{-(N-1)\cdot{N-1}}\\
+\end{bmatrix}
+\cdot
+\begin{bmatrix}
+\omega^{0\cdot0} & \omega^{0\cdot1} & ... & \omega^{0\cdot{N-1}}\\
+\omega^{1\cdot0} & \omega^{1\cdot1} & ... & \omega^{1\cdot{N-1}}\\
+\vdots & \\
+\omega^{(N-1)\cdot0} & \omega^{(N-1)\cdot1} & ... & \omega^{(N-1)\cdot{N-1}}\\
+\end{bmatrix}
+=N\cdot I_{N}
+$$
+$$
+\sum_{k=0}^{N-1}{\omega^{-ik}\cdot \omega^{kj}}=\sum_{k=0}^{N-1}{\omega^{k(j-i)}}
+=
+\begin{cases}
+N &\text{if } i = j \\
+0 &\text{if } i \not = j
+\end{cases}
+$$
+所以，
+$$
+\begin{pmatrix} a_0 \\ a_1 \\ \vdots \\a_{N-1}\\ \end{pmatrix} 
+= \frac{1}{N}
+\begin{bmatrix}
+\omega^{-0\cdot0} & \omega^{-0\cdot1} & ... & \omega^{-0\cdot{N-1}}\\
+\omega^{-1\cdot0} & \omega^{-1\cdot1} & ... & \omega^{-1\cdot{N-1}}\\
+\vdots & \\
+\omega^{-(N-1)\cdot0} & \omega^{-(N-1)\cdot1} & ... & \omega^{-(N-1)\cdot{N-1}}\\
+\end{bmatrix}
+\cdot
+\begin{pmatrix} b_0 \\ b_1 \\ \vdots \\b_{N-1}\\ \end{pmatrix}
+$$
+$(a_0,a_1,...,a_{N-1})$是$(b_0,b_1,..,b_{N-1})$的离散傅里叶变换的逆变换，可以用iFFT快速实现。
+$$g(X) = \sum_{j=0}^{N-1}{b_j\cdot X^j}$$
+$$a_i= \frac{1}{N}g(\omega^{-i})=\sum_{j=0}^{N-1}{b_j\cdot \omega^{-ij}}$$
+
+\section{zk-snark}
+Prover向Verifier证明他知道$C_1,C_2,C_3$使得$(C_1\cdot C_2)\cdot(C_1+C_3)=7$
+\subsection{flatten}
+$$S1 = C_1 \cdot C_2$$
+$$S2 = C_1 + C_3$$
+$$out = S1 \cdot S2$$
+
+\subsection{R1CS}
+定义$\overrightarrow{s}=[1,out,C_1,C_2,C_3,S_1,S_2]$
+每个电路定义一组向量$\overrightarrow{u},\overrightarrow{v},\overrightarrow{w}$,
+满足$\overrightarrow{s}\cdot\overrightarrow{u} * \overrightarrow{s}\cdot\overrightarrow{v} = \overrightarrow{s}\cdot\overrightarrow{w}$\\
+第1个电路
+$$\overrightarrow{u} = [0,0,1,0,0,0,0]$$
+$$\overrightarrow{v} = [0,0,0,1,0,0,0]$$
+$$\overrightarrow{w} = [0,0,0,0,0,1,0]$$
+第2个电路
+$$\overrightarrow{u} = [0,0,1,0,1,0,0]$$
+$$\overrightarrow{v} = [1,0,0,0,0,0,0]$$
+$$\overrightarrow{w} = [0,0,0,0,0,0,1]$$
+第3个电路
+$$\overrightarrow{u} = [0,0,0,0,0,1,0]$$
+$$\overrightarrow{v} = [0,0,0,0,0,0,1]$$
+$$\overrightarrow{w} = [0,1,0,0,0,0,0]$$
+
+$$
+U=\begin{bmatrix}
+0&0&1&0&0&0&0\\
+0&0&1&0&1&0&0\\
+0&0&0&0&0&1&0\\
+\end{bmatrix}
+$$
+
+$$
+V=\begin{bmatrix}
+0&0&0&1&0&0&0\\
+1&0&0&0&0&0&0\\
+0&0&0&0&0&0&1\\
+\end{bmatrix}
+$$
+
+$$
+W=\begin{bmatrix}
+0&0&0&0&0&1&0\\
+0&0&0&0&0&0&1\\
+0&1&0&0&0&0&0\\
+\end{bmatrix}
+$$
+
+\subsection{QAP}
+定义
+$$U(X)=[u_0(X),...,u_6(X)]$$
+$$V(X)=[v_0(X),...,v_6(X)]$$
+$$W(X)=[w_0(X),...,w_6(X)]$$
+使得$X=1,2,3$时<$U(X),V(X),W(X)$>分别对应第1，2，3个电路的<$\overrightarrow{u},\overrightarrow{v},\overrightarrow{w}$ >
+$u_i(X),v_i(X),w_i(X)$都可以用拉格朗日插值公式求。
+为了快速计算多项式$u_i(X),v_i(X),w_i(X)$，可以选择$X=\omega^0,\omega^1,\omega^2$. 其中$\omega$为4次单位根,
+即$\omega^4=1$
+
+设$\overrightarrow{U_i}=[y_0,y_1,...,y_{N-1}]$,$N$为限制条件的个数，如果$N$不是2的次幂，则将$\overrightarrow{U_i}$用0补全。
+根据$\overrightarrow{U_i}$计算$U_i(X)$，使得$U_i(\omega^j)=y_j$, $\omega$是$N$次单位根。
+
+首先定义拉格朗日基${L_0(X),L_1(X),...,L_{N-1}(X)}$，使得
+$$
+L_i(\omega^j) = \begin{cases}
+    0 &\text{if } i\not = j \\
+    1 &\text{if } i=j
+ \end{cases}
+ $$
+则  
+$$U_i(X) = \sum_{j=0}^{N-1}{y_i\cdot L_j(X)}$$
+$U_i(X)$在x点的值为: 
+$$U_i(x)=\sum_{j=0}^{N-1}{y_i\cdot L_j(x)}.$$
+
+下面介绍如何求$L_j(x)$.
+$$L_j(X) = \frac{1}{N}{\sum_{i=0}^{N-1}({\frac{X}{\omega^j}})^i}$$
+ 定义
+ $$P(Y)=\sum_{i=0}^{N-1}{(x\cdot Y)^i}=\sum_{i=0}^{N-1}{{x}^i\cdot Y^i} $$
+则有
+$$ L_j(x) =\frac{1}{N}\sum_{i=0}^{N-1}{(\frac{x}{\omega^j})^i}
+=\frac{1}{N}\sum_{i=0}^{N-1}{{x}^i\cdot (\omega^{-j})^i}
+=\frac{1}{N}{P(\omega^{-j})}$$
+对$P(Y)$的系数$[x^0,...,x^{N-1}]$利用iFFT求$[L_0(x),...,L_{N-1}(x)]$.
+实际上，
+$$
+\sum_{j=0}^{N-1} L_j(x)\omega^{i\cdot j}
+=\sum_{j=0}^{N-1} (\frac{1}{N}\sum_{k=0}^{N-1}x^k \omega^{-j\cdot k}) \omega^{i\cdot j}
+%=\frac{1}{N}\sum_{j=0}^{N-1}\sum_{k=0}^{N-1} x^k\cdot \omega^{(i-k)j}
+=\frac{1}{N}\sum_{k=0}^{N-1}x^k\sum_{j=0}^{N-1} \cdot \omega^{(i-k)j}
+$$
+
+\begin{displaymath}
+\sum_{j=0}^{N-1} \cdot \omega^{(i-k)j} = \left\{ \begin{array}{ll}
+    N & k=i \\
+    0 & k \not = i
+\end{array} \right.
+\end{displaymath}
+$\sum_{j=0}^{N-1} L_j(x)\omega^{i\cdot j} = x^k$,$[x^0,...,x^{N-1}]$是$[L_0(x),...,L_{N-1}(x)]$的离散傅里叶变换。
+
+
+\subsection{Groth16}
+
+\subsubsection{setup}
+
+在setup阶段生成CRS(Common reference string),即PK(Proving Key) 和 VK(Verifying Key).
+其中VK为:
+$$VK_\alpha = [\alpha]_1,\ VK'_\beta=[\beta]_2,\ VK'_\gamma=[\gamma]_2,\ VK'_\delta=[\delta]_2 $$
+$$VK_{L,i} = \left[\frac{\beta u_i(x)+\alpha v_i(x)+w_i(x)}{\gamma}\right]_1, for\ i = 0,...,l$$
+而PK为:
+$$PK_\alpha=[\alpha]_1,\ PK_\beta=[\beta]_1,\ PK'_\beta=[\beta]_2,\ PK_\delta=[\delta]_1,\ PK'_\delta=[\delta]_2 $$
+$$PK_{H,i}=[x^i]_1,\ PK'_{H,i} =[x^i]_2,\ for\ i=0,...,n-1$$
+$$PK_{K,i} = \left[\frac{\beta u_i(x)+\alpha v_i(x)+w_i(x)}{\delta}\right]_1,\ for\ i=l+1,..,m$$
+$$PK_{T,i} = \left[\frac{x^it(x)}{\delta}\right]_1,\ for\ i=0,..,n-2$$
+
+Sapling的实现与Groth16略有不同。
+\paragraph{Powers of Tau\\}
+
+生成与应用无关的CRS.如$[\alpha]_1, [\beta]_1, [\beta]_2，\{[x^i]_1\}_{i=0}^{n-1}$.
+
+为了能计算$\{[\frac{x^it(x)}{\delta}]_1\}_{i=0}^{n-2}$,还需要$\{[x^i]_1\}_{i=n}^{2n-2}$.
+
+为了能利用FFT快速计算$\beta u_i(x),\alpha v_i(x), w_i(x)$，
+需要计算拉格朗日基
+$${\{L_i([x]_1)\}}_{i=0}^{n-1},{\{L_i([x]_2)\}}_{i=0}^{n-1},$$
+以及 
+$${\{\alpha L_i([x]_1)\}}_{i=0}^{n-1},{\{\beta L_i([x]_1)\}}_{i=0}^{n-1}$$
+
+所以第一阶段结束之后生成的参数如下:\\
+$[\alpha]_1, [\beta]_1, [\beta]_2$\\
+$g1\_coeffs: {\{L_i([x]_1)\}}_{i=0}^{n-1}$\\
+$g2\_coeffs: {\{L_i([x]_2)\}}_{i=0}^{n-1}$\\
+$g1\_alpha\_coeffs: {\{\alpha\cdot L_i([x]_1)\}}_{i=0}^{n-1}$\\
+$g2\_\beta\_coeffs: {\{\beta\cdot L_i([x]_1)\}}_{i=0}^{n-1}$\\
+$h: {\{[x^it(x)]_1\}}_{i=0}^{n-2}$
+
+\textbf{Sapling MPC}
+Sapling MPC阶段生成剩余的CRS,
+$$
+[\delta]_1,[\delta]_2, 
+\left\{\left[\frac{\beta u_i(x)+\alpha v_i(x)+w_i(x)}{\delta}\right]_1\right\}_{i=l+1}^m,
+$$
+$$
+\left\{\left[\frac{x^it(x)}{\delta}\right]_1\right\}_{i=0}^{n-2},
+\left\{[u_i(x)]_1\right\}_{i=0}^m, \left\{[v_i(x)]_1\right\}_{i=0}^m,\left\{[v_i(x)]_2\right\}_{i=0}^m
+$$
+
+\subsubsection{Proving}
+随机选择$r,s\in \mathbb{Z}_p$,计算$proof=([A]_1,[B]_2,[C]_1)$.其中,\\
+$$
+A=\alpha +\sum_{i=0}^m{a_iu_i(x)+r\delta}
+$$
+$$
+B=\beta +\sum_{i=0}^m{a_iv_i(x)+s\delta}
+$$
+$$
+C=\sum_{i=l+1}^{m}{a_i\cdot \frac{\beta u_i(x)+\alpha v_i(x)+w_i(x)}{\delta}} + \frac{h(x)t(x)}{\delta}
++ A\cdot s + B\cdot r - rs\delta
+$$
+
+需要注意的是，无法先计算$A$,再计算$[A]_1$.因为是$\alpha,x,\delta$未知的, 而$[\alpha]_1,[\delta]_1$是已知的，
+所以计算$[A]_1$可以通过以下等式.
+$$
+[A]_1=P K_{\alpha}+\sum_{j=0}^{n-1} \sum_{i=0}^{m} a_{i} u_{i, j} PK_{H, j}+r P K_{\delta}, 
+\text{其中} [u_{i,0},u_{i,1},..,u_{i,n-1}] \text{为} u_i(X) \text{的系数}.
+$$
+$$
+[B]_2=P K_{\beta}^{\prime}+\sum_{j=0}^{n-1} \sum_{i=0}^{m} a_{i} v_{i, j} PK_{H, j}^{\prime}+s P K_{\delta}^{\prime},
+\text{其中} [v_{i,0},v_{i,1},..,v_{i,n-1}] \text{为} v_i(X) \text{的系数}.
+$$
+$$
+[B]_1=P K_{\beta}+\sum_{j=0}^{n-1} \sum_{i=0}^{m} a_{i} v_{i, j} PK_{H, j}+s PK_{\delta},
+\text{其中} [v_{i,0},v_{i,1},..,v_{i,n-1}] \text{为} v_i(X) \text{的系数}.
+$$
+$$
+[C]_1 =\sum_{i=l+1}^{m}a_{i} PK_{K,i}+\sum_{i=0}^{n-2}h_{i}PK_{T,i}+s[A]_1+r[B]_1-rsPK_{\delta},
+\text{其中}[h_0,h_1,..h_{n-2}]\text{为}h(x)\text{的系数}.
+$$
+在Sapling的实现中，在Sapling MPC阶段直接生成了$\{[u_i(x)]_1\}_{i=0}^m$，$\{[v_i(x)]_1\}_{i=0}^m$和$\{[v_i(x)]_2\}_{i=0}^m$.
+所以在计算$[A]_1,[B]_1,[B]_2$时直接采用下列方式.
+$$
+[A]_1=P K_{\alpha}+\sum_{i=0}^{m} a_{i}\cdot u_i([x]_1)+r P K_{\delta}, 
+$$
+$$
+[B]_2=P K_{\beta}^{\prime}+\sum_{i=0}^{m} a_{i}\cdot v_i([x]_2)+s P K_{\delta}^{\prime},
+$$
+$$
+[B]_1=P K_{\beta}+\sum_{i=0}^{m} a_{i}\cdot v_i([x]_1)+s PK_{\delta},
+$$
+在计算$[C]_1$时，最复杂的是计算$h(x)\text{的系数}h_i$.
+记
+\begin{displaymath}
+    \begin{array}{ll}
+        \tilde{U}(X) &= [a_0,...,a_m] [u_0(X),..,u_m(X)]^T \\
+        \tilde{V}(X) &= [a_0,...,a_m] [v_0(X),..,v_m(X)]^T \\
+        \tilde{W}(X) &= [a_0,...,a_m] [w_0(X),..,w_m(X)]^T
+    \end{array}
+    \end{displaymath}
+根据QAP等式，
+$$\tilde{U}(X) \cdot  \tilde{V}(X) - \tilde{W}(X) = h(X)t(X)$$
+$$h(X) = \frac{\tilde{U}(X) \cdot  \tilde{V}(X) - \tilde{W}(X)}{t(X)}$$
+
+如果采用iFFT求$h_i$,则需要知道$h(\omega^0),h(\omega^1),...$.现在知道$\tilde{U}(\omega^j),\tilde{V}(\omega^j),
+\tilde{W}(\omega^j),j=0,1,2..$, 但是$t(\omega^j)=0,j=1,1,2...$,没法直接利用iFFT.
+
+通常的办法是找一个数$\sigma$,使得$t(\sigma\omega^j),j=0,1,2...$不为0.
+先计算$h(\sigma\omega^j),j=0,1,2...$, 再利用iFFT计算。
+这相当于是已知$\tilde{h}(X)=\sum_{i=0}^{n-2} h_i\sigma^i X^i$在$w^0,w^1,...$的值，
+做iFFT求得$[h_0\sigma^0,h_1\sigma^1,...]$，再消去$\sigma$可以得到$h(x)$系数$h_i$.
+
+综上，计算$h(x)$系数$h_i$过程如下。
+
+根据输入和电路,可以计算出$\tilde{U}(w^0),\tilde{U}(w^1),...$,通过iFFT可以计算出$\tilde{U}(X)$的系数；
+取$\mathbb{F}_r$的生成元为$\sigma$.再利用一次FFT计算$\tilde{U}(\sigma\omega^j),j=0,1,2...$的值.
+同理可以求得$\tilde{V}(\sigma\omega^j),\tilde{W}(\sigma\omega^j),j=0,1,2...$的值.
+计算$t(w^j)=\sigma^n-1,j=0,1,2,...$.
+
+计算$h(\sigma\omega^j),j=0,1,2...$, 再利用iFFT计算$[h_0\sigma^0,h_1\sigma^1,...]$，再消去$\sigma$可以得到$h(x)$系数$h_i$.
+整个过程需要3次FFT和4次iFFT.
+
+
+
+\subsubsection{Verifying}
+要验证proof，需要借助pairing, 如下所示，$e$为pairing函数。
+$$
+e([A]_1,[B]_2) = e(VK_\alpha,VK_\beta^{\prime})\cdot e(VK_x, VK_\gamma^{\prime})\cdot 
+e([C]_1,VK_\delta^{\prime})
+$$
+其中,
+$$VK_x = \sum_{i=0}^l a_i\cdot VK_{L,i} = \sum_{i=0}^l a_i\cdot 
+[\frac{\beta u_i(x)+\alpha v_i(x)+w_i(x)}{\gamma}]_1$$
+证明上式成立实际上是证明下列等式成立.
+$$
+A\cdot B=\alpha\cdot\beta + \sum_{i=0}^l a_i\cdot\frac{\beta u_i(x) + \alpha v_i(x) + w_i(x)}{\gamma} \cdot \gamma +
+C\cdot\delta
+$$
+上式等式化简可以得到QAP的等式
+$$(\sum_{i=0}^m a_i\cdot u_i(x))\cdot(\sum_{i=0}^m a_i\cdot u_i(x))=\sum_{i=0}^m a_i\cdot w_i(x)$$
+在Sapling的实现中，取$\gamma=1$，即$[\gamma]_2 = g_2$，$g_2$是群$\G_2$的生成元。\\
+验证等式变为
+$$
+e([A]_1,[B]_2) = e(VK_\alpha,VK_\beta^{\prime})\cdot e(VK_x, g_2)\cdot 
+e([C]_1,VK_\delta^{\prime})
+$$
+其中,
+$$VK_x = \sum_{i=0}^l a_i\cdot VK_{L,i} = \sum_{i=0}^l a_i\cdot 
+(\beta u_i(x)+\alpha v_i(x)+w_i(x))_1$$
+进一步变为
+$$
+e([A]_1,[B]_2) \cdot e(VK_x, -g_2)\cdot e([C]_1,-VK_\delta^{\prime}) = e(VK_\alpha,VK_\beta^{\prime}) 
+$$
+在进行$init\_zksnark\_params$预计算$e(VK_\alpha,VK_\beta^{\prime}),-g_2,-VK_\delta^{\prime}$
+\section{代码}
+以$c = a + b$为例
+
+
+(To be continued...)
+
+\end{document}   
