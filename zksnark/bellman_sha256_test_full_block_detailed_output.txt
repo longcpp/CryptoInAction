@@ -1,0 +1,610 @@
+Testing started at 10:36 AM ...
+num_constraints 512
+compute w
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 573, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 627, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 661, up by 34
+round 16, num_constraints 661, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 722, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 776, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 810, up by 34
+round 17, num_constraints 810, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 871, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 925, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 959, up by 34
+round 18, num_constraints 959, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 1020, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 1074, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 1108, up by 34
+round 19, num_constraints 1108, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 1169, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 1223, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 1257, up by 34
+round 20, num_constraints 1257, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 1318, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 1372, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 1406, up by 34
+round 21, num_constraints 1406, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 1467, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 1521, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 1555, up by 34
+round 22, num_constraints 1555, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 1616, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 1670, up by 54
+********accumulate called********
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 1705, up by 35
+round 23, num_constraints 1705, up by 150
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 1766, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 1820, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 1854, up by 34
+round 24, num_constraints 1854, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 1915, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 1969, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 2003, up by 34
+round 25, num_constraints 2003, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 2064, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 2118, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 2152, up by 34
+round 26, num_constraints 2152, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 2213, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 2267, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 2301, up by 34
+round 27, num_constraints 2301, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 2362, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 2416, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 2450, up by 34
+round 28, num_constraints 2450, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 2511, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 2565, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 2599, up by 34
+round 29, num_constraints 2599, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 2660, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 2714, up by 54
+********accumulate called********
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 2749, up by 35
+round 30, num_constraints 2749, up by 150
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 2810, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 2864, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 2898, up by 34
+round 31, num_constraints 2898, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 2959, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 3013, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 3047, up by 34
+round 32, num_constraints 3047, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 3108, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 3162, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 3196, up by 34
+round 33, num_constraints 3196, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 3257, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 3311, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 3345, up by 34
+round 34, num_constraints 3345, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 3406, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 3460, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 3494, up by 34
+round 35, num_constraints 3494, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 3555, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 3609, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 3643, up by 34
+round 36, num_constraints 3643, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 3704, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 3758, up by 54
+********accumulate called********
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 3793, up by 35
+round 37, num_constraints 3793, up by 150
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 3854, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 3908, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 3942, up by 34
+round 38, num_constraints 3942, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 4003, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 4057, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 4091, up by 34
+round 39, num_constraints 4091, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 4152, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 4206, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 4240, up by 34
+round 40, num_constraints 4240, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 4301, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 4355, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 4389, up by 34
+round 41, num_constraints 4389, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 4450, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 4504, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 4538, up by 34
+round 42, num_constraints 4538, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 4599, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 4653, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 4687, up by 34
+round 43, num_constraints 4687, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 4748, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 4802, up by 54
+********accumulate called********
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 4837, up by 35
+round 44, num_constraints 4837, up by 150
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 4898, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 4952, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 4986, up by 34
+round 45, num_constraints 4986, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 5047, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 5101, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 5135, up by 34
+round 46, num_constraints 5135, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 5196, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 5250, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 5284, up by 34
+round 47, num_constraints 5284, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 5345, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 5399, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 5433, up by 34
+round 48, num_constraints 5433, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 5494, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 5548, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 5582, up by 34
+round 49, num_constraints 5582, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 5643, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 5697, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 5731, up by 34
+round 50, num_constraints 5731, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 5792, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 5846, up by 54
+********accumulate called********
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 5881, up by 35
+round 51, num_constraints 5881, up by 150
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 5942, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 5996, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 6030, up by 34
+round 52, num_constraints 6030, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 6091, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 6145, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 6179, up by 34
+round 53, num_constraints 6179, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 6240, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 6294, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 6328, up by 34
+round 54, num_constraints 6328, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 6389, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 6443, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 6477, up by 34
+round 55, num_constraints 6477, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 6538, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 6592, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 6626, up by 34
+round 56, num_constraints 6626, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 6687, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 6741, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 6775, up by 34
+round 57, num_constraints 6775, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 6836, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 6890, up by 54
+********accumulate called********
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 6925, up by 35
+round 58, num_constraints 6925, up by 150
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 6986, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 7040, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 7074, up by 34
+round 59, num_constraints 7074, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 7135, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 7189, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 7223, up by 34
+round 60, num_constraints 7223, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 7284, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 7338, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 7372, up by 34
+round 61, num_constraints 7372, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 7433, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 7487, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 7521, up by 34
+round 62, num_constraints 7521, up by 149
+after s0 = (w[i-15] >>> 7) ^ (w[i-15] >>> 18) ^ (w[i-15] >> 3), 7582, up by 61
+after s0 = (w[i-2] >>> 17) ^ (w[i-2] >>> 19) ^ (w[i-2] >> 10), 7636, up by 54
+after w[i] = w[i-16] + s0 + w[i-7] + s1, 7670, up by 34
+round 63, num_constraints 7670, up by 149
+cs.num_constraints 7670
+compute 64 rounds
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 7670, up by 0
+after ch = (e & f) ^ (!e & g), 7670, up by 0
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 7670, up by 0
+after maj = (a & b) ^ (a & c) ^ (b & c), 7670, up by 0
+after t2 = s0 + maj, 7670, up by 0
+round i 0 num_constraints 7670, increment by 0
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 7769, up by 99
+after ch = (e & f) ^ (!e & g), 7769, up by 0
+********accumulate called********
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 7869, up by 100
+after maj = (a & b) ^ (a & c) ^ (b & c), 7869, up by 0
+after t2 = s0 + maj, 7869, up by 0
+round i 1 num_constraints 7869, increment by 199
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 7968, up by 99
+after ch = (e & f) ^ (!e & g), 8000, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 8099, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 8131, up by 32
+after t2 = s0 + maj, 8131, up by 0
+round i 2 num_constraints 8131, increment by 262
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 8230, up by 99
+after ch = (e & f) ^ (!e & g), 8262, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 8361, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 8425, up by 64
+after t2 = s0 + maj, 8425, up by 0
+round i 3 num_constraints 8425, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 8524, up by 99
+after ch = (e & f) ^ (!e & g), 8556, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 8655, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 8719, up by 64
+after t2 = s0 + maj, 8719, up by 0
+round i 4 num_constraints 8719, increment by 294
+********accumulate called********
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 8819, up by 100
+after ch = (e & f) ^ (!e & g), 8851, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 8950, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 9014, up by 64
+after t2 = s0 + maj, 9014, up by 0
+round i 5 num_constraints 9014, increment by 295
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 9113, up by 99
+after ch = (e & f) ^ (!e & g), 9145, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 9244, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 9308, up by 64
+after t2 = s0 + maj, 9308, up by 0
+round i 6 num_constraints 9308, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 9407, up by 99
+after ch = (e & f) ^ (!e & g), 9439, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 9538, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 9602, up by 64
+after t2 = s0 + maj, 9602, up by 0
+round i 7 num_constraints 9602, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 9701, up by 99
+after ch = (e & f) ^ (!e & g), 9733, up by 32
+********accumulate called********
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 9833, up by 100
+after maj = (a & b) ^ (a & c) ^ (b & c), 9897, up by 64
+after t2 = s0 + maj, 9897, up by 0
+round i 8 num_constraints 9897, increment by 295
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 9996, up by 99
+after ch = (e & f) ^ (!e & g), 10028, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 10127, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 10191, up by 64
+after t2 = s0 + maj, 10191, up by 0
+round i 9 num_constraints 10191, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 10290, up by 99
+after ch = (e & f) ^ (!e & g), 10322, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 10421, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 10485, up by 64
+after t2 = s0 + maj, 10485, up by 0
+round i 10 num_constraints 10485, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 10584, up by 99
+after ch = (e & f) ^ (!e & g), 10616, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 10715, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 10779, up by 64
+after t2 = s0 + maj, 10779, up by 0
+round i 11 num_constraints 10779, increment by 294
+********accumulate called********
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 10879, up by 100
+after ch = (e & f) ^ (!e & g), 10911, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 11010, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 11074, up by 64
+after t2 = s0 + maj, 11074, up by 0
+round i 12 num_constraints 11074, increment by 295
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 11173, up by 99
+after ch = (e & f) ^ (!e & g), 11205, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 11304, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 11368, up by 64
+after t2 = s0 + maj, 11368, up by 0
+round i 13 num_constraints 11368, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 11467, up by 99
+after ch = (e & f) ^ (!e & g), 11499, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 11598, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 11662, up by 64
+after t2 = s0 + maj, 11662, up by 0
+round i 14 num_constraints 11662, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 11761, up by 99
+after ch = (e & f) ^ (!e & g), 11793, up by 32
+********accumulate called********
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 11893, up by 100
+after maj = (a & b) ^ (a & c) ^ (b & c), 11957, up by 64
+after t2 = s0 + maj, 11957, up by 0
+round i 15 num_constraints 11957, increment by 295
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 12056, up by 99
+after ch = (e & f) ^ (!e & g), 12088, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 12187, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 12251, up by 64
+after t2 = s0 + maj, 12251, up by 0
+round i 16 num_constraints 12251, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 12350, up by 99
+after ch = (e & f) ^ (!e & g), 12382, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 12481, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 12545, up by 64
+after t2 = s0 + maj, 12545, up by 0
+round i 17 num_constraints 12545, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 12644, up by 99
+after ch = (e & f) ^ (!e & g), 12676, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 12775, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 12839, up by 64
+after t2 = s0 + maj, 12839, up by 0
+round i 18 num_constraints 12839, increment by 294
+********accumulate called********
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 12939, up by 100
+after ch = (e & f) ^ (!e & g), 12971, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 13070, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 13134, up by 64
+after t2 = s0 + maj, 13134, up by 0
+round i 19 num_constraints 13134, increment by 295
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 13233, up by 99
+after ch = (e & f) ^ (!e & g), 13265, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 13364, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 13428, up by 64
+after t2 = s0 + maj, 13428, up by 0
+round i 20 num_constraints 13428, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 13527, up by 99
+after ch = (e & f) ^ (!e & g), 13559, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 13658, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 13722, up by 64
+after t2 = s0 + maj, 13722, up by 0
+round i 21 num_constraints 13722, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 13821, up by 99
+after ch = (e & f) ^ (!e & g), 13853, up by 32
+********accumulate called********
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 13953, up by 100
+after maj = (a & b) ^ (a & c) ^ (b & c), 14017, up by 64
+after t2 = s0 + maj, 14017, up by 0
+round i 22 num_constraints 14017, increment by 295
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 14116, up by 99
+after ch = (e & f) ^ (!e & g), 14148, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 14247, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 14311, up by 64
+after t2 = s0 + maj, 14311, up by 0
+round i 23 num_constraints 14311, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 14410, up by 99
+after ch = (e & f) ^ (!e & g), 14442, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 14541, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 14605, up by 64
+after t2 = s0 + maj, 14605, up by 0
+round i 24 num_constraints 14605, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 14704, up by 99
+after ch = (e & f) ^ (!e & g), 14736, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 14835, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 14899, up by 64
+after t2 = s0 + maj, 14899, up by 0
+round i 25 num_constraints 14899, increment by 294
+********accumulate called********
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 14999, up by 100
+after ch = (e & f) ^ (!e & g), 15031, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 15130, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 15194, up by 64
+after t2 = s0 + maj, 15194, up by 0
+round i 26 num_constraints 15194, increment by 295
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 15293, up by 99
+after ch = (e & f) ^ (!e & g), 15325, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 15424, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 15488, up by 64
+after t2 = s0 + maj, 15488, up by 0
+round i 27 num_constraints 15488, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 15587, up by 99
+after ch = (e & f) ^ (!e & g), 15619, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 15718, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 15782, up by 64
+after t2 = s0 + maj, 15782, up by 0
+round i 28 num_constraints 15782, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 15881, up by 99
+after ch = (e & f) ^ (!e & g), 15913, up by 32
+********accumulate called********
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 16013, up by 100
+after maj = (a & b) ^ (a & c) ^ (b & c), 16077, up by 64
+after t2 = s0 + maj, 16077, up by 0
+round i 29 num_constraints 16077, increment by 295
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 16176, up by 99
+after ch = (e & f) ^ (!e & g), 16208, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 16307, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 16371, up by 64
+after t2 = s0 + maj, 16371, up by 0
+round i 30 num_constraints 16371, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 16470, up by 99
+after ch = (e & f) ^ (!e & g), 16502, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 16601, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 16665, up by 64
+after t2 = s0 + maj, 16665, up by 0
+round i 31 num_constraints 16665, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 16764, up by 99
+after ch = (e & f) ^ (!e & g), 16796, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 16895, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 16959, up by 64
+after t2 = s0 + maj, 16959, up by 0
+round i 32 num_constraints 16959, increment by 294
+********accumulate called********
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 17059, up by 100
+after ch = (e & f) ^ (!e & g), 17091, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 17190, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 17254, up by 64
+after t2 = s0 + maj, 17254, up by 0
+round i 33 num_constraints 17254, increment by 295
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 17353, up by 99
+after ch = (e & f) ^ (!e & g), 17385, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 17484, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 17548, up by 64
+after t2 = s0 + maj, 17548, up by 0
+round i 34 num_constraints 17548, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 17647, up by 99
+after ch = (e & f) ^ (!e & g), 17679, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 17778, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 17842, up by 64
+after t2 = s0 + maj, 17842, up by 0
+round i 35 num_constraints 17842, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 17941, up by 99
+after ch = (e & f) ^ (!e & g), 17973, up by 32
+********accumulate called********
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 18073, up by 100
+after maj = (a & b) ^ (a & c) ^ (b & c), 18137, up by 64
+after t2 = s0 + maj, 18137, up by 0
+round i 36 num_constraints 18137, increment by 295
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 18236, up by 99
+after ch = (e & f) ^ (!e & g), 18268, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 18367, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 18431, up by 64
+after t2 = s0 + maj, 18431, up by 0
+round i 37 num_constraints 18431, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 18530, up by 99
+after ch = (e & f) ^ (!e & g), 18562, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 18661, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 18725, up by 64
+after t2 = s0 + maj, 18725, up by 0
+round i 38 num_constraints 18725, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 18824, up by 99
+after ch = (e & f) ^ (!e & g), 18856, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 18955, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 19019, up by 64
+after t2 = s0 + maj, 19019, up by 0
+round i 39 num_constraints 19019, increment by 294
+********accumulate called********
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 19119, up by 100
+after ch = (e & f) ^ (!e & g), 19151, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 19250, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 19314, up by 64
+after t2 = s0 + maj, 19314, up by 0
+round i 40 num_constraints 19314, increment by 295
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 19413, up by 99
+after ch = (e & f) ^ (!e & g), 19445, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 19544, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 19608, up by 64
+after t2 = s0 + maj, 19608, up by 0
+round i 41 num_constraints 19608, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 19707, up by 99
+after ch = (e & f) ^ (!e & g), 19739, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 19838, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 19902, up by 64
+after t2 = s0 + maj, 19902, up by 0
+round i 42 num_constraints 19902, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 20001, up by 99
+after ch = (e & f) ^ (!e & g), 20033, up by 32
+********accumulate called********
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 20133, up by 100
+after maj = (a & b) ^ (a & c) ^ (b & c), 20197, up by 64
+after t2 = s0 + maj, 20197, up by 0
+round i 43 num_constraints 20197, increment by 295
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 20296, up by 99
+after ch = (e & f) ^ (!e & g), 20328, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 20427, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 20491, up by 64
+after t2 = s0 + maj, 20491, up by 0
+round i 44 num_constraints 20491, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 20590, up by 99
+after ch = (e & f) ^ (!e & g), 20622, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 20721, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 20785, up by 64
+after t2 = s0 + maj, 20785, up by 0
+round i 45 num_constraints 20785, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 20884, up by 99
+after ch = (e & f) ^ (!e & g), 20916, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 21015, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 21079, up by 64
+after t2 = s0 + maj, 21079, up by 0
+round i 46 num_constraints 21079, increment by 294
+********accumulate called********
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 21179, up by 100
+after ch = (e & f) ^ (!e & g), 21211, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 21310, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 21374, up by 64
+after t2 = s0 + maj, 21374, up by 0
+round i 47 num_constraints 21374, increment by 295
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 21473, up by 99
+after ch = (e & f) ^ (!e & g), 21505, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 21604, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 21668, up by 64
+after t2 = s0 + maj, 21668, up by 0
+round i 48 num_constraints 21668, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 21767, up by 99
+after ch = (e & f) ^ (!e & g), 21799, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 21898, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 21962, up by 64
+after t2 = s0 + maj, 21962, up by 0
+round i 49 num_constraints 21962, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 22061, up by 99
+after ch = (e & f) ^ (!e & g), 22093, up by 32
+********accumulate called********
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 22193, up by 100
+after maj = (a & b) ^ (a & c) ^ (b & c), 22257, up by 64
+after t2 = s0 + maj, 22257, up by 0
+round i 50 num_constraints 22257, increment by 295
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 22356, up by 99
+after ch = (e & f) ^ (!e & g), 22388, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 22487, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 22551, up by 64
+after t2 = s0 + maj, 22551, up by 0
+round i 51 num_constraints 22551, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 22650, up by 99
+after ch = (e & f) ^ (!e & g), 22682, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 22781, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 22845, up by 64
+after t2 = s0 + maj, 22845, up by 0
+round i 52 num_constraints 22845, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 22944, up by 99
+after ch = (e & f) ^ (!e & g), 22976, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 23075, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 23139, up by 64
+after t2 = s0 + maj, 23139, up by 0
+round i 53 num_constraints 23139, increment by 294
+********accumulate called********
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 23239, up by 100
+after ch = (e & f) ^ (!e & g), 23271, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 23370, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 23434, up by 64
+after t2 = s0 + maj, 23434, up by 0
+round i 54 num_constraints 23434, increment by 295
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 23533, up by 99
+after ch = (e & f) ^ (!e & g), 23565, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 23664, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 23728, up by 64
+after t2 = s0 + maj, 23728, up by 0
+round i 55 num_constraints 23728, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 23827, up by 99
+after ch = (e & f) ^ (!e & g), 23859, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 23958, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 24022, up by 64
+after t2 = s0 + maj, 24022, up by 0
+round i 56 num_constraints 24022, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 24121, up by 99
+after ch = (e & f) ^ (!e & g), 24153, up by 32
+********accumulate called********
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 24253, up by 100
+after maj = (a & b) ^ (a & c) ^ (b & c), 24317, up by 64
+after t2 = s0 + maj, 24317, up by 0
+round i 57 num_constraints 24317, increment by 295
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 24416, up by 99
+after ch = (e & f) ^ (!e & g), 24448, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 24547, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 24611, up by 64
+after t2 = s0 + maj, 24611, up by 0
+round i 58 num_constraints 24611, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 24710, up by 99
+after ch = (e & f) ^ (!e & g), 24742, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 24841, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 24905, up by 64
+after t2 = s0 + maj, 24905, up by 0
+round i 59 num_constraints 24905, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 25004, up by 99
+after ch = (e & f) ^ (!e & g), 25036, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 25135, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 25199, up by 64
+after t2 = s0 + maj, 25199, up by 0
+round i 60 num_constraints 25199, increment by 294
+********accumulate called********
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 25299, up by 100
+after ch = (e & f) ^ (!e & g), 25331, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 25430, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 25494, up by 64
+after t2 = s0 + maj, 25494, up by 0
+round i 61 num_constraints 25494, increment by 295
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 25593, up by 99
+after ch = (e & f) ^ (!e & g), 25625, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 25724, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 25788, up by 64
+after t2 = s0 + maj, 25788, up by 0
+round i 62 num_constraints 25788, increment by 294
+after (e >>> 6) ^ (e >>> 11) ^ (e >>> 25), 25887, up by 99
+after ch = (e & f) ^ (!e & g), 25919, up by 32
+after (a >>> 2) ^ (a >>> 13) ^ (a >>> 22), 26018, up by 99
+after maj = (a & b) ^ (a & c) ^ (b & c), 26082, up by 64
+after t2 = s0 + maj, 26082, up by 0
+round i 63 num_constraints 26082, increment by 294
+add compressed chunk to current hash value
+********accumulate called********
+cs.num_constraints() = 26351
+********accumulate called********
+cs.num_constraints 26352
