@@ -1,0 +1,115 @@
+@startuml
+namespace types {
+    interface CacheKVStore  {
+        + Write() 
+
+    }
+    interface CacheMultiStore  {
+        + Write() 
+
+    }
+    interface CacheWrap  {
+        + Write() 
+        + CacheWrap() CacheWrap
+        + CacheWrapWithTrace(w io.Writer, tc TraceContext) CacheWrap
+
+    }
+    interface CacheWrapper  {
+        + CacheWrap() CacheWrap
+        + CacheWrapWithTrace(w io.Writer, tc TraceContext) CacheWrap
+
+    }
+    class CommitID << (S,Aquamarine) >> {
+        + Version int64
+        + Hash []byte
+
+        + IsZero() bool
+        + String() string
+
+    }
+    interface CommitKVStore  {
+    }
+    interface CommitMultiStore  {
+        + MountStoreWithDB(key StoreKey, typ StoreType, db tm-db.DB) 
+        + GetCommitStore(key StoreKey) CommitStore
+        + GetCommitKVStore(key StoreKey) CommitKVStore
+        + LoadLatestVersion() error
+        + LoadLatestVersionAndUpgrade(upgrades *StoreUpgrades) error
+        + LoadVersionAndUpgrade(ver int64, upgrades *StoreUpgrades) error
+        + LoadVersion(ver int64) error
+        + SetInterBlockCache( MultiStorePersistentCache) 
+
+    }
+    interface CommitStore  {
+    }
+    interface Committer  {
+        + Commit() CommitID
+        + LastCommitID() CommitID
+        + SetPruning( PruningOptions) 
+
+    }
+    interface KVStore  {
+        + Get(key []byte) []byte
+        + Has(key []byte) bool
+        + Set(key []byte, value []byte) 
+        + Delete(key []byte) 
+        + Iterator(start []byte, end []byte) Iterator
+        + ReverseIterator(start []byte, end []byte) Iterator
+
+    }
+    class KVStoreKey << (S,Aquamarine) >> {
+        - name string
+
+        + Name() string
+        + String() string
+
+    }
+    interface MultiStore  {
+        + CacheMultiStore() CacheMultiStore
+        + CacheMultiStoreWithVersion(version int64) (CacheMultiStore, error)
+        + GetStore( StoreKey) Store
+        + GetKVStore( StoreKey) KVStore
+        + TracingEnabled() bool
+        + SetTracer(w io.Writer) MultiStore
+        + SetTracingContext( TraceContext) MultiStore
+
+    }
+    interface MultiStorePersistentCache  {
+        + GetStoreCache(key StoreKey, store CommitKVStore) CommitKVStore
+        + Unwrap(key StoreKey) CommitKVStore
+        + Reset() 
+
+    }
+    interface Store  {
+        + GetStoreType() StoreType
+
+    }
+    interface StoreKey  {
+        + Name() string
+        + String() string
+
+    }
+    class TransientStoreKey << (S,Aquamarine) >> {
+        - name string
+
+        + Name() string
+        + String() string
+
+    }
+}
+"types.KVStore" *-- "types.CacheKVStore"
+"types.MultiStore" *-- "types.CacheMultiStore"
+"types.Committer" *-- "types.CommitKVStore"
+"types.KVStore" *-- "types.CommitKVStore"
+"types.Committer" *-- "types.CommitMultiStore"
+"types.MultiStore" *-- "types.CommitMultiStore"
+"types.Committer" *-- "types.CommitStore"
+"types.Store" *-- "types.CommitStore"
+"types.Store" *-- "types.KVStore"
+"types.Store" *-- "types.MultiStore"
+"types.CacheWrapper" *-- "types.Store"
+
+"types.StoreKey" <|-- "types.KVStoreKey"
+"types.StoreKey" <|-- "types.TransientStoreKey"
+
+@enduml
