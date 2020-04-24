@@ -3,15 +3,18 @@ A, B = fp25519(486662), fp25519(1)
 curve25519 = EllipticCurve(fp25519, [0, A, 0, B, 0])
 ell = curve25519.cardinality() / 8
 
-def curve25519_8_torsion():
-    p = curve25519.random_element()
-    while true:
-        p = int(ell) * p;
-        if p.order() == 8:
-            break
-        p = curve25519.random_element()
+mont_G = curve25519.point((0x9,
+0x5f51e65e475f794b1fe122d388b72eb36dc2b28192839e4dd6163a5d81312c14))
 
-    torsion8 = [(i * p) for i in range(1, 9)]
+def curve25519_8_torsion():
+    point = curve25519.random_element()
+    while true:
+        point = int(ell) * point;
+        if point.order() == 8:
+            break
+        point = curve25519.random_element()
+
+    torsion8 = [(i * point) for i in range(1, 9)]
 
     return torsion8
 
@@ -24,16 +27,20 @@ def print_point(point):
         print "(%064x,\n %064x)" % (u, v)
 
 def mont_to_edwards25519(point):
-    if p.order() == 1:
+    if point.order() == 1:
         return (fp25519(0), fp25519(1))
 
-    u, v = p.xy()
+    u, v = point.xy()
     if u == 0 and v == 0:
         return (fp25519(0), fp25519(-1))
     
     x = sqrt(fp25519(-486664)) * u / v
     y = (u - 1) / (u + 1)
     return (x, y)
+
+edwards_G = mont_to_edwards25519(mont_G)
+print "basepoint for curve25519\n%064x\n%064x" % (mont_G.xy())
+print "basepoint for edwards25519\n%064x\n%064x" % (edwards_G)
 
 mont_torsion8 = curve25519_8_torsion()
 
