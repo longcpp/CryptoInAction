@@ -1,0 +1,195 @@
+@startuml
+namespace Block {
+    class Block << (S,Aquamarine) >> {
+        - mtx sync.Mutex
+
+        + Evidence EvidenceData
+        + LastCommit *Commit
+
+        - fillHeader() 
+
+        + ValidateBasic() error
+        + Hash() bytes.HexBytes
+        + MakePartSet(partSize int) *PartSet
+        + HashesTo(hash []byte) bool
+        + Size() int
+        + String() string
+        + StringIndented(indent string) string
+        + StringShort() string
+        + Marshal() ([]byte, error)
+        + MarshalTo(data []byte) (int, error)
+        + Unmarshal(bs []byte) error
+
+    }
+    class BlockID << (S,Aquamarine) >> {
+        + Hash bytes.HexBytes
+        + PartsHeader PartSetHeader
+
+        + Equals(other BlockID) bool
+        + Key() string
+        + ValidateBasic() error
+        + IsZero() bool
+        + IsComplete() bool
+        + String() string
+
+    }
+
+    class Commit << (S,Aquamarine) >> {
+        - hash bytes.HexBytes
+        - bitArray *bits.BitArray
+
+        + Height int64
+        + Round int
+        + BlockID BlockID
+        + Signatures []CommitSig
+
+        + GetVote(valIdx int) *Vote
+        + VoteSignBytes(chainID string, valIdx int) []byte
+        + Type() byte
+        + GetHeight() int64
+        + GetRound() int
+        + Size() int
+        + BitArray() *bits.BitArray
+        + GetByIndex(valIdx int) *Vote
+        + IsCommit() bool
+        + ValidateBasic() error
+        + Hash() bytes.HexBytes
+        + StringIndented(indent string) string
+
+    }
+    class CommitSig << (S,Aquamarine) >> {
+        + BlockIDFlag BlockIDFlag
+        + ValidatorAddress Address
+        + Timestamp time.Time
+        + Signature []byte
+
+        + ForBlock() bool
+        + Absent() bool
+        + String() string
+        + BlockID(commitBlockID BlockID) BlockID
+        + ValidateBasic() error
+
+    }
+    class Data << (S,Aquamarine) >> {
+        - hash bytes.HexBytes
+
+        + Txs Txs
+
+        + Hash() bytes.HexBytes
+        + StringIndented(indent string) string
+
+    }
+    class DuplicateVoteEvidence << (S,Aquamarine) >> {
+        + PubKey crypto.PubKey
+        + VoteA *Vote
+        + VoteB *Vote
+
+        + String() string
+        + Height() int64
+        + Time() time.Time
+        + Address() []byte
+        + Bytes() []byte
+        + Hash() []byte
+        + Verify(chainID string, pubKey crypto.PubKey) error
+        + Equal(ev Evidence) bool
+        + ValidateBasic() error
+
+    }
+
+    interface Evidence  {
+        + Height() int64
+        + Time() time.Time
+        + Address() []byte
+        + Bytes() []byte
+        + Hash() []byte
+        + Verify(chainID string, pubKey crypto.PubKey) error
+        + Equal( Evidence) bool
+        + ValidateBasic() error
+        + String() string
+
+    }
+    class EvidenceData << (S,Aquamarine) >> {
+        - hash bytes.HexBytes
+
+        + Evidence EvidenceList
+
+        + Hash() bytes.HexBytes
+        + StringIndented(indent string) string
+
+    }
+    class EvidenceList << (S,Aquamarine) >> {
+        + Hash() []byte
+        + String() string
+        + Has(evidence Evidence) bool
+
+    }
+
+    class Header << (S,Aquamarine) >> {
+        + Version version.Consensus
+        + ChainID string
+        + Height int64
+        + Time time.Time
+        + LastBlockID BlockID
+        + LastCommitHash bytes.HexBytes
+        + DataHash bytes.HexBytes
+        + ValidatorsHash bytes.HexBytes
+        + NextValidatorsHash bytes.HexBytes
+        + ConsensusHash bytes.HexBytes
+        + AppHash bytes.HexBytes
+        + LastResultsHash bytes.HexBytes
+        + EvidenceHash bytes.HexBytes
+        + ProposerAddress Address
+
+        + Populate(version version.Consensus, ... 
+        + Hash() bytes.HexBytes
+        + StringIndented(indent string) string
+    }
+
+    class Txs << (S,Aquamarine) >> {
+        + Hash() []byte
+        + Index(tx Tx) int
+        + IndexByHash(hash []byte) int
+        + Proof(i int) TxProof
+
+    }
+
+    class PartSetHeader << (S,Aquamarine) >> {
+        + Total int
+        + Hash bytes.HexBytes
+
+        + String() string
+        + IsZero() bool
+        + Equals(other PartSetHeader) bool
+        + ValidateBasic() error
+
+    }
+
+    class Consensus << (S, Aquamarine) >> {
+        + Block Protocol
+        + App Protocol
+    }
+
+"Block.Data" *-- "extends""Block.Block"
+"Block.Header" *-- "extends""Block.Block"
+
+"Block.Evidence" <|-- "implements""Block.DuplicateVoteEvidence"
+
+"Block.BlockID" <--"LastBlockID" "Block.Header"
+
+"Block.Commit" <-- "LasstCommit" "Block.Block"
+"Block.EvidenceData" <-- "Evidence" "Block.Block"
+"Block.EvidenceList" <-- "Evidence" "Block.EvidenceData"
+
+"Block.BlockID" <-- "BlockID" "Block.Commit"
+"Block.CommitSig" <-- "Signatures" "Block.Commit"
+
+"Block.PartSetHeader" <-- "PartsHeader" "Block.BlockID"
+
+"Block.Txs" <-- "Txs" "Block.Data"
+
+"Block.[]Evidence" #.. "alias of""Block.EvidenceList"
+"Block.[]Tx" #.. "alias of""Block.Txs"
+
+"Block.Consensus" <-- "Version" "Block.Header"
+
+@enduml
