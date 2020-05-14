@@ -1,0 +1,39 @@
+@startuml
+namespace params {
+    class ConsensusParams << (S,Aquamarine) >> {
+        + Block BlockParams
+        + Evidence EvidenceParams
+        + Validator ValidatorParams
+
+        + Validate() error
+        + Hash() []byte
+        + Equals(params2 *ConsensusParams) bool
+        + Update(params2 *types.ConsensusParams) ConsensusParams
+
+    }
+
+    class BlockParams << (S,Aquamarine) >> {
+        + MaxBytes int64
+        + MaxGas int64
+        + TimeIotaMs int64
+
+    }
+
+    class EvidenceParams << (S,Aquamarine) >> {
+        + MaxAgeNumBlocks int64
+        + MaxAgeDuration time.Duration
+
+    }
+
+    class ValidatorParams << (S,Aquamarine) >> {
+        + PubKeyTypes []string
+
+        + IsValidPubkeyType(pubkeyType string) bool
+
+    }
+}
+
+"params.BlockParams" <-- "Block" "params.ConsensusParams"
+"params.EvidenceParams" <-- "Evidence" "params.ConsensusParams"
+"params.ValidatorParams" <-- "Validator" "params.ConsensusParams"
+@enduml

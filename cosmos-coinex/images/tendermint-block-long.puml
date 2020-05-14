@@ -79,35 +79,7 @@ namespace Block {
         + StringIndented(indent string) string
 
     }
-    class DuplicateVoteEvidence << (S,Aquamarine) >> {
-        + PubKey crypto.PubKey
-        + VoteA *Vote
-        + VoteB *Vote
 
-        + String() string
-        + Height() int64
-        + Time() time.Time
-        + Address() []byte
-        + Bytes() []byte
-        + Hash() []byte
-        + Verify(chainID string, pubKey crypto.PubKey) error
-        + Equal(ev Evidence) bool
-        + ValidateBasic() error
-
-    }
-
-    interface Evidence  {
-        + Height() int64
-        + Time() time.Time
-        + Address() []byte
-        + Bytes() []byte
-        + Hash() []byte
-        + Verify(chainID string, pubKey crypto.PubKey) error
-        + Equal( Evidence) bool
-        + ValidateBasic() error
-        + String() string
-
-    }
     class EvidenceData << (S,Aquamarine) >> {
         - hash bytes.HexBytes
 
@@ -172,7 +144,7 @@ namespace Block {
 "Block.Data" *-- "extends""Block.Block"
 "Block.Header" *-- "extends""Block.Block"
 
-"Block.Evidence" <|-- "implements""Block.DuplicateVoteEvidence"
+
 
 "Block.BlockID" <--"LastBlockID" "Block.Header"
 
