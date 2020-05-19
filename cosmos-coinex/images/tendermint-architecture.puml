@@ -1,0 +1,700 @@
+@startuml
+
+namespace evidence {
+    class Pool << (S,Aquamarine) >> {
+        - logger log.Logger
+        - store *Store
+        - evidenceList *clist.CList
+        - stateDB tm-db.DB
+        - mtx sync.Mutex
+        - state state.State
+
+        - removeEvidence(height int64, ....) 
+
+        + EvidenceFront() *clist.CElement
+        + EvidenceWaitChan() <font color=blue>chan</font> <font color=blue>struct</font>{}
+        + SetLogger(l log.Logger) 
+        + PriorityEvidence() []types.Evidence
+        + PendingEvidence(maxNum int64) []types.Evidence
+        + State() state.State
+        + Update(block *types.Block, state state.State) 
+        + AddEvidence(evidence types.Evidence) error
+        + MarkEvidenceAsCommitted(height int64, ....) 
+        + IsCommitted(evidence types.Evidence) bool
+
+    }
+    class Reactor << (S,Aquamarine) >> {
+        - evpool *Pool
+        - eventBus *types.EventBus
+
+        - broadcastEvidenceRoutine(peer p2p.Peer) 
+        - checkSendEvidenceMessage(peer p2p.Peer, ev types.Evidence) (Message, bool)
+
+        + SetLogger(l log.Logger) 
+        + GetChannels() []*p2p.ChannelDescriptor
+        + AddPeer(peer p2p.Peer) 
+        + Receive(chID byte, src p2p.Peer, msgBytes []byte) 
+        + SetEventBus(b *types.EventBus) 
+
+    }
+    class Store << (S,Aquamarine) >> {
+        - db tm-db.DB
+
+        - listEvidence(prefixKey string, maxNum int64) []types.Evidence
+        - getInfo(evidence types.Evidence) Info
+
+        + PriorityEvidence() []types.Evidence
+        + PendingEvidence(maxNum int64) []types.Evidence
+        + GetInfo(height int64, hash []byte) Info
+        + AddNewEvidence(evidence types.Evidence, priority int64) bool
+        + MarkEvidenceAsBroadcasted(evidence types.Evidence) 
+        + MarkEvidenceAsCommitted(evidence types.Evidence) 
+
+    }
+}
+"p2p.BaseReactor" *-down- "evidence.Reactor"
+"evidence.Pool" <.. "evpool" "evidence.Reactor"
+"evidence.Store" <.. "store" "evidence.Pool"
+
+namespace mempool {
+    class CListMempool << (S,Aquamarine) >> {
+        - height int64
+        - txsBytes int64
+        - rechecking int32
+        - notifiedTxsAvailable bool
+        - txsAvailable <font color=blue>chan</font> <font color=blue>struct</font>{}
+        - config *config.MempoolConfig
+        - proxyMtx sync.Mutex
+        - proxyAppConn proxy.AppConnMempool
+        - txs *clist.CList
+        - preCheck PreCheckFunc
+        - postCheck PostCheckFunc
+        - recheckCursor *clist.CElement
+        - recheckEnd *clist.CElement
+        - txsMap sync.Map
+        - cache txCache
+        - wal *autofile.AutoFile
+        - logger log.Logger
+        - metrics *Metrics
+
+        - globalCb(req *types.Request, res *types.Response) 
+        - reqResCb(tx []byte, peerID uint16, ....) <font color=blue>func</font>(*types.Response) 
+        - addTx(memTx *mempoolTx) 
+        - removeTx(tx types.Tx, elem *clist.CElement, removeFromCache bool) 
+        - resCbFirstTime(tx []byte, peerID uint16, peerP2PID p2p.ID, res *types.Response) 
+        - resCbRecheck(req *types.Request, res *types.Response) 
+        - notifyTxsAvailable() 
+        - recheckTxs() 
+
+        + EnableTxsAvailable() 
+        + SetLogger(l log.Logger) 
+        + InitWAL() 
+        + CloseWAL() 
+        + Lock() 
+        + Unlock() 
+        + Size() int
+        + TxsBytes() int64
+        + FlushAppConn() error
+        + Flush() 
+        + TxsFront() *clist.CElement
+        + TxsWaitChan() <font color=blue>chan</font> <font color=blue>struct</font>{}
+        + CheckTx(tx types.Tx, cb <font color=blue>func</font>(*types.Response) , txInfo TxInfo) error
+        + TxsAvailable() <font color=blue>chan</font> <font color=blue>struct</font>{}
+        + ReapMaxBytesMaxGas(maxBytes int64, maxGas int64) types.Txs
+        + ReapMaxTxs(max int) types.Txs
+        + Update(height int64, ....) error
+
+    }
+    interface Mempool  {
+        + CheckTx(tx types.Tx, callback <font color=blue>func</font>(*types.Response) , txInfo TxInfo) error
+        + ReapMaxBytesMaxGas(maxBytes int64, maxGas int64) types.Txs
+        + ReapMaxTxs(max int) types.Txs
+        + Lock() 
+        + Unlock() 
+        + Update(blockHeight int64, ....) error
+        + FlushAppConn() error
+        + Flush() 
+        + TxsAvailable() <font color=blue>chan</font> <font color=blue>struct</font>{}
+        + EnableTxsAvailable() 
+        + Size() int
+        + TxsBytes() int64
+        + InitWAL() 
+        + CloseWAL() 
+
+    }
+    class Reactor << (S,Aquamarine) >> {
+        - config *config.MempoolConfig
+        - mempool *CListMempool
+        - ids *mempoolIDs
+
+        - broadcastTxRoutine(peer p2p.Peer) 
+        - decodeMsg(bz []byte) (Message, error)
+
+        + InitPeer(peer p2p.Peer) p2p.Peer
+        + SetLogger(l log.Logger) 
+        + OnStart() error
+        + GetChannels() []*p2p.ChannelDescriptor
+        + AddPeer(peer p2p.Peer) 
+        + RemovePeer(peer p2p.Peer, reason <font color=blue>interface</font>{}) 
+        + Receive(chID byte, src p2p.Peer, msgBytes []byte) 
+
+    }
+}
+"p2p.BaseReactor" *-down- "mempool.Reactor"
+
+"mempool.Mempool" <|-- "mempool.CListMempool"
+
+"mempool.CListMempool" <.. "mempool" "mempool.Reactor"
+
+namespace consensus {
+    class Reactor << (S,Aquamarine) >> {
+        - conS *State
+        - mtx sync.RWMutex
+        - fastSync bool
+        - eventBus *types.EventBus
+        - metrics *Metrics
+
+        - subscribeToBroadcastEvents() 
+        - unsubscribeFromBroadcastEvents() 
+        - broadcastNewRoundStepMessage(rs *types.RoundState) 
+        - broadcastNewValidBlockMessage(rs *types.RoundState) 
+        - broadcastHasVoteMessage(vote *types.Vote) 
+        - sendNewRoundStepMessage(peer p2p.Peer) 
+        - gossipDataRoutine(peer p2p.Peer, ps *PeerState) 
+        - gossipDataForCatchup(logger log.Logger, rs *types.RoundState, prs *types.PeerRoundState, ps *PeerState, peer p2p.Peer) 
+        - gossipVotesRoutine(peer p2p.Peer, ps *PeerState) 
+        - gossipVotesForHeight(logger log.Logger, rs *types.RoundState, prs *types.PeerRoundState, ps *PeerState) bool
+        - queryMaj23Routine(peer p2p.Peer, ps *PeerState) 
+        - peerStatsRoutine() 
+        - updateFastSyncingMetric() 
+
+        + OnStart() error
+        + OnStop() 
+        + SwitchToConsensus(state state.State, blocksSynced uint64) 
+        + GetChannels() []*p2p.ChannelDescriptor
+        + InitPeer(peer p2p.Peer) p2p.Peer
+        + AddPeer(peer p2p.Peer) 
+        + RemovePeer(peer p2p.Peer, reason <font color=blue>interface</font>{}) 
+        + Receive(chID byte, src p2p.Peer, msgBytes []byte) 
+        + SetEventBus(b *types.EventBus) 
+        + FastSync() bool
+        + String() string
+        + StringIndented(indent string) string
+
+    }
+    class State << (S,Aquamarine) >> {
+        - config *config.ConsensusConfig
+        - privValidator types.PrivValidator
+        - blockStore state.BlockStore
+        - blockExec *state.BlockExecutor
+        - txNotifier txNotifier
+        - evpool evidencePool
+        - mtx sync.RWMutex
+        - state state.State
+        - peerMsgQueue <font color=blue>chan</font> msgInfo
+        - internalMsgQueue <font color=blue>chan</font> msgInfo
+        - timeoutTicker TimeoutTicker
+        - statsMsgQueue <font color=blue>chan</font> msgInfo
+        - eventBus *types.EventBus
+        - wal WAL
+        - replayMode bool
+        - doWALCatchup bool
+        - nSteps int
+        - decideProposal <font color=blue>func</font>(int64, int) 
+        - doPrevote <font color=blue>func</font>(int64, int) 
+        - setProposal <font color=blue>func</font>(*types.Proposal) error
+        - done <font color=blue>chan</font> <font color=blue>struct</font>{}
+        - evsw events.EventSwitch
+        - metrics *Metrics
+
+        - readReplayMessage(msg *TimedWALMessage, newStepSub types.Subscription) error
+        - catchupReplay(csHeight int64) error
+        - startForReplay() 
+        - startRoutines(maxSteps int) 
+        - updateHeight(height int64) 
+        - updateRoundStep(round int, step types.RoundStepType) 
+        - scheduleRound0(rs *types.RoundState) 
+        - scheduleTimeout(duration time.Duration, height int64, round int, step types.RoundStepType) 
+        - sendInternalMessage(mi msgInfo) 
+        - reconstructLastCommit(state state.State) 
+        - updateToState(state state.State) 
+        - newStep() 
+        - receiveRoutine(maxSteps int) 
+        - handleMsg(mi msgInfo) 
+        - handleTimeout(ti timeoutInfo, rs types.RoundState) 
+        - handleTxsAvailable() 
+        - enterNewRound(height int64, round int) 
+        - needProofBlock(height int64) bool
+        - enterPropose(height int64, round int) 
+        - isProposer(address []byte) bool
+        - defaultDecideProposal(height int64, round int) 
+        - isProposalComplete() bool
+        - createProposalBlock() (*types.Block, *types.PartSet)
+        - enterPrevote(height int64, round int) 
+        - defaultDoPrevote(height int64, round int) 
+        - enterPrevoteWait(height int64, round int) 
+        - enterPrecommit(height int64, round int) 
+        - enterPrecommitWait(height int64, round int) 
+        - enterCommit(height int64, commitRound int) 
+        - tryFinalizeCommit(height int64) 
+        - finalizeCommit(height int64) 
+        - recordMetrics(height int64, block *types.Block) 
+        - defaultSetProposal(proposal *types.Proposal) error
+        - addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID) (bool, error)
+        - tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error)
+        - addVote(vote *types.Vote, peerID p2p.ID) (bool, error)
+        - signVote(msgType types.SignedMsgType, hash []byte, header types.PartSetHeader) (*types.Vote, error)
+        - voteTime() time.Time
+        - signAddVote(msgType types.SignedMsgType, hash []byte, header types.PartSetHeader) *types.Vote
+
+        + ReplayFile(file string, console bool) error
+        + SetLogger(l log.Logger) 
+        + SetEventBus(b *types.EventBus) 
+        + String() string
+        + GetState() state.State
+        + GetLastHeight() int64
+        + GetRoundState() *types.RoundState
+        + GetRoundStateJSON() ([]byte, error)
+        + GetRoundStateSimpleJSON() ([]byte, error)
+        + GetValidators() (int64, []*types.Validator)
+        + SetPrivValidator(priv types.PrivValidator) 
+        + SetTimeoutTicker(timeoutTicker TimeoutTicker) 
+        + LoadCommit(height int64) *types.Commit
+        + OnStart() error
+        + OnStop() 
+        + Wait() 
+        + OpenWAL(walFile string) (WAL, error)
+        + AddVote(vote *types.Vote, peerID p2p.ID) (bool, error)
+        + SetProposal(proposal *types.Proposal, peerID p2p.ID) error
+        + AddProposalBlockPart(height int64, round int, part *types.Part, peerID p2p.ID) error
+        + SetProposalAndBlock(proposal *types.Proposal, block *types.Block, parts *types.PartSet, peerID p2p.ID) error
+
+    }
+    interface TimeoutTicker  {
+        + Start() error
+        + Stop() error
+        + Chan() <font color=blue>chan</font> timeoutInfo
+        + ScheduleTimeout(ti timeoutInfo) 
+        + SetLogger( log.Logger) 
+
+    }
+    class timeoutTicker << (S,Aquamarine) >> {
+        - timer *time.Timer
+        - tickChan <font color=blue>chan</font> timeoutInfo
+        - tockChan <font color=blue>chan</font> timeoutInfo
+
+        - stopTimer() 
+        - timeoutRoutine() 
+
+        + OnStart() error
+        + OnStop() 
+        + Chan() <font color=blue>chan</font> timeoutInfo
+        + ScheduleTimeout(ti timeoutInfo) 
+
+    }
+}
+"p2p.BaseReactor" *-- "consensus.Reactor"
+"service.BaseService" *-- "consensus.State"
+"service.BaseService" *-- "consensus.timeoutTicker"
+
+"consensus.TimeoutTicker" <|-- "consensus.timeoutTicker"
+
+"consensus.State" <.. "conS" "consensus.Reactor"
+"consensus.timeoutTicker" <.. "timeoutTicker" "consensus.State"
+
+namespace p2p {
+    class BaseReactor << (S,Aquamarine) >> {
+        + Switch *Switch
+
+        + SetSwitch(sw *Switch)
+        + GetChannels() []*conn.ChannelDescriptor
+        + AddPeer(peer Peer)
+        + RemovePeer(peer Peer, reason <font color=blue>interface</font>{})
+        + Receive(chID byte, peer Peer, msgBytes []byte)
+        + InitPeer(peer Peer) Peer
+
+    }
+    interface IPeerSet  {
+        + Has(key ID) bool
+        + HasIP(ip net.IP) bool
+        + Get(key ID) Peer
+        + List() []Peer
+        + Size() int
+
+    }
+    class MultiplexTransport << (S,Aquamarine) >> {
+        - netAddr NetAddress
+        - listener net.Listener
+        - maxIncomingConnections int
+        - acceptc <font color=blue>chan</font> accept
+        - closec <font color=blue>chan</font> <font color=blue>struct</font>{}
+        - conns ConnSet
+        - connFilters []ConnFilterFunc
+        - dialTimeout time.Duration
+        - filterTimeout time.Duration
+        - handshakeTimeout time.Duration
+        - nodeInfo NodeInfo
+        - nodeKey NodeKey
+        - resolver IPResolver
+        - mConfig conn.MConnConfig
+
+        - acceptPeers()
+        - cleanup(c net.Conn) error
+        - filterConn(c net.Conn) error
+        - upgrade(c net.Conn, dialedAddr *NetAddress) (....)
+        - wrapPeer(c net.Conn, ni NodeInfo, ....) Peer
+
+        + NetAddress() NetAddress
+        + Accept(cfg peerConfig) (Peer, error)
+        + Dial(addr NetAddress, cfg peerConfig) (Peer, error)
+        + Close() error
+        + Listen(addr NetAddress) error
+        + Cleanup(p Peer)
+
+    }
+    interface Peer  {
+        + FlushStop()
+        + ID() ID
+        + RemoteIP() net.IP
+        + RemoteAddr() net.Addr
+        + IsOutbound() bool
+        + IsPersistent() bool
+        + CloseConn() error
+        + NodeInfo() NodeInfo
+        + Status() conn.ConnectionStatus
+        + SocketAddr() *NetAddress
+        + Send( byte,  []byte) bool
+        + TrySend( byte,  []byte) bool
+        + Set( string,  <font color=blue>interface</font>{})
+        + Get( string) <font color=blue>interface</font>{}
+
+    }
+    class PeerSet << (S,Aquamarine) >> {
+        - mtx sync.Mutex
+        - lookup <font color=blue>map</font>[ID]*peerSetItem
+        - list []Peer
+
+        - hasIP(peerIP net.IP) bool
+
+        + Add(peer Peer) error
+        + Has(peerKey ID) bool
+        + HasIP(peerIP net.IP) bool
+        + Get(peerKey ID) Peer
+        + Remove(peer Peer) bool
+        + Size() int
+        + List() []Peer
+
+    }
+    interface Reactor  {
+        + SetSwitch( *Switch)
+        + GetChannels() []*conn.ChannelDescriptor
+        + InitPeer(peer Peer) Peer
+        + AddPeer(peer Peer)
+        + RemovePeer(peer Peer, reason <font color=blue>interface</font>{})
+        + Receive(chID byte, peer Peer, msgBytes []byte)
+
+    }
+    class Switch << (S,Aquamarine) >> {
+        - config *config.P2PConfig
+        - reactors <font color=blue>map</font>[string]Reactor
+        - chDescs []*conn.ChannelDescriptor
+        - reactorsByCh <font color=blue>map</font>[byte]Reactor
+        - peers *PeerSet
+        - dialing *cmap.CMap
+        - reconnecting *cmap.CMap
+        - nodeInfo NodeInfo
+        - nodeKey *NodeKey
+        - addrBook AddrBook
+        - persistentPeersAddrs []*NetAddress
+        - unconditionalPeerIDs <font color=blue>map</font>[ID]<font color=blue>struct</font>{}
+        - transport Transport
+        - filterTimeout time.Duration
+        - peerFilters []PeerFilterFunc
+        - rng *rand.Rand
+        - metrics *Metrics
+
+        - stopAndRemovePeer(peer Peer, reason <font color=blue>interface</font>{})
+        - reconnectToPeer(addr *NetAddress)
+        - dialPeersAsync(netAddrs []*NetAddress)
+        - randomSleep(interval time.Duration)
+        - acceptRoutine()
+        - addOutboundPeerWithConfig(addr *NetAddress, cfg *config.P2PConfig) error
+        - filterPeer(p Peer) error
+        - addPeer(p Peer) error
+        - addPeerWithConnection(conn net.Conn) error
+
+        + NetAddress() *NetAddress
+        + AddReactor(name string, reactor Reactor) Reactor
+        + RemoveReactor(name string, reactor Reactor)
+        + Reactors() <font color=blue>map</font>[string]Reactor
+        + Reactor(name string) Reactor
+        + SetNodeInfo(nodeInfo NodeInfo)
+        + NodeInfo() NodeInfo
+        + SetNodeKey(nodeKey *NodeKey)
+        + OnStart() error
+        + OnStop()
+        + Broadcast(chID byte, msgBytes []byte) <font color=blue>chan</font> bool
+        + NumPeers() int
+        + IsPeerUnconditional(id ID) bool
+        + MaxNumOutboundPeers() int
+        + Peers() IPeerSet
+        + StopPeerForError(peer Peer, reason <font color=blue>interface</font>{})
+        + StopPeerGracefully(peer Peer)
+        + SetAddrBook(addrBook AddrBook)
+        + MarkPeerAsGood(peer Peer)
+        + DialPeersAsync(peers []string) error
+        + DialPeerWithAddress(addr *NetAddress) error
+        + IsDialingOrExistingAddress(addr *NetAddress) bool
+        + AddPersistentPeers(addrs []string) error
+        + AddUnconditionalPeerIDs(ids []string) error
+        + IsPeerPersistent(na *NetAddress) bool
+
+    }
+    interface Transport  {
+        + NetAddress() NetAddress
+        + Accept( peerConfig) (Peer, error)
+        + Dial( NetAddress,  peerConfig) (Peer, error)
+        + Cleanup( Peer)
+
+    }
+    class peer << (S,Aquamarine) >> {
+        - mconn *conn.MConnection
+        - nodeInfo NodeInfo
+        - channels []byte
+        - metrics *Metrics
+        - metricsTicker *time.Ticker
+
+        + Data *cmap.CMap
+
+        - hasChannel(chID byte) bool
+        - metricsReporter()
+
+        + String() string
+        + SetLogger(l log.Logger)
+        + OnStart() error
+        + FlushStop()
+        + OnStop()
+        + ID() ID
+        + IsOutbound() bool
+        + IsPersistent() bool
+        + NodeInfo() NodeInfo
+        + SocketAddr() *NetAddress
+        + Status() conn.ConnectionStatus
+        + Send(chID byte, msgBytes []byte) bool
+        + TrySend(chID byte, msgBytes []byte) bool
+        + Get(key string) <font color=blue>interface</font>{}
+        + Set(key string, data <font color=blue>interface</font>{})
+        + CloseConn() error
+        + RemoteAddr() net.Addr
+        + CanSend(chID byte) bool
+
+    }
+    class peerConn << (S,Aquamarine) >> {
+        - outbound bool
+        - persistent bool
+        - conn net.Conn
+        - socketAddr *NetAddress
+        - ip net.IP
+
+        + ID() ID
+        + RemoteIP() net.IP
+        + CloseConn()
+
+    }
+    interface transportLifecycle  {
+        + Close() error
+        + Listen( NetAddress) error
+
+    }
+}
+
+namespace pex {
+    interface AddrBook  {
+        + AddOurAddress( *p2p.NetAddress) 
+        + OurAddress( *p2p.NetAddress) bool
+        + AddPrivateIDs( []string) 
+        + AddAddress(addr *p2p.NetAddress, src *p2p.NetAddress) error
+        + RemoveAddress( *p2p.NetAddress) 
+        + HasAddress( *p2p.NetAddress) bool
+        + NeedMoreAddrs() bool
+        + Empty() bool
+        + PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress
+        + MarkGood( p2p.ID) 
+        + MarkAttempt( *p2p.NetAddress) 
+        + MarkBad( *p2p.NetAddress) 
+        + IsGood( *p2p.NetAddress) bool
+        + GetSelection() []*p2p.NetAddress
+        + GetSelectionWithBias(biasTowardsNewAddrs int) []*p2p.NetAddress
+        + Size() int
+        + Save() 
+
+    }
+    class Reactor << (S,Aquamarine) >> {
+        - book AddrBook
+        - config *ReactorConfig
+        - ensurePeersPeriod time.Duration
+        - requestsSent *cmap.CMap
+        - lastReceivedRequests *cmap.CMap
+        - seedAddrs []*p2p.NetAddress
+        - attemptsToDial sync.Map
+        - crawlPeerInfos <font color=blue>map</font>[p2p.ID]crawlPeerInfo
+
+        - minReceiveRequestInterval() time.Duration
+        - logErrAddrBook(err error) 
+        - receiveRequest(src Peer) error
+        - ensurePeersRoutine() 
+        - ensurePeers() 
+        - dialAttemptsInfo(addr *p2p.NetAddress) (int, time.Time)
+        - dialPeer(addr *p2p.NetAddress) error
+        - maxBackoffDurationForPeer(addr *p2p.NetAddress, planned time.Duration) time.Duration
+        - checkSeeds() (int, []*p2p.NetAddress, error)
+        - dialSeeds() 
+        - crawlPeersRoutine() 
+        - nodeHasSomePeersOrDialingAny() bool
+        - crawlPeers(addrs []*p2p.NetAddress) 
+        - cleanupCrawlPeerInfos() 
+        - attemptDisconnects() 
+
+        + OnStart() error
+        + OnStop() 
+        + GetChannels() []*conn.ChannelDescriptor
+        + AddPeer(p Peer) 
+        + RemovePeer(p Peer, reason <font color=blue>interface</font>{}) 
+        + Receive(chID byte, src Peer, msgBytes []byte) 
+        + RequestAddrs(p Peer) 
+        + ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error
+        + SendAddrs(p Peer, netAddrs []*p2p.NetAddress) 
+        + SetEnsurePeersPeriod(d time.Duration) 
+        + AttemptsToDial(addr *p2p.NetAddress) int
+
+    }
+    class addrBook << (S,Aquamarine) >> {
+        - mtx sync.Mutex
+        - rand *rand.Rand
+        - ourAddrs <font color=blue>map</font>[string]<font color=blue>struct</font>{}
+        - privateIDs <font color=blue>map</font>[p2p.ID]<font color=blue>struct</font>{}
+        - addrLookup <font color=blue>map</font>[p2p.ID]*knownAddress
+        - bucketsOld []<font color=blue>map</font>[string]*knownAddress
+        - bucketsNew []<font color=blue>map</font>[string]*knownAddress
+        - nOld int
+        - nNew int
+        - filePath string
+        - key string
+        - routabilityStrict bool
+        - wg sync.WaitGroup
+
+        - init() 
+        - size() int
+        - saveRoutine() 
+        - getBucket(bucketType byte, bucketIdx int) <font color=blue>map</font>[string]*knownAddress
+        - addToNewBucket(ka *knownAddress, bucketIdx int) 
+        - addToOldBucket(ka *knownAddress, bucketIdx int) bool
+        - removeFromBucket(ka *knownAddress, bucketType byte, bucketIdx int) 
+        - removeFromAllBuckets(ka *knownAddress) 
+        - pickOldest(bucketType byte, bucketIdx int) *knownAddress
+        - addAddress(addr *p2p.NetAddress, src *p2p.NetAddress) error
+        - randomPickAddresses(bucketType byte, num int) []*p2p.NetAddress
+        - expireNew(bucketIdx int) 
+        - moveToOld(ka *knownAddress) 
+        - calcNewBucket(addr *p2p.NetAddress, src *p2p.NetAddress) int
+        - calcOldBucket(addr *p2p.NetAddress) int
+        - groupKey(na *p2p.NetAddress) string
+        - saveToFile(filePath string) 
+        - loadFromFile(filePath string) bool
+
+        + OnStart() error
+        + OnStop() 
+        + Wait() 
+        + FilePath() string
+        + AddOurAddress(addr *p2p.NetAddress) 
+        + OurAddress(addr *p2p.NetAddress) bool
+        + AddPrivateIDs(ids []string) 
+        + AddAddress(addr *p2p.NetAddress, src *p2p.NetAddress) error
+        + RemoveAddress(addr *p2p.NetAddress) 
+        + IsGood(addr *p2p.NetAddress) bool
+        + HasAddress(addr *p2p.NetAddress) bool
+        + NeedMoreAddrs() bool
+        + Empty() bool
+        + PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress
+        + MarkGood(id p2p.ID) 
+        + MarkAttempt(addr *p2p.NetAddress) 
+        + MarkBad(addr *p2p.NetAddress) 
+        + GetSelection() []*p2p.NetAddress
+        + GetSelectionWithBias(biasTowardsNewAddrs int) []*p2p.NetAddress
+        + Size() int
+        + Save() 
+
+    }
+}
+
+
+"p2p.BaseReactor" *-- "pex.Reactor"
+"service.BaseService" *-- "pex.addrBook"
+
+"pex.AddrBook" <|-- "pex.addrBook"
+"pex.addrBook" <.. "book" "pex.Reactor"
+
+namespace service {
+    class BaseService << (S,Aquamarine) >> {
+        - name string
+        - started uint32
+        - stopped uint32
+        - quit <font color=blue>chan</font> <font color=blue>struct</font>{}
+        - impl Service
+
+        + Logger log.Logger
+
+        + SetLogger(l log.Logger)
+        + Start() error
+        + OnStart() error
+        + Stop() error
+        + OnStop()
+        + Reset() error
+        + OnReset() error
+        + IsRunning() bool
+        + Wait()
+        + String() string
+        + Quit() <font color=blue>chan</font> <font color=blue>struct</font>{}
+
+    }
+    interface Service  {
+        + Start() error
+        + OnStart() error
+        + Stop() error
+        + OnStop()
+        + Reset() error
+        + OnReset() error
+        + IsRunning() bool
+        + Quit() <font color=blue>chan</font> <font color=blue>struct</font>{}
+        + String() string
+        + SetLogger( log.Logger)
+
+    }
+}
+
+"service.Service" <|-- "service.BaseService"
+"service.BaseService" *-- "p2p.BaseReactor"
+"p2p.Reactor" <|- "p2p.BaseReactor"
+
+"p2p.peerConn" *-- "p2p.peer"
+"service.BaseService" *-- "p2p.peer"
+
+
+"p2p.Transport" <|-- "p2p.MultiplexTransport"
+"p2p.transportLifecycle" <|-- "p2p.MultiplexTransport"
+"p2p.IPeerSet" <|-- "p2p.PeerSet"
+
+"p2p.Peer" <|-- "p2p.peer"
+
+"service.BaseService" *-- "p2p.Switch"
+"p2p.BaseReactor" <.down. "reactors" "p2p.Switch"
+"p2p.PeerSet" <.. "peers" "p2p.Switch"
+"p2p.MultiplexTransport" <. "transport" "p2p.Switch"
+
+ "p2p.Switch" <.. "Switch" "p2p.BaseReactor"
+
+"p2p.peer" <.. "list" "p2p.PeerSet"
+
+hide methods
+hide members
+@enduml
