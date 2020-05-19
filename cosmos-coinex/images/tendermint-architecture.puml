@@ -695,6 +695,91 @@ namespace service {
 
 "p2p.peer" <.. "list" "p2p.PeerSet"
 
+namespace blockchain {
+    class BlockPool << (S,Aquamarine) >> {
+        - startTime time.Time
+        - mtx sync.Mutex
+        - requesters <font color=blue>map</font>[int64]*bpRequester
+        - height int64
+        - peers <font color=blue>map</font>[p2p.ID]*bpPeer
+        - maxPeerHeight int64
+        - numPending int32
+        - requestsCh <font color=blue>chan</font> BlockRequest
+        - errorsCh <font color=blue>chan</font> peerError
+
+        - makeRequestersRoutine()
+        - removeTimedoutPeers()
+        - removePeer(peerID p2p.ID)
+        - updateMaxPeerHeight()
+        - pickIncrAvailablePeer(minHeight int64) *bpPeer
+        - makeNextRequester()
+        - requestersLen() int64
+        - sendRequest(height int64, peerID p2p.ID)
+        - sendError(err error, peerID p2p.ID)
+        - debug() string
+
+        + OnStart() error
+        + GetStatus() (int64, int32, int)
+        + IsCaughtUp() bool
+        + PeekTwoBlocks() (*types.Block, *types.Block)
+        + PopRequest()
+        + RedoRequest(height int64) p2p.ID
+        + AddBlock(peerID p2p.ID, block *types.Block, blockSize int)
+        + MaxPeerHeight() int64
+        + SetPeerHeight(peerID p2p.ID, height int64)
+        + RemovePeer(peerID p2p.ID)
+
+    }
+    class BlockchainReactor << (S,Aquamarine) >> {
+        - initialState state.State
+        - blockExec *state.BlockExecutor
+        - store *store.BlockStore
+        - pool *BlockPool
+        - fastSync bool
+        - requestsCh <font color=blue>chan</font> BlockRequest
+        - errorsCh <font color=blue>chan</font> peerError
+
+        - respondToPeer(msg *bcBlockRequestMessage, src p2p.Peer) bool
+        - poolRoutine()
+
+        + SetLogger(l log.Logger)
+        + OnStart() error
+        + OnStop()
+        + GetChannels() []*p2p.ChannelDescriptor
+        + AddPeer(peer p2p.Peer)
+        + RemovePeer(peer p2p.Peer, reason <font color=blue>interface</font>{})
+        + Receive(chID byte, src p2p.Peer, msgBytes []byte)
+        + BroadcastStatusRequest() error
+
+    }
+        class bpRequester << (S,Aquamarine) >> {
+        - pool *BlockPool
+        - height int64
+        - gotBlockCh <font color=blue>chan</font> <font color=blue>struct</font>{}
+        - redoCh <font color=blue>chan</font> p2p.ID
+        - mtx sync.Mutex
+        - peerID p2p.ID
+        - block *types.Block
+
+        - setBlock(block *types.Block, peerID p2p.ID) bool
+        - getBlock() *types.Block
+        - getPeerID() p2p.ID
+        - reset()
+        - redo(peerID p2p.ID)
+        - requestRoutine()
+
+        + OnStart() error
+
+    }
+}
+"service.BaseService" *-- "blockchain.BlockPool"
+"p2p.BaseReactor" *-- "blockchain.BlockchainReactor"
+"service.BaseService" *-- "blockchain.bpRequester"
+
+"blockchain.BlockPool" <..  "pool" "blockchain.BlockchainReactor"
+"blockchain.bpRequester" <.. "requesters" "blockchain.BlockPool"
+
+
 hide methods
 hide members
 @enduml
