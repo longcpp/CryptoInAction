@@ -1,0 +1,150 @@
+@startuml
+
+namespace p2p{
+    interface Peer  {
+        + FlushStop() 
+        + ID() ID
+        + RemoteIP() net.IP
+        + RemoteAddr() net.Addr
+        + IsOutbound() bool
+        + IsPersistent() bool
+        + CloseConn() error
+        + NodeInfo() NodeInfo
+        + Status() conn.ConnectionStatus
+        + SocketAddr() *NetAddress
+        + Send( byte,  []byte) bool
+        + TrySend( byte,  []byte) bool
+        + Set( string,  <font color=blue>interface</font>{}) 
+        + Get( string) <font color=blue>interface</font>{}
+
+    }
+    interface IPeerSet  {
+        + Has(key ID) bool
+        + HasIP(ip net.IP) bool
+        + Get(key ID) Peer
+        + List() []Peer
+        + Size() int
+
+    }
+
+    class PeerSet << (S,Aquamarine) >> {
+        - mtx sync.Mutex
+        - lookup <font color=blue>map</font>[ID]*peerSetItem
+        - list []Peer
+
+    }
+
+    interface Transport  {
+        + NetAddress() NetAddress
+        + Accept( peerConfig) (Peer, error)
+        + Dial( NetAddress,  peerConfig) (Peer, error)
+        + Cleanup( Peer)
+
+    }
+    class peer << (S,Aquamarine) >> {
+        - mconn *conn.MConnection
+        - nodeInfo NodeInfo
+        - channels []byte
+        - metrics *Metrics
+        - metricsTicker *time.Ticker
+
+        + Data *cmap.CMap
+
+    }
+    class peerConn << (S,Aquamarine) >> {
+        - outbound bool
+        - persistent bool
+        - conn net.Conn
+        - socketAddr *NetAddress
+        - ip net.IP
+
+    }
+    interface transportLifecycle  {
+        + Close() error
+        + Listen( NetAddress) error
+
+    }
+    interface ConnSet  {
+        + Has( net.Conn) bool
+        + HasIP( net.IP) bool
+        + Set( net.Conn,  []net.IP) 
+        + Remove( net.Conn) 
+        + RemoveAddr( net.Addr) 
+
+    }
+    class connSet << (S,Aquamarine) >> {
+        - conns <font color=blue>map</font>[string]connSetItem
+    }
+    class connSetItem << (S,Aquamarine) >> {
+        - conn net.Conn
+        - ips []net.IP
+
+    }
+
+}
+
+namespace conn {
+    class Channel << (S,Aquamarine) >> {
+        - conn *MConnection
+        - desc ChannelDescriptor
+        - sendQueue <font color=blue>chan</font> []byte
+        - sendQueueSize int32
+        - recving []byte
+        - sending []byte
+        - recentlySent int64
+        - maxPacketMsgPayloadSize int
+
+        + Logger log.Logger
+
+    }
+    class ChannelDescriptor << (S,Aquamarine) >> {
+
+    }
+    class MConnection << (S,Aquamarine) >> {
+        - conn net.Conn
+        - bufConnReader *bufio.Reader
+        - bufConnWriter *bufio.Writer
+        - sendMonitor *flowrate.Monitor
+        - recvMonitor *flowrate.Monitor
+        - send <font color=blue>chan</font> <font color=blue>struct</font>{}
+        - pong <font color=blue>chan</font> <font color=blue>struct</font>{}
+        - channels []*Channel
+        - channelsIdx <font color=blue>map</font>[byte]*Channel
+        - onReceive receiveCbFunc
+        - ....
+
+        + _maxPacketMsgSize int
+
+    }
+}
+"conn.MConnection" <.down. "mconn" "p2p.peer"
+"conn.Channel" <.down. "channels" "conn.MConnection"
+"conn.ChannelDescriptor" <.down. "desc" "conn.Channel"
+
+"net.Conn" <.. "conn"  "conn.MConnection"
+"net.Conn" <.. "conn" "conn.Channel"
+"net.Conn" <. "conn" "p2p.connSetItem"
+"net.Conn" <. "conn" "p2p.peerConn"
+
+"p2p.connSetItem" <.. "conn" "p2p.connSet"
+"p2p.connSet" <.. "conns" "p2p.MultiplexTransport"
+"p2p.ConnSet" <|-- "p2p.connSet"
+
+
+"p2p.peerConn" *-- "p2p.peer"
+
+"p2p.Transport" <|-up- "p2p.MultiplexTransport"
+"p2p.transportLifecycle" <|-up- "p2p.MultiplexTransport"
+"p2p.IPeerSet" <|-- "p2p.PeerSet"
+
+"p2p.Peer" <|-- "p2p.peer"
+
+"p2p.BaseReactor" <. "reactors" "p2p.Switch"
+"p2p.PeerSet" <.. "peers" "p2p.Switch"
+"p2p.MultiplexTransport" <. "transport" "p2p.Switch"
+
+"p2p.Switch" <. "Switch" "p2p.BaseReactor"
+
+"p2p.peer" <.. "list" "p2p.PeerSet"
+
+@enduml

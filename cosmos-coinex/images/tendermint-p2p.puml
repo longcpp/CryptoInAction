@@ -3,13 +3,6 @@ namespace p2p {
     class BaseReactor << (S,Aquamarine) >> {
         + Switch *Switch
 
-        + SetSwitch(sw *Switch) 
-        + GetChannels() []*conn.ChannelDescriptor
-        + AddPeer(peer Peer) 
-        + RemovePeer(peer Peer, reason <font color=blue>interface</font>{}) 
-        + Receive(chID byte, peer Peer, msgBytes []byte) 
-        + InitPeer(peer Peer) Peer
-
     }
     interface IPeerSet  {
         + Has(key ID) bool
@@ -34,20 +27,7 @@ namespace p2p {
         - nodeKey NodeKey
         - resolver IPResolver
         - mConfig conn.MConnConfig
-
-        - acceptPeers() 
-        - cleanup(c net.Conn) error
-        - filterConn(c net.Conn) error
-        - upgrade(c net.Conn, dialedAddr *NetAddress) (....)
-        - wrapPeer(c net.Conn, ni NodeInfo, ....) Peer
-
-        + NetAddress() NetAddress
-        + Accept(cfg peerConfig) (Peer, error)
-        + Dial(addr NetAddress, cfg peerConfig) (Peer, error)
-        + Close() error
-        + Listen(addr NetAddress) error
-        + Cleanup(p Peer) 
-
+ 
     }
     interface Peer  {
         + FlushStop() 
@@ -72,14 +52,6 @@ namespace p2p {
         - list []Peer
 
         - hasIP(peerIP net.IP) bool
-
-        + Add(peer Peer) error
-        + Has(peerKey ID) bool
-        + HasIP(peerIP net.IP) bool
-        + Get(peerKey ID) Peer
-        + Remove(peer Peer) bool
-        + Size() int
-        + List() []Peer
 
     }
     interface Reactor  {
@@ -110,42 +82,6 @@ namespace p2p {
         - rng *rand.Rand
         - metrics *Metrics
 
-        - stopAndRemovePeer(peer Peer, reason <font color=blue>interface</font>{}) 
-        - reconnectToPeer(addr *NetAddress) 
-        - dialPeersAsync(netAddrs []*NetAddress) 
-        - randomSleep(interval time.Duration) 
-        - acceptRoutine() 
-        - addOutboundPeerWithConfig(addr *NetAddress, cfg *config.P2PConfig) error
-        - filterPeer(p Peer) error
-        - addPeer(p Peer) error
-        - addPeerWithConnection(conn net.Conn) error
-
-        + NetAddress() *NetAddress
-        + AddReactor(name string, reactor Reactor) Reactor
-        + RemoveReactor(name string, reactor Reactor) 
-        + Reactors() <font color=blue>map</font>[string]Reactor
-        + Reactor(name string) Reactor
-        + SetNodeInfo(nodeInfo NodeInfo) 
-        + NodeInfo() NodeInfo
-        + SetNodeKey(nodeKey *NodeKey) 
-        + OnStart() error
-        + OnStop() 
-        + Broadcast(chID byte, msgBytes []byte) <font color=blue>chan</font> bool
-        + NumPeers() int
-        + IsPeerUnconditional(id ID) bool
-        + MaxNumOutboundPeers() int
-        + Peers() IPeerSet
-        + StopPeerForError(peer Peer, reason <font color=blue>interface</font>{}) 
-        + StopPeerGracefully(peer Peer) 
-        + SetAddrBook(addrBook AddrBook) 
-        + MarkPeerAsGood(peer Peer) 
-        + DialPeersAsync(peers []string) error
-        + DialPeerWithAddress(addr *NetAddress) error
-        + IsDialingOrExistingAddress(addr *NetAddress) bool
-        + AddPersistentPeers(addrs []string) error
-        + AddUnconditionalPeerIDs(ids []string) error
-        + IsPeerPersistent(na *NetAddress) bool
-
     }
     interface Transport  {
         + NetAddress() NetAddress
@@ -162,28 +98,6 @@ namespace p2p {
         - metricsTicker *time.Ticker
 
         + Data *cmap.CMap
-
-        - hasChannel(chID byte) bool
-        - metricsReporter() 
-
-        + String() string
-        + SetLogger(l log.Logger) 
-        + OnStart() error
-        + FlushStop() 
-        + OnStop() 
-        + ID() ID
-        + IsOutbound() bool
-        + IsPersistent() bool
-        + NodeInfo() NodeInfo
-        + SocketAddr() *NetAddress
-        + Status() conn.ConnectionStatus
-        + Send(chID byte, msgBytes []byte) bool
-        + TrySend(chID byte, msgBytes []byte) bool
-        + Get(key string) <font color=blue>interface</font>{}
-        + Set(key string, data <font color=blue>interface</font>{}) 
-        + CloseConn() error
-        + RemoteAddr() net.Addr
-        + CanSend(chID byte) bool
 
     }
     class peerConn << (S,Aquamarine) >> {
@@ -214,19 +128,7 @@ namespace service {
         - impl Service
 
         + Logger log.Logger
-
-        + SetLogger(l log.Logger) 
-        + Start() error
-        + OnStart() error
-        + Stop() error
-        + OnStop() 
-        + Reset() error
-        + OnReset() error
-        + IsRunning() bool
-        + Wait() 
-        + String() string
-        + Quit() <font color=blue>chan</font> <font color=blue>struct</font>{}
-
+        
     }
     interface Service  {
         + Start() error
@@ -259,13 +161,12 @@ namespace service {
 "p2p.Peer" <|-- "p2p.peer"
 
 "service.BaseService" *-up- "p2p.Switch"
-"p2p.BaseReactor" <-down- "reactors" "p2p.Switch"
-"p2p.PeerSet" <-right "peers" "p2p.Switch"
-"p2p.MultiplexTransport" <-left "transport" "p2p.Switch"
- "p2p.Switch" <-- "Switch" "p2p.BaseReactor"
+"p2p.BaseReactor" <.down. "reactors" "p2p.Switch"
+"p2p.PeerSet" <.right "peers" "p2p.Switch"
+"p2p.MultiplexTransport" <.left "transport" "p2p.Switch"
+ "p2p.Switch" <.. "Switch" "p2p.BaseReactor"
 
-"p2p.peer" <-right "list" "p2p.PeerSet"
+"p2p.peer" <.right "list" "p2p.PeerSet"
 
 
-"p2p.P"
 @enduml
