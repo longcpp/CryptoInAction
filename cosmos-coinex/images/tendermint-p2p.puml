@@ -155,7 +155,7 @@ namespace service {
 
 
 "p2p.Transport" <|-- "p2p.MultiplexTransport"
-"p2p.transportLifecycle" <|-- "p2p.MultiplexTransport"
+"p2p.transportLifecycle" <|-up- "p2p.MultiplexTransport"
 "p2p.IPeerSet" <|-- "p2p.PeerSet"
 
 "p2p.Peer" <|-- "p2p.peer"
