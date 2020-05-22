@@ -1,0 +1,43 @@
+@startuml
+
+Service -> Node: OnStart
+
+activate Node
+	Node -> MultiplexTransport: Listen
+	Node -> Switch: Start
+	activate Switch
+		Switch -> Reactor: Start
+		Switch -> Switch: acceptRoutine
+	deactivate Switch
+	Node -> Switch: DialPeersAsync
+	Switch -> MultiplexTransport: Dial
+
+	activate MultiplexTransport
+		MultiplexTransport -> MultiplexTransport: fileterConn
+		MultiplexTransport -> MultiplexTransport: upgrade
+		MultiplexTransport -> MultiplexTransport: wrapPeer
+
+		activate MultiplexTransport	
+			MultiplexTransport -> MultiplexTransport: newPeer
+			activate MultiplexTransport	
+				MultiplexTransport -> MultiplexTransport: createMConnection
+			deactivate MultiplexTransport	
+		deactivate MultiplexTransport
+	
+		MultiplexTransport -> Switch: addPeer
+
+			activate Switch
+				Switch -> Switch: filterPeer
+	
+				Switch -> Reactor: InitPeer
+				Switch -> peer: Start
+				Switch -> PeerSet: Add
+				Switch -> Reactor: AddPeer
+				Switch --> MultiplexTransport: return
+				deactivate Switch
+		MultiplexTransport --> Node: return
+	deactivate MultiplexTransport
+Node --> Service: return
+deactivate Node
+
+@enduml

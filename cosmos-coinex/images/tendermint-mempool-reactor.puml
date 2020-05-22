@@ -1,0 +1,50 @@
+@startuml
+
+Service -> MConnection: Start
+activate MConnection
+	MConnection -> MConnection: OnStart
+	MConnection -> MConnection: go sendRoutine
+	MConnection -> MConnection: go recvRoutine
+	activate MConnection
+		MConnection -> Channel: recvPacketMsg
+		Channel --> MConnection: "complete msg"
+	deactivate MConnection
+	MConnection -> Reactor: onReceive "call" Receive
+deactivate MConnection
+
+activate Reactor
+	Reactor -> Mempool: CheckTx
+deactivate Reactor
+
+activate Mempool
+	Mempool -> Mempool: preCheck
+	Mempool -> AppConnMempool: CheckTxAsync
+	activate AppConnMempool
+		AppConnMempool --> Mempool: return resReq
+	deactivate AppConnMempool
+	Mempool -> ReqRes: SetCallabck(reqResCb{..})
+deactivate Mempool
+
+activate ReqRes
+	ReqRes -> Mempool: reqResCb
+deactivate ReqRes
+
+activate Mempool
+	activate Mempool
+		Mempool -> Mempool: resCbFirstTime
+		activate Mempool
+			Mempool -> Mempool: postCheck
+			Mempool -> Mempool: addTx
+			activate Mempool
+				Mempool -> Mempool: PushBack
+				activate Mempool
+					Mempool -> Mempool: close(l.waitCh) 
+				deactivate Mempool
+			deactivate Mempool
+		deactivate Mempool
+	deactivate Mempool
+deactivate Mempool
+
+Mempool --> broadcastTxRoutine: "trigger"
+broadcastTxRoutine -> Peer: Send
+@enduml
