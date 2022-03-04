@@ -218,7 +218,7 @@ pub struct TestConstraintSystem<E: ScalarEngine> {
 }
 ```
 
-为了在算术电路中支持常量运算, 公开输入的第一个变量总是设置为**1**(在zksnark中为双线性对有好的椭圆曲线的底层素数域上的乘法单位元), `TestConstraintSystem`的`new`方法实现中也体现了这一点. 哈希表中存入的键值对为` "ONE".into(),NamedObject::Var(TestConstraintSystem::<E>::one())`, 同时会在公开输入`inputs`中分配元素`(E::Fr::one(), "ONE".into())`. 这一点对于`verify(&self, expected: &[E::Fr]) -> bool`方法的实现也有影响, 关注其实现内部第一行`assert_eq!(expected.len() + 1, self.inputs.len());`, 该函数用于验证公开输入的值与预期的`expected`相同.
+为了在算术电路中支持常量运算, 公开输入的第一个变量总是设置为**1**(在zksnark中为双线性对友好的椭圆曲线的底层素数域上的乘法单位元), `TestConstraintSystem`的`new`方法实现中也体现了这一点. 哈希表中存入的键值对为` "ONE".into(),NamedObject::Var(TestConstraintSystem::<E>::one())`, 同时会在公开输入`inputs`中分配元素`(E::Fr::one(), "ONE".into())`. 这一点对于`verify(&self, expected: &[E::Fr]) -> bool`方法的实现也有影响, 关注其实现内部第一行`assert_eq!(expected.len() + 1, self.inputs.len());`, 该函数用于验证公开输入的值与预期的`expected`相同.
 
 ```rust
 pub fn new() -> TestConstraintSystem<E> {
