@@ -1,4 +1,4 @@
-#bellman中SHA256算术电路的构建
+# bellman中SHA256算术电路的构建
 
 longcpp @ 20200416
 
@@ -120,7 +120,7 @@ pub enum Index {
 pub struct LinearCombination<E: ScalarEngine>(Vec<(Variable, E::Fr)>);
 ```
 
-对一组变量的约束可以表示为这些变量的线性组合用`LinearCombination`表示, 其中每个元素为变量和对应的系数`(Variable, E::Fr)`, `E::Fr`表示双线性对友好的椭圆曲线点群的标量域, 通过`LinearCombination`的方法`Add`和`Sub`等可以继续添加或者删除相应的约束. 前述所有的类型定义,都是为了支撑`trait ConstraintSystem`的定义, 通过`alloc`方法可以在该约束系统内部分配一个私有变量, 而通过`alloc_input`则可以在该约束系统内部分配一个公开变量. 这两个方法的输入参数相同, 都包含一个满足`FnOnce() -> Into<String>`的标记`annotation`闭包以及一个满足`FnOnce() -> Result<E::Fr, SynthesisError>`的闭包`f`, `annotation`可以解释要分配的变量, 测试时借助该标记可以理解约束系统内部实际发生的动作, 而`f`则用于对分配的变量赋值.`LinearCombination`只是囊括了一些`Variable`以及相应的系数, 真正的约束条件是通过`enforce`方法在3个`LinearCombination之间的添加代数约束构建的. 
+对一组变量的约束可以表示为这些变量的线性组合用`LinearCombination`表示, 其中每个元素为变量和对应的系数`(Variable, E::Fr)`, `E::Fr`表示双线性对友好的椭圆曲线点群的标量域, 通过`LinearCombination`的方法`Add`和`Sub`等可以继续添加或者删除相应的约束. 前述所有的类型定义,都是为了支撑`trait ConstraintSystem`的定义, 通过`alloc`方法可以在该约束系统内部分配一个私有变量, 而通过`alloc_input`则可以在该约束系统内部分配一个公开变量. 这两个方法的输入参数相同, 都包含一个满足`FnOnce() -> Into<String>`的标记`annotation`闭包以及一个满足`FnOnce() -> Result<E::Fr, SynthesisError>`的闭包`f`, `annotation`可以解释要分配的变量, 测试时借助该标记可以理解约束系统内部实际发生的动作, 而`f`则用于对分配的变量赋值.`LinearCombination`只是囊括了一些`Variable`以及相应的系数, 真正的约束条件是通过`enforce`方法在3个`LinearCombination`之间的添加代数约束构建的. 
 
 ```rust
 /// Represents a constraint system which can have new variables
@@ -191,7 +191,7 @@ pub trait ConstraintSystem<E: ScalarEngine>: Sized {
 pub struct Namespace<'a, E: ScalarEngine, CS: ConstraintSystem<E>>(&'a mut CS, PhantomData<E>);
 ```
 
-在bellman的`gadgets/tests/mod.rs`和`groth16/generator.rs`中分别为测试和groth16的相应结构体实现了`trait ConstraintSystem`. 本文中仅关注`gadgets/tests/mod.rs`中为`struct TestConstraintSystem`实现的`trait ConstraintSystem`.`struct TestConstraintSystem`在bellman中服务于测试的目的, 后续在梳理SHA256的算术电路构造时,也会依赖该结构体输出约束系统的内部信息帮助理解算术电路的构造过程. 结构体中, 哈比表`named_objects: HashMap<String, NamedObject>`会记录对应类型的`annotation`或者是`ConstraintSystem`的`Namespace`, 而`current_namespace: Vec<String>`则保持了当前的`namespace`,注意`Namespace`可以嵌套. `constraints`中则保存了线性组合A,B,C的信息, 而`inputs`和`aux`则分别用于保存公开输入和私有输入.
+在bellman的`gadgets/tests/mod.rs`和`groth16/generator.rs`中分别为测试和groth16的相应结构体实现了`trait ConstraintSystem`. 本文中仅关注`gadgets/tests/mod.rs`中为`struct TestConstraintSystem`实现的`trait ConstraintSystem`.`struct TestConstraintSystem`在bellman中服务于测试的目的, 后续在梳理SHA256的算术电路构造时,也会依赖该结构体输出约束系统的内部信息帮助理解算术电路的构造过程. 结构体中, 哈希表`named_objects: HashMap<String, NamedObject>`会记录对应类型的`annotation`或者是`ConstraintSystem`的`Namespace`, 而`current_namespace: Vec<String>`则保持了当前的`namespace`,注意`Namespace`可以嵌套. `constraints`中则保存了线性组合A,B,C的信息, 而`inputs`和`aux`则分别用于保存公开输入和私有输入.
 
 枚举类型`NamedObject`表示对应
 
@@ -1081,7 +1081,7 @@ where
 }
 ```
 
-为帮助理解,将`sha256_maj的分支逻辑组织成如下的结构图:
+为帮助理解,将`sha256_maj`的分支逻辑组织成如下的结构图:
 
 ![](./images/sha256_maj.png)
 
@@ -1255,7 +1255,7 @@ xor/xor of bit 30/xor constraint: (2^1 . `a_bit/allocated bit 30/boolean`) * (`b
 xor/xor of bit 31/xor constraint: (2^1 . `a_bit/allocated bit 31/boolean`) * (`b_bit/allocated bit 31/boolean`) = (`a_bit/allocated bit 31/boolean` + `b_bit/allocated bit 31/boolean` - `xor/xor of bit 31/xor result`)
 ```
 
-接下来考虑SHA256运算中所需的32位无符号整数的模加运算, 例如` w[i] := w[i-16] + s0 + w[i-7] + s1`以及`e = d + t1`, 也即2个或者多个32位无符号整数的模加. 因此bellman中为`UInt32`类型实现了`addmany`方法,用来处理2个或者多个32为无符号整数模加的算术电路构造. 对于模n的加法运算,有性质`(x+y mod n) + z mod n = (x + y + z) mod n`, 也即在处理多个模加运算时,可以先一起求和并在最后进行模运算. 基于此,可以理解`addmany`方法的实现.
+接下来考虑SHA256运算中所需的32位无符号整数的模加运算, 例如` w[i] := w[i-16] + s0 + w[i-7] + s1`以及`e = d + t1`, 也即2个或者多个32位无符号整数的模加. 因此bellman中为`UInt32`类型实现了`addmany`方法,用来处理2个或者多个32位无符号整数模加的算术电路构造. 对于模n的加法运算,有性质`(x+y mod n) + z mod n = (x + y + z) mod n`, 也即在处理多个模加运算时,可以先一起求和并在最后进行模运算. 基于此,可以理解`addmany`方法的实现.
 
 ```rust
     /// Perform modular addition of several `UInt32` objects.
@@ -1541,7 +1541,7 @@ where
     Ok(cur.into_iter().flat_map(|e| e.into_bits_be()).collect())
 ```
 
-接下来,重点关注`sha256_compression_function`的函数, 其输入为包含512比特信息的`Boolean`切片, 以及一个表示为`UInt32`切片的哈希值. 考虑到SHA256的MD结构,该值也就是前一次``sha256_compression_function`的输出,初始值为常量. `sha256_compression_function`实现内部逻辑是按照SHA256的算法规范,将基本运算所新生成的约束条件追加到约束系统`cs`中. 其中为了尽量利用`UInt32`的`addmany`方法来减少模加运算所引入的约束个数, 定义了新的枚举类型`enum Maybe`. 值得指出的是, `addmany`方法返回预期中的值但是并没有将约束立刻追加到`cs`中,而是通过`MultiEq`进行了缓存,以尽量用一个约束条件来包括尽可能多的模加运算的约束.
+接下来,重点关注`sha256_compression_function`的函数, 其输入为包含512比特信息的`Boolean`切片, 以及一个表示为`UInt32`切片的哈希值. 考虑到SHA256的MD结构,该值也就是前一次`sha256_compression_function`的输出,初始值为常量. `sha256_compression_function`实现内部逻辑是按照SHA256的算法规范,将基本运算所新生成的约束条件追加到约束系统`cs`中. 其中为了尽量利用`UInt32`的`addmany`方法来减少模加运算所引入的约束个数, 定义了新的枚举类型`enum Maybe`. 值得指出的是, `addmany`方法返回预期中的值但是并没有将约束立刻追加到`cs`中,而是通过`MultiEq`进行了缓存,以尽量用一个约束条件来包括尽可能多的模加运算的约束.
 
 ```rust
 fn sha256_compression_function<E, CS>(
