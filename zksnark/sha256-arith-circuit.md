@@ -571,7 +571,7 @@ pub enum Boolean {
 }
 ```
 
-针对`Boolean`构建算术电路约束时,需要考虑到可能为常量的情况,参见如下`enforc_equal<E,CS>`方法的实现. `enforc_equal<E,CS>`方法实现调用了`lc`方法. `lc`方法接受参数`one: Variable, coeff: E::Fr`, 并根据自身的值,返回线性组合.
+针对`Boolean`构建算术电路约束时,需要考虑到可能为常量的情况,参见如下`enforce_equal<E,CS>`方法的实现. `enforce_equal<E,CS>`方法实现调用了`lc`方法. `lc`方法接受参数`one: Variable, coeff: E::Fr`, 并根据自身的值,返回线性组合.
 
 ```rust
 pub fn lc<E: ScalarEngine>(&self, one: Variable, coeff: E::Fr) -> LinearCombination<E> {
@@ -1358,7 +1358,7 @@ xor/xor of bit 31/xor constraint: (2^1 . `a_bit/allocated bit 31/boolean`) * (`b
 }
 ```
 
-其中需要额外的讨论的是文件`multieq.rs`中为`struct MultiEq`提供的`enforce_equal`方法. `struct MultiEq`可以将多个比特的相等关系的约束组合成一个约束条件,有助于降低算术电路的约束个数, 而受制于`E::Fr::CAPACITY`的大小能够组成的条件有上限, 而通过`accumulate`和`enforc_equal`的配合, 可以在一个约束条件内约束尽可能多的比特的相等关系.
+其中需要额外的讨论的是文件`multieq.rs`中为`struct MultiEq`提供的`enforce_equal`方法. `struct MultiEq`可以将多个比特的相等关系的约束组合成一个约束条件,有助于降低算术电路的约束个数, 而受制于`E::Fr::CAPACITY`的大小能够组成的条件有上限, 而通过`accumulate`和`enforce_equal`的配合, 可以在一个约束条件内约束尽可能多的比特的相等关系.
 
 ```rust
 pub struct MultiEq<E: ScalarEngine, CS: ConstraintSystem<E>> {
